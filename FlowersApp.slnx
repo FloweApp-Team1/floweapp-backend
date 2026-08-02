@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Services/">
+    <Project Path="src/Services/IdentityService/IdentityService.csproj" Id="719e8fa9-5511-459a-9044-4f20f41c2654" />
+  </Folder>
+</Solution>
