@@ -1,0 +1,11 @@
+services:
+  identity-service:
+    environment:
+      - ASPNETCORE_HTTPS_PORTS=8081
+    ports:
+      - "${IDENTITY_HTTPS_PORT:-7056}:8081"
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
+      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
