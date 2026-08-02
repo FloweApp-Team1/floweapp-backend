@@ -364,3 +364,5 @@ FodyWeavers.xsd
 
 # Local environment configuration (may contain secrets)
 .env
+# Firebase
+firebase-service-account.json

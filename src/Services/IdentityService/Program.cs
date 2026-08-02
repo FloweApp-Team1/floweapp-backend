@@ -1,3 +1,6 @@
+﻿using FirebaseAdmin;
+using FirebaseAdmin.Messaging;
+using Google.Apis.Auth.OAuth2;
 using IdentityService.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +15,24 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
+
+var credentialsPath = builder.Configuration["Firebase:CredentialsPath"]
+    ?? throw new InvalidOperationException("Firebase:CredentialsPath is missing in configuration.");
+
+var fullPath = Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
+
+if (!File.Exists(fullPath))
+    throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
+
+builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
+{
+    Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
+}));
+
 var app = builder.Build();
+
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
