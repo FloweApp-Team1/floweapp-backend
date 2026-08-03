@@ -25,16 +25,12 @@ namespace IdentityService.Infrastructure
         override protected void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            // This service owns the "Auth" schema inside the shared FloweApp database.
+            // Other microservices will use their own schemas in the same database.
+            builder.HasDefaultSchema("Auth");
+
             builder.ApplyConfigurationsFromAssembly(typeof(AuthDbContext).Assembly);
-
-
-
-
-
-
-
-
-
         }
     }
 }

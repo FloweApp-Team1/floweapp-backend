@@ -4,10 +4,22 @@ using Google.Apis.Auth.OAuth2;
 using IdentityService.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
+
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
+
+static string GetRequiredEnv(string key) =>
+    Environment.GetEnvironmentVariable(key)
+        ?? throw new InvalidOperationException(
+            $"Required environment variable '{key}' is not set. Add it to your .env file.");
+
+var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
+
+
 builder.Services.AddDbContext<AuthDbContext>(options =>
-               options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+               options.UseSqlServer(connectionString));
 
 
 // Add services to the container.
@@ -17,10 +29,11 @@ builder.Services.AddSwaggerGen();
 
 
 
-var credentialsPath = builder.Configuration["Firebase:CredentialsPath"]
-    ?? throw new InvalidOperationException("Firebase:CredentialsPath is missing in configuration.");
+var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
 
-var fullPath = Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
+var fullPath = Path.IsPathRooted(credentialsPath)
+    ? credentialsPath
+    : Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
 
 if (!File.Exists(fullPath))
     throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
@@ -43,29 +56,5 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
 
 app.Run();
-
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
