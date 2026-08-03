@@ -1,6 +1,6 @@
 ﻿namespace IdentityService.Domain.Enums
 {
-    public enum StatusEnum
+    public enum DeliveryStatusEnum
     {
         Pending,
         Review,
