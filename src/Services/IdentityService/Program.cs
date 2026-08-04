@@ -2,7 +2,9 @@
 using Google.Apis.Auth.OAuth2;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
+using IdentityService.Common.Middlewares;
 using IdentityService.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
@@ -22,6 +24,9 @@ var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
                options.UseSqlServer(connectionString));
+
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, AuditingAuthorizationMiddlewareResultHandler>();
+
 
 // Registers every IEndpoint implementation found in this assembly
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
