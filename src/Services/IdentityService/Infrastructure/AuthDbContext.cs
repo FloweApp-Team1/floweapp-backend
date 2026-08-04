@@ -28,6 +28,8 @@ namespace IdentityService.Infrastructure
         {
             base.OnModelCreating(builder);
 
+            builder.Entity<User>().HasQueryFilter(u => !u.IsDeleted);
+
             // This service owns the "Auth" schema inside the shared FloweApp database.
             // Other microservices will use their own schemas in the same database.
             builder.HasDefaultSchema("Auth");
