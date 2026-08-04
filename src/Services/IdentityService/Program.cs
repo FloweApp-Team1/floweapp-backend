@@ -6,10 +6,22 @@ using IdentityService.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
+
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
+
+static string GetRequiredEnv(string key) =>
+    Environment.GetEnvironmentVariable(key)
+        ?? throw new InvalidOperationException(
+            $"Required environment variable '{key}' is not set. Add it to your .env file.");
+
+var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
+
+
 builder.Services.AddDbContext<AuthDbContext>(options =>
-               options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+               options.UseSqlServer(connectionString));
 
 // Registers every IEndpoint implementation found in this assembly
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
@@ -46,6 +58,19 @@ builder.Services.AddSwaggerGen();
 
 
 
+var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
+
+var fullPath = Path.IsPathRooted(credentialsPath)
+    ? credentialsPath
+    : Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
+
+if (!File.Exists(fullPath))
+    throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
+
+builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
+{
+    Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
+}));
 
 var app = builder.Build();
 

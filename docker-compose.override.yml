@@ -1,5 +1,5 @@
 services:
-  identity-service:
+  identityservice:
     environment:
       - ASPNETCORE_HTTPS_PORTS=8081
     ports:
