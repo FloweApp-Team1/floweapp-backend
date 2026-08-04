@@ -9,4 +9,4 @@ namespace IdentityService.Domain.Intefaces
     }
 
 }
-}
+
