@@ -28,6 +28,19 @@ services:
 
       Redis__ConnectionString: redis:${REDIS_PORT}
 
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+      Jwt__AccessTokenExpiryMinutes: ${Jwt__AccessTokenExpiryMinutes}
+
+      Email__SmtpHost: ${Email__SmtpHost}
+      Email__SmtpPort: ${Email__SmtpPort}
+      Email__SenderEmail: ${Email__SenderEmail}
+      Email__SenderName: ${Email__SenderName}
+      Email__Username: ${Email__Username}
+      Email__Password: ${Email__Password}
+      Email__EnableSsl: ${Email__EnableSsl}
+
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
 

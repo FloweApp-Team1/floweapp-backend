@@ -1,8 +1,5 @@
-﻿using IdentityService.Domain.Entities;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection.Emit;
 
 namespace IdentityService.Infrastructure
 {
