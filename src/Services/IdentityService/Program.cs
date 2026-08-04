@@ -37,10 +37,8 @@ builder.Services.AddProblemDetails();
 
 // Needed because some stubs already call RequireAuthorization("AdminOnly")
 builder.Services.AddAuthentication(); // configure JWT bearer later
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
-});
+// Admin Policy 
+builder.Services.AddAdminAuthorization();
 
 #region Firebase Admin SDK Configuration
 var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
