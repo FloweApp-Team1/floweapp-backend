@@ -38,7 +38,6 @@
     <Folder Include="Features\Auth\" />
     <Folder Include="Infrastructure\Persistence\Migrations\" />
     <Folder Include="Infrastructure\Repositories\" />
-    <Folder Include="Common\" />
   </ItemGroup>
 
 </Project>
