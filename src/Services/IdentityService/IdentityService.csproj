@@ -20,6 +20,7 @@
     <PackageReference Include="Mapster.DependencyInjection" Version="10.0.11" />
     <PackageReference Include="MassTransit" Version="9.2.0" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="9.2.0" />
+    <PackageReference Include="MediatR" Version="14.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.28" />
@@ -36,7 +37,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Features\Auth\" />
     <Folder Include="Infrastructure\Persistence\Migrations\" />
     <Folder Include="Infrastructure\Repositories\" />
   </ItemGroup>
