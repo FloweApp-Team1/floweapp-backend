@@ -7,10 +7,14 @@
     <UserSecretsId>64a0b1c9-abb9-4239-a8ab-56fd80ba7f41</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..\..</DockerfileContext>
+    <DockerComposeProjectPath>..\..\..\docker-compose.dcproj</DockerComposeProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.0.0" />
+    <PackageReference Include="FirebaseAdmin" Version="3.6.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.75.0" />
     <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Mapster" Version="10.0.11" />
     <PackageReference Include="Mapster.DependencyInjection" Version="10.0.11" />
@@ -32,12 +36,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Domain\Entities\" />
-    <Folder Include="Domain\Enums\" />
     <Folder Include="Features\Auth\" />
+    <Folder Include="Infrastructure\Persistence\Migrations\" />
     <Folder Include="Infrastructure\Repositories\" />
-    <Folder Include="Infrastructure\Persistence\" />
-    <Folder Include="Common\" />
   </ItemGroup>
 
 </Project>

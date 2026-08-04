@@ -361,3 +361,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Local environment configuration (may contain secrets)
+.env
+
+# Firebase service account JSON and other local secrets
+secrets/
+# Firebase
+firebase-service-account.json
