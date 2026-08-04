@@ -36,6 +36,8 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 // Handlers depend on IUserRepository, never on AuthDbContext directly.
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
+builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
+
 // Ambient access to the authenticated user for the current request.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();

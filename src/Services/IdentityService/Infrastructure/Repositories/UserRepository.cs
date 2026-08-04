@@ -24,5 +24,34 @@ namespace IdentityService.Infrastructure.Repositories
                     u => u.Email == email && u.IsActive && !u.IsDeleted,
                     cancellationToken);
         }
+
+        public Task<User?> GetByEmailAsync(
+            string email,
+            CancellationToken cancellationToken = default)
+        {
+            return _db.Users
+                .FirstOrDefaultAsync(
+                    u => u.Email == email && u.IsActive && !u.IsDeleted,
+                    cancellationToken);
+        }
+
+        public async Task ResetPasswordAsync(
+            User user,
+            string newPasswordHash,
+            CancellationToken cancellationToken = default)
+        {
+            user.PasswordHash = newPasswordHash;
+
+            // Invalidate every active session for the account.
+            var activeTokens = await _db.RefreshTokens
+                .Where(rt => rt.UserId == user.Id && rt.RevokedAt == null)
+                .ToListAsync(cancellationToken);
+
+            foreach (var token in activeTokens)
+                token.RevokedAt = DateTime.UtcNow;
+
+            // Single SaveChanges -> password update and revocations commit atomically.
+            await _db.SaveChangesAsync(cancellationToken);
+        }
     }
 }
