@@ -1,6 +1,7 @@
 ﻿using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using IdentityService.Common.Extensions;
+using IdentityService.Common.Handlers;
 using IdentityService.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
@@ -12,6 +13,10 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 
 // Registers every IEndpoint implementation found in this assembly
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
+
+// Turns unhandled exceptions (and FluentValidation failures) into the unified ApiResponse shape
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // Needed because some stubs already call RequireAuthorization("AdminOnly")
 builder.Services.AddAuthentication(); // configure JWT bearer later
@@ -44,7 +49,8 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-
+// Must be first so it can catch exceptions thrown anywhere downstream.
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -55,31 +61,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
-
-
+// Maps every IEndpoint feature (Auth, Users, Drivers, Vehicles, Admin, ...)
 app.MapEndpoints();
-app.Run();
 
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+app.Run();
