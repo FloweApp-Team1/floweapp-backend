@@ -38,26 +38,6 @@ builder.Services.AddAuthorization(options =>
 });
 
 #region Firebase Admin SDK Configuration
-//var credentialsPath = builder.Configuration["Firebase:CredentialsPath"]
-//    ?? throw new InvalidOperationException("Firebase:CredentialsPath is missing in configuration.");
-//var fullPath = Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
-
-//if (!File.Exists(fullPath))
-//    throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
-
-//builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
-//{
-//    Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
-//}));
-#endregion
-
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-
-
 var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
 
 var fullPath = Path.IsPathRooted(credentialsPath)
@@ -66,6 +46,12 @@ var fullPath = Path.IsPathRooted(credentialsPath)
 
 if (!File.Exists(fullPath))
     throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
+#endregion
+
+// Add services to the container.
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
 {
