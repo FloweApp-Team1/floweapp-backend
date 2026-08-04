@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace IdentityService.Infrastructure.Persistence.Configrations
 {
-    public class RefreshTokenConfigration : IEntityTypeConfiguration<RefreshToken>
+    public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
     {
         public void Configure(EntityTypeBuilder<RefreshToken> builder)
         {

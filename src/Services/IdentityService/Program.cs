@@ -21,17 +21,17 @@ builder.Services.AddAuthorization(options =>
 });
 
 #region Firebase Admin SDK Configuration
-var credentialsPath = builder.Configuration["Firebase:CredentialsPath"]
-    ?? throw new InvalidOperationException("Firebase:CredentialsPath is missing in configuration.");
-var fullPath = Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
+//var credentialsPath = builder.Configuration["Firebase:CredentialsPath"]
+//    ?? throw new InvalidOperationException("Firebase:CredentialsPath is missing in configuration.");
+//var fullPath = Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
 
-if (!File.Exists(fullPath))
-    throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
+//if (!File.Exists(fullPath))
+//    throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
 
-builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
-{
-    Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
-}));
+//builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
+//{
+//    Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
+//}));
 #endregion
 
 // Add services to the container.

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace IdentityService.Infrastructure.Persistence.Configrations
 {
-    public class VehicleInfoConfigration : IEntityTypeConfiguration<VehicleInfo>
+    public class VehicleInfoConfiguration : IEntityTypeConfiguration<VehicleInfo>
     {
         public void Configure(EntityTypeBuilder<VehicleInfo> builder)
         {
