@@ -7,7 +7,6 @@ namespace IdentityService.Domain.Entities
     {
         public string NationalIdNumber { get; set; } = null!;
 
-        public string VehiclePlateNumber { get; set; } = null!;
         public string LicenseDocument { get; set; } = null!;
         public DeliveryStatusEnum Status { get; set; }= DeliveryStatusEnum.Pending;
 
