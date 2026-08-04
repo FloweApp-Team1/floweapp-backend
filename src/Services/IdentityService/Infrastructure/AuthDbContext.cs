@@ -18,6 +18,8 @@ namespace IdentityService.Infrastructure
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
 
+        public DbSet<AdminLoginAudit> AdminLoginAudits { get; set; }
+
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)
         {
         }

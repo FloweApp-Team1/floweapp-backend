@@ -1,8 +1,10 @@
 ﻿using FirebaseAdmin;
-using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
+using IdentityService.Common.Extensions;
+using IdentityService.Common.Handlers;
 using IdentityService.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 
 DotNetEnv.Env.TraversePath().Load();
@@ -21,6 +23,33 @@ var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
 builder.Services.AddDbContext<AuthDbContext>(options =>
                options.UseSqlServer(connectionString));
 
+// Registers every IEndpoint implementation found in this assembly
+builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
+
+// Turns unhandled exceptions (and FluentValidation failures) into the unified ApiResponse shape
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+// Needed because some stubs already call RequireAuthorization("AdminOnly")
+builder.Services.AddAuthentication(); // configure JWT bearer later
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
+});
+
+#region Firebase Admin SDK Configuration
+//var credentialsPath = builder.Configuration["Firebase:CredentialsPath"]
+//    ?? throw new InvalidOperationException("Firebase:CredentialsPath is missing in configuration.");
+//var fullPath = Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
+
+//if (!File.Exists(fullPath))
+//    throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
+
+//builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
+//{
+//    Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
+//}));
+#endregion
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -45,7 +74,8 @@ builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
 
 var app = builder.Build();
 
-
+// Must be first so it can catch exceptions thrown anywhere downstream.
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -56,5 +86,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Maps every IEndpoint feature (Auth, Users, Drivers, Vehicles, Admin, ...)
+app.MapEndpoints();
 
 app.Run();

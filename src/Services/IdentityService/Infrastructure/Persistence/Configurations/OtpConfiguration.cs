@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace IdentityService.Infrastructure.Persistence.Configrations
 {
-    public class OtpConfigration : IEntityTypeConfiguration<OtpCode>
+    public class OtpConfiguration : IEntityTypeConfiguration<OtpCode>
     {
         public void Configure(EntityTypeBuilder<OtpCode> builder)
         {
