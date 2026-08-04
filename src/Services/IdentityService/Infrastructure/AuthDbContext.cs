@@ -18,6 +18,8 @@ namespace IdentityService.Infrastructure
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
 
+        public DbSet<AdminLoginAudit> AdminLoginAudits { get; set; }
+
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)
         {
         }
@@ -26,14 +28,6 @@ namespace IdentityService.Infrastructure
         {
             base.OnModelCreating(builder);
             builder.ApplyConfigurationsFromAssembly(typeof(AuthDbContext).Assembly);
-
-
-
-
-
-
-
-
 
         }
     }

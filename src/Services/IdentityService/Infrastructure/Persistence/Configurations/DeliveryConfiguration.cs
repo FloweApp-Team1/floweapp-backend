@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace IdentityService.Infrastructure.Persistence.Configrations
 {
-    public class DeliveryConfigration : IEntityTypeConfiguration<Delivery>
+    public class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
     {
         public void Configure(EntityTypeBuilder<Delivery> builder)
         {
