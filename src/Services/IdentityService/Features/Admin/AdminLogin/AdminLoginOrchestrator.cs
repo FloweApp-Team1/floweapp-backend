@@ -58,7 +58,7 @@ namespace IdentityService.Features.Admin.AdminLogin
                 var refreshTokenResult = await sender.Send(new IssueRefreshTokenCommand(user.Id), ct);
                 await sender.Send(new RecordAdminLoginAuditCommand(request.Email, true, request.IpAddress, request.UserAgent), ct);
 
-                await transaction.CommitAsync(ct);
+                
 
                 var accessToken = tokenService.GenerateAccessToken(user, AccessTokenLifetime);
 
@@ -75,7 +75,7 @@ namespace IdentityService.Features.Admin.AdminLogin
                     refreshTokenResult.Value,
                     DateTime.UtcNow.Add(AccessTokenLifetime)
                 );
-
+                await transaction.CommitAsync(ct);
                 return Result.Success(responseDto);  
             }
             catch

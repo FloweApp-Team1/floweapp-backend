@@ -1,10 +1,18 @@
 ﻿using FirebaseAdmin;
+using FluentValidation;
 using Google.Apis.Auth.OAuth2;
+using IdentityService.Common.Behaviors;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
 using IdentityService.Common.Middlewares;
+using IdentityService.Common.Security;
+using IdentityService.Domain.Intefaces;
 using IdentityService.Infrastructure;
+using IdentityService.Infrastructure.Persistence.Seed;
+using IdentityService.Infrastructure.Repositories;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
@@ -25,7 +33,17 @@ var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
 builder.Services.AddDbContext<AuthDbContext>(options =>
                options.UseSqlServer(connectionString));
 
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+
 builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, AuditingAuthorizationMiddlewareResultHandler>();
+
+builder.Services.AddScoped<IAdminLoginAuditRepository, AdminLoginAuditRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IIdentityUnitOfWork, IdentityUnitOfWork>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+builder.Services.AddScoped<ITokenService, JwtTokenService>();
+builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
 
 
 // Registers every IEndpoint implementation found in this assembly
@@ -34,6 +52,8 @@ builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 // Turns unhandled exceptions (and FluentValidation failures) into the unified ApiResponse shape
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+
 
 // Needed because some stubs already call RequireAuthorization("AdminOnly")
 builder.Services.AddAuthentication(); // configure JWT bearer later
@@ -51,6 +71,15 @@ if (!File.Exists(fullPath))
     throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
 #endregion
 
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+builder.Services.AddMediatR(config => {
+    config.RegisterServicesFromAssembly(typeof(Program).Assembly);
+   
+    config.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
+
+
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -62,6 +91,18 @@ builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
 }));
 
 var app = builder.Build();
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+ 
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    await AdminSeeder.SeedAsync(context, config);
+}
+
+
 
 // Must be first so it can catch exceptions thrown anywhere downstream.
 app.UseExceptionHandler();

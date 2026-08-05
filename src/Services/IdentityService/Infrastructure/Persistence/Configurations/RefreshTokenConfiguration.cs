@@ -15,7 +15,7 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.Property(x => x.ExpiresAt).IsRequired();
             builder.Property(x => x.UserId).IsRequired();
             builder.Property(x => x.CreatedAt).IsRequired();
-            builder.Property(x => x.RevokedAt).IsRequired();
+           
 
             builder.HasIndex(x => x.Token).IsUnique();
             builder.HasOne(x => x.User)
