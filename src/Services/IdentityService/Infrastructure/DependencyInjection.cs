@@ -2,6 +2,7 @@
 using IdentityService.Common.Settings;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -25,7 +26,7 @@ namespace IdentityService.Infrastructure
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IEmailService, EmailService>();
-
+            services.AddMediatR(typeof(DependencyInjection).Assembly);
             return services;
         }
 

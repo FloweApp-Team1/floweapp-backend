@@ -3,6 +3,7 @@ using Google.Apis.Auth.OAuth2;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
 using IdentityService.Infrastructure;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
@@ -11,6 +12,8 @@ DotNetEnv.Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+builder.Configuration.AddEnvironmentVariables();
 
 static string GetRequiredEnv(string key) =>
     Environment.GetEnvironmentVariable(key)
@@ -31,11 +34,19 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // Needed because some stubs already call RequireAuthorization("AdminOnly")
-builder.Services.AddAuthentication(); // configure JWT bearer later
+builder.Services.AddInfrastructureServices(
+    builder.Configuration);
+
+builder.Services.AddJwtAuthentication(
+    builder.Configuration);
+
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
+    options.AddPolicy(
+        "AdminOnly",
+        policy => policy.RequireRole("ADMIN"));
 });
+
 
 #region Firebase Admin SDK Configuration
 var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
@@ -71,7 +82,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseAuthentication();
+app.UseAuthorization();
 // Maps every IEndpoint feature (Auth, Users, Drivers, Vehicles, Admin, ...)
 app.MapEndpoints();
 

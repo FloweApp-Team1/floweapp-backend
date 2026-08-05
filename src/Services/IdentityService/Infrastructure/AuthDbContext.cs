@@ -26,6 +26,8 @@ namespace IdentityService.Infrastructure
 
         override protected void OnModelCreating(ModelBuilder builder)
         {
+            builder.Entity<User>()
+.HasQueryFilter(x => !x.IsDeleted);
             base.OnModelCreating(builder);
 
             // This service owns the "Auth" schema inside the shared FloweApp database.
