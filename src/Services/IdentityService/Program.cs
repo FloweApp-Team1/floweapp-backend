@@ -5,11 +5,13 @@ using IdentityService.Common.Behaviors;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
 using IdentityService.Common.Interfaces;
+using IdentityService.Common.Security;
 using IdentityService.Infrastructure;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Reflection;
@@ -67,9 +69,16 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
-}); builder.Services.AddAuthorization(options =>
+});
+builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
+    options.AddPolicy(AppPolicies.AdminOnly, p => p.RequireRole(AppRoles.Admin));
+    options.AddPolicy(AppPolicies.CustomerOnly, p => p.RequireRole(AppRoles.Customer));
+    options.AddPolicy(AppPolicies.DriverOnly, p => p.RequireRole(AppRoles.Driver));
+    options.AddPolicy(AppPolicies.DriverApproved, p => p.Requirements.Add(new DriverApprovedRequirement()));
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
 });
 
 #region Firebase Admin SDK Configuration
@@ -95,6 +104,10 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+builder.Services.AddScoped<IAuthorizationHandler, DriverApprovedHandler>();
+//builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
+
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -119,6 +132,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Maps every IEndpoint feature (Auth, Users, Drivers, Vehicles, Admin, ...)
 app.MapEndpoints();
