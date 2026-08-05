@@ -5,6 +5,5 @@ namespace IdentityService.Features.Admin.AdminLogin
         UserProfileDto User,
         string AccessToken,
         string RefreshToken,
-        DateTime AccessTokenExpiresAt,
-        DateTime RefreshTokenExpiresAt);
+        DateTime AccessTokenExpiresAt); 
 }
