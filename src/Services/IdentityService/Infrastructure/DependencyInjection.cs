@@ -1,5 +1,8 @@
-﻿using IdentityService.Common.Interfaces;
+﻿using FluentValidation;
+using IdentityService.Common.Handlers;
+using IdentityService.Common.Interfaces;
 using IdentityService.Common.Settings;
+using IdentityService.Features.Drivers.ApplyAsDriver;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using MediatR;
@@ -27,7 +30,12 @@ namespace IdentityService.Infrastructure
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IImageService, LocalImageService>();
+            services.AddScoped<IPasswordHasher, PasswordHasher>();
             services.AddMediatR(typeof(Program).Assembly);
+
+            services.AddValidatorsFromAssemblyContaining<ApplyDriverRequestCommandValidator>();
+            services.AddTransient(typeof(IPipelineBehavior<,>),typeof(ValidationBehavior<,>));
+
             return services;
         }
 

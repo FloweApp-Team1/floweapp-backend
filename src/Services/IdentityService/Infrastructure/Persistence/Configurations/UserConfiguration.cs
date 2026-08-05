@@ -15,7 +15,6 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.Property(x => x.Email).HasMaxLength(255).IsRequired();
             builder.Property(x => x.PhoneNumber).IsRequired();
             builder.Property(x => x.PasswordHash).IsRequired();
-            builder.Property(x => x.BirthDate).IsRequired();
             builder.Property(x => x.Gender).IsRequired();
 
 

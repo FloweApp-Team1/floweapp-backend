@@ -2,9 +2,14 @@
 using Google.Apis.Auth.OAuth2;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
+using IdentityService.Common.Swagger;
+using IdentityService.Domain.Enums;
 using IdentityService.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Any;
+using Microsoft.OpenApi.Models;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 
 DotNetEnv.Env.TraversePath().Load();
@@ -22,8 +27,8 @@ var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
                options.UseSqlServer(connectionString));
-
 // Registers every IEndpoint implementation found in this assembly
+builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 
 // Turns unhandled exceptions (and FluentValidation failures) into the unified ApiResponse shape
@@ -51,8 +56,10 @@ if (!File.Exists(fullPath))
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
+builder.Services.AddSwaggerGen(options =>
+{
+    options.ParameterFilter<EnumParameterFilter>(); // ده الجديد اللي هيحل query params
+});
 builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
 {
     Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
@@ -61,6 +68,12 @@ builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+
+    db.Database.Migrate();
+}
 // Must be first so it can catch exceptions thrown anywhere downstream.
 app.UseExceptionHandler();
 

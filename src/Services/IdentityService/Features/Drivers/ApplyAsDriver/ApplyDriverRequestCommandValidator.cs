@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using IdentityService.Features.Drivers.Dtos_VM;
 
 namespace IdentityService.Features.Drivers.ApplyAsDriver
 {
@@ -22,9 +23,6 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
             RuleFor(x => x.Gender)
                 .IsInEnum();
 
-            RuleFor(x => x.BirthDate)
-                .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.Today.AddYears(-18)))
-                .WithMessage("Driver must be at least 18 years old.");
 
             RuleFor(x => x.VehiclePlateNumber)
                 .NotEmpty()

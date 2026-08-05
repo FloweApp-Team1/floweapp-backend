@@ -2,7 +2,7 @@
 
 namespace IdentityService.Features.Drivers.Dtos_VM
 {
-    public class ApplyDriverDto
+    public class ApplyDriverResponseDto
     {
         public string Id { get; set; } = null!;
         public string Name { get; set; } = null!;

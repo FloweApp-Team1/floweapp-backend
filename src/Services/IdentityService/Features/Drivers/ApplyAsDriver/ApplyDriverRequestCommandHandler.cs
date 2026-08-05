@@ -7,7 +7,7 @@ using MediatR;
 
 namespace IdentityService.Features.Drivers.ApplyAsDriver
 {
-    public class ApplyDriverRequestCommandHandler : IRequestHandler<ApplyDriverRequestCommand, Result<ApplyDriverDto>>
+    public class ApplyDriverRequestCommandHandler : IRequestHandler<ApplyDriverRequestCommand, Result<ApplyDriverResponseDto>>
     {
         private readonly IPasswordHasher passwordHasher;
         private readonly IUnitOfWork unitOfWork;
@@ -19,14 +19,14 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
             this.unitOfWork = unitOfWork;
             this.imageService = imageService;
         }
-        public async Task<Result<ApplyDriverDto>> Handle(ApplyDriverRequestCommand request, CancellationToken cancellationToken)
+        public async Task<Result<ApplyDriverResponseDto>> Handle(ApplyDriverRequestCommand request, CancellationToken cancellationToken)
         {
             var _repository = unitOfWork.Repository<Delivery>();
             var email = request.Email.Trim().ToLower();
             var IsExistingUser = _repository.Exists(u => u.Email == email);
-            if (!IsExistingUser)
+            if (IsExistingUser)
             {
-                return Result<ApplyDriverDto>.Failure("User with this email already exists.");
+                return Result<ApplyDriverResponseDto>.Failure("User with this email already exists.");
             }
 
             var hashedPassword = passwordHasher.Hash(request.Password);
@@ -38,7 +38,6 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
                 Email = email,
                 PhoneNumber = request.Phone,
                 Gender = request.Gender,
-                BirthDate = request.BirthDate,
                 FcmToken = request.FcmToken,
                 PasswordHash = hashedPassword,
                 NationalIdNumber = request.Nid,
@@ -59,7 +58,7 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
             await _repository.AddAsync(delivery, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
-             return Result<ApplyDriverDto>.Success(new ApplyDriverDto
+             return Result<ApplyDriverResponseDto>.Success(new ApplyDriverResponseDto
              {
                  Id = delivery.Id.ToString(),
                  Name = delivery.FullName,

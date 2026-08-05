@@ -10,7 +10,6 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
     string Email,
     string Phone,
     GenderEnum Gender,
-    DateOnly BirthDate,
     string VehiclePlateNumber,
     VehicleTypeEnum VehicleType,
     int VehicleCapacity,
@@ -19,6 +18,6 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
     IFormFile NidImage,
     string Password,
     string ConfirmPassword,
-    string? FcmToken) : IRequest<Result<ApplyDriverDto>>;
+    string? FcmToken) : IRequest<Result<ApplyDriverResponseDto>>;
   
 }

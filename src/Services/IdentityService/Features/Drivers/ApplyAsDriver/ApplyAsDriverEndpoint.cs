@@ -12,17 +12,32 @@ public class ApplyAsDriverEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/drivers/apply",async
-            ([FromForm]ApplyDriverRequestCommand request,
-            IMediator mediator,
+            ([AsParameters] ApplyDriverRequestVM request,
+            [FromServices]IMediator mediator,
             CancellationToken cancellationToken) =>
         {
-            var result = await mediator.Send(request, cancellationToken);
+            var command = new ApplyDriverRequestCommand(
+                         request.Name,
+                         request.Email,
+                         request.Phone,
+                         request.Gender,
+                         request.VehiclePlateNumber,
+                         request.VehicleType,
+                         request.VehicleCapacity,
+                         request.LicenceImage,
+                         request.Nid,
+                         request.NidImage,
+                         request.Password,
+                         request.ConfirmPassword,
+                         request.FcmToken);
+
+            var result = await mediator.Send(command, cancellationToken);
             if (!result.IsSuccess)
             {
                 return  Results.BadRequest(new { error = result.Error });
             }
             return Results.Ok(
-                ApiResponse<ApplyDriverDto>.Success(
+                ApiResponse<ApplyDriverResponseDto>.Success(
                     result.Value,
                     "Driver application submitted successfully."));
         })
