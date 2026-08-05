@@ -1,4 +1,6 @@
 ﻿using IdentityService.Domain.Intefaces;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace IdentityService.Infrastructure.Repositories
 {
@@ -24,5 +26,8 @@ namespace IdentityService.Infrastructure.Repositories
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)
             => _context.SaveChangesAsync(ct);
+
+        public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
+          => _context.Database.BeginTransactionAsync(ct);
     }
 }

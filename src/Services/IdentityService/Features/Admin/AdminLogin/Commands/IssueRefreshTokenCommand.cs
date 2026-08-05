@@ -4,7 +4,7 @@ using IdentityService.Domain.Entities;
 using IdentityService.Domain.Intefaces;
 using MediatR;
 
-namespace IdentityService.Features.Admin.AdminLogin
+namespace IdentityService.Features.Admin.AdminLogin.Commands
 {
     public sealed record IssueRefreshTokenCommand(Guid UserId) : IRequest<Result<string>>;
     public sealed class IssueRefreshTokenHandler(
