@@ -6,7 +6,7 @@ namespace IdentityService.Domain.Entities
     {
         public VehicleTypeEnum Type { get; set; }
         public string PlateNumber { get; set; } = null!;
-        public string Capacity { get; set; } = null!; 
+        public int Capacity { get; set; } 
 
         public Delivery Delivery { get; set; }
         public Guid DeliveryId { get; set; }

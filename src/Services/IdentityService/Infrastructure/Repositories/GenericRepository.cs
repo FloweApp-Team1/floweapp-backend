@@ -36,5 +36,8 @@ namespace IdentityService.Infrastructure.Repositories
             entity.IsDeleted = true;
             _dbSet.Update(entity);
         }
+
+        public bool Exists(Expression<Func<T, bool>> predicate)
+            => _dbSet.Any(predicate);
     }
 }

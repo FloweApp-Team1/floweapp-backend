@@ -58,6 +58,7 @@ builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
     Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
 }));
 
+
 var app = builder.Build();
 
 // Must be first so it can catch exceptions thrown anywhere downstream.

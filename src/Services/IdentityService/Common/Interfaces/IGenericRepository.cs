@@ -11,6 +11,7 @@ namespace IdentityService.Common.Interfaces
         Task AddAsync(T entity, CancellationToken cancellationToken = default);
         void Update(T entity);
         void Remove(T entity);
+        public bool Exists(Expression<Func<T, bool>> predicate);
     }
 
   
