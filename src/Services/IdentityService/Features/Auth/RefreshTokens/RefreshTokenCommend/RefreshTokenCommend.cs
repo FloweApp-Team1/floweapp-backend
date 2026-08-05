@@ -9,7 +9,7 @@
     using Microsoft.AspNetCore.Routing;
     using RefreshTokenEntity = IdentityService.Domain.Entities.RefreshToken;
 
-    namespace IdentityService.Features.Auth.RefreshToken
+    namespace IdentityService.Features.Auth.RefreshTokens
     {
         
         public record RefreshTokenCommand(

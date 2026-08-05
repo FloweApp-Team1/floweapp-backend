@@ -9,7 +9,7 @@ namespace IdentityService.Domain.Entities
         public string Email { get; set; } = null!;
         public string PhoneNumber { get; set; } = null!;
         public string PasswordHash { get; set; } = null!;
-        public DateOnly BirthDate { get; set; } 
+        public DateOnly? BirthDate { get; set; } 
         public string? ImageUrl { get; set; } 
         public bool IsEmailConfirmed { get; set; }=false;
         public GenderEnum Gender { get; set; }
@@ -18,8 +18,8 @@ namespace IdentityService.Domain.Entities
         public string FcmToken { get; set; } = null!;
         public NotifcationStatusEnum NotifcationStatus { get; set; }
 
-        public ICollection<UserRole> UserRoles { get; set; }
-        public ICollection<RefreshToken> RefreshTokens { get; set; }
+        public ICollection<UserRole>? UserRoles { get; set; }
+        public ICollection<RefreshToken>? RefreshTokens { get; set; }
 
 
 

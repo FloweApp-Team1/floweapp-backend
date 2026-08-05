@@ -1,10 +1,19 @@
 ﻿using FirebaseAdmin;
+using FluentValidation;
 using Google.Apis.Auth.OAuth2;
+using IdentityService.Common.Behaviors;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
+using IdentityService.Common.Interfaces;
 using IdentityService.Infrastructure;
+using IdentityService.Infrastructure.Repositories;
+using IdentityService.Infrastructure.Services;
+using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Reflection;
+using System.Text;
 
 
 DotNetEnv.Env.TraversePath().Load();
@@ -31,8 +40,34 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // Needed because some stubs already call RequireAuthorization("AdminOnly")
-builder.Services.AddAuthentication(); // configure JWT bearer later
-builder.Services.AddAuthorization(options =>
+var jwtSection = builder.Configuration.GetSection("Jwt");
+
+var secretKey = jwtSection["SecretKey"]!;
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = jwtSection["Issuer"],
+
+        ValidateAudience = true,
+        ValidAudience = jwtSection["Audience"],
+
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(secretKey)
+        ),
+
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+}); builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
 });
@@ -48,9 +83,22 @@ if (!File.Exists(fullPath))
     throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
 #endregion
 
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
