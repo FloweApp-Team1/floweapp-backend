@@ -38,7 +38,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Features\Auth\" />
     <Folder Include="Infrastructure\Persistence\Migrations\" />
   </ItemGroup>
 
