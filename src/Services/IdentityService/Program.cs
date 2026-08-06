@@ -11,10 +11,13 @@ using IdentityService.Infrastructure;
 using IdentityService.Infrastructure.Persistence.Seed;
 using IdentityService.Infrastructure.Repositories;
 using MassTransit;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Reflection;
+using System.Text;
 
 
 DotNetEnv.Env.TraversePath().Load();
@@ -55,9 +58,31 @@ builder.Services.AddProblemDetails();
 
 
 
-// Needed because some stubs already call RequireAuthorization("AdminOnly")
-builder.Services.AddAuthentication(); // configure JWT bearer later
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    var secretKey = builder.Configuration["Jwt:SecretKey"]
+                    ?? builder.Configuration["JWT_SECRET"];
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? builder.Configuration["JWT_ISSUER"],
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? builder.Configuration["JWT_AUDIENCE"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!))
+    };
+});
+
 // Admin Policy 
+
 builder.Services.AddAdminAuthorization();
 
 #region Firebase Admin SDK Configuration
