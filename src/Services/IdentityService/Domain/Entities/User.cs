@@ -15,6 +15,8 @@ namespace IdentityService.Domain.Entities
         public GenderEnum Gender { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; } = true;
+        public string FcmToken { get; set; } = null!;
+        public NotifcationStatusEnum NotifcationStatus { get; set; }
 
         public ICollection<UserRole> UserRoles { get; set; }
         public ICollection<RefreshToken> RefreshTokens { get; set; }
