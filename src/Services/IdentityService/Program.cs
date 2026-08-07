@@ -2,7 +2,11 @@
 using Google.Apis.Auth.OAuth2;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
+using IdentityService.Common.Interfaces;
 using IdentityService.Infrastructure;
+using IdentityService.Infrastructure.Repositories;
+using IdentityService.Infrastructure.Services;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
@@ -25,6 +29,14 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 
 // Registers every IEndpoint implementation found in this assembly
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
+
+//Services Registeration
+builder.Services.AddMediatR(Assembly.GetExecutingAssembly());
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Turns unhandled exceptions (and FluentValidation failures) into the unified ApiResponse shape
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
