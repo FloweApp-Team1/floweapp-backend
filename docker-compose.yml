@@ -65,6 +65,8 @@ services:
       Email__Password: ${Email__Password}
       Email__EnableSsl: ${Email__EnableSsl}
 
+      Otp__PepperSecret: ${Otp__PepperSecret}
+
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
 

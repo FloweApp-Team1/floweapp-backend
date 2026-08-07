@@ -1,4 +1,5 @@
-﻿using IdentityService.Common.Interfaces;
+﻿using IdentityService.Common.Contracts;
+using IdentityService.Common.Interfaces;
 using IdentityService.Common.Models;
 using IdentityService.Domain.Entities;
 using IdentityService.Features.Auth.ChangePassord.Commends;

@@ -6,16 +6,16 @@ namespace IdentityService.Infrastructure.Services.OTP
 {
     public sealed class OtpHasher : IOtpHasher
     {
-        private const string Secret =
-            "FlowersAppPasswordResetOTP";
+        private readonly byte[] _pepperKey;
+
+        public OtpHasher(OtpSettings settings)
+        {
+            _pepperKey = Encoding.UTF8.GetBytes(settings.PepperSecret);
+        }
 
         public string Hash(string otp)
         {
-            using var sha = SHA256.Create();
-
-            var bytes = Encoding.UTF8.GetBytes(otp + Secret);
-
-            var hash = sha.ComputeHash(bytes);
+            var hash = HMACSHA256.HashData(_pepperKey, Encoding.UTF8.GetBytes(otp));
 
             return Convert.ToHexString(hash);
         }

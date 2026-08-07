@@ -8,7 +8,7 @@ namespace IdentityService.Common.Behaviors
     // GlobalExceptionHandler converts into the unified 400 ApiResponse envelope.
     public sealed class ValidationBehavior<TRequest, TResponse>
         : IPipelineBehavior<TRequest, TResponse>
-        where TRequest : notnull
+        where TRequest : IRequest<TResponse>
     {
         private readonly IEnumerable<IValidator<TRequest>> _validators;
 
@@ -19,8 +19,8 @@ namespace IdentityService.Common.Behaviors
 
         public async Task<TResponse> Handle(
             TRequest request,
-            RequestHandlerDelegate<TResponse> next,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            RequestHandlerDelegate<TResponse> next)
         {
             if (_validators.Any())
             {
@@ -37,7 +37,7 @@ namespace IdentityService.Common.Behaviors
                     throw new ValidationException(failures);
             }
 
-            return await next(cancellationToken);
+            return await next();
         }
     }
 }

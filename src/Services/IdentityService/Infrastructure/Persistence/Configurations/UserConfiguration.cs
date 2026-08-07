@@ -18,8 +18,10 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.Property(x => x.BirthDate).IsRequired();
             builder.Property(x => x.Gender).IsRequired();
 
-
-          
+            // ForgetPassword/VerifyOtp/ResetPassword/Login all look users up by email;
+            // not unique because a deleted account's row (IsDeleted) can share an email
+            // with the account that replaces it.
+            builder.HasIndex(x => x.Email);
         }
     }
 }

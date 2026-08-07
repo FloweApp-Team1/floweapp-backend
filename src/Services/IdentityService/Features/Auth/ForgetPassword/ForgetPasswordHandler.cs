@@ -14,15 +14,18 @@ namespace IdentityService.Features.Auth.ForgetPassword
         private readonly IUserRepository _users;
         private readonly IOtpService _otpService;
         private readonly IEmailService _emailService;
+        private readonly ILogger<ForgetPasswordHandler> _logger;
 
         public ForgetPasswordHandler(
             IUserRepository users,
             IOtpService otpService,
-            IEmailService emailService)
+            IEmailService emailService,
+            ILogger<ForgetPasswordHandler> logger)
         {
             _users = users;
             _otpService = otpService;
             _emailService = emailService;
+            _logger = logger;
         }
 
         public async Task<ApiResponse<bool>> Handle(
@@ -43,9 +46,24 @@ namespace IdentityService.Features.Auth.ForgetPassword
             if (otp is null)
                 return ApiResponse.Success(true, NeutralMessage);
 
-            await _emailService.SendPasswordResetOtpAsync(user.Email, otp);
+            DispatchOtpEmail(user.Email, otp);
 
             return ApiResponse.Success(true, NeutralMessage);
+        }
+
+        private void DispatchOtpEmail(string email, string otp)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.SendPasswordResetOtpAsync(email, otp);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send password reset OTP email.");
+                }
+            });
         }
     }
 }

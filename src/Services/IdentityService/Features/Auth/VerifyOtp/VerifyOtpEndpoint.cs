@@ -6,12 +6,14 @@ namespace IdentityService.Features.Auth.VerifyOtp;
 
 public class VerifyOtpEndpoint : IEndpoint
 {
+    public sealed record Request(string Email, string Otp);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/auth/otp-verification", 
-            async (string email, string otp, ISender sender) =>
+        app.MapPost("/auth/otp-verification",
+            async (Request request, ISender sender, CancellationToken cancellationToken) =>
             {
-                var result = await sender.Send(new VerifyOtpCommand(email, otp));
+                var result = await sender.Send(new VerifyOtpCommand(request.Email, request.Otp), cancellationToken);
                 return result.ToHttpResult();
             })
             .WithTags("Auth")
