@@ -13,6 +13,7 @@ public class LoginEndpoint : IEndpoint
         app.MapPost("/auth/login", async (
                 [FromBody] LoginRequest request,
                 [FromHeader(Name = "X-App-Type")] string? appType,
+                HttpContext httpContext,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
             {
@@ -21,7 +22,8 @@ public class LoginEndpoint : IEndpoint
                     return ApiResponse.Fail("Missing required header: X-App-Type", StatusCodes.Status400BadRequest).ToHttpResult();
                 }
 
-                var command = new LoginCommand(request, appType);
+                var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
+                var command = new LoginCommand(request, appType, ipAddress);
                 var result = await mediator.Send(command, cancellationToken);
 
                 if (!result.IsSuccess)

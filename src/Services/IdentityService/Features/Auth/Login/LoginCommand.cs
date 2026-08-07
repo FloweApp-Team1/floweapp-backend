@@ -3,5 +3,5 @@ using MediatR;
 
 namespace IdentityService.Features.Auth.Login
 {
-    public record LoginCommand(LoginRequest Request, string AppType) : IRequest<Result<AuthResponse>>;
+    public record LoginCommand(LoginRequest Request, string AppType, string? IpAddress) : IRequest<Result<AuthResponse>>;
 }
