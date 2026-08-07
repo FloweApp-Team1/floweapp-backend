@@ -27,7 +27,7 @@ namespace IdentityService.Features.Auth.Login
         public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
             var email = request.Request.Email;
-            var expectedRole = MapAppTypeToRole(request.AppType);
+            // var expectedRole = MapAppTypeToRole(request.AppType);
 
             var userProjection = await _unitOfWork.Repository<User>().Query()
                 .AsNoTracking()
@@ -59,12 +59,14 @@ namespace IdentityService.Features.Auth.Login
                 return Result<AuthResponse>.Failure("Invalid email or password");
             }
 
+            /*
             if (!userProjection!.RoleNames.Contains(expectedRole, StringComparer.OrdinalIgnoreCase))
             {
                 await RecordLoginAttemptAsync(email, false, request.IpAddress, cancellationToken);
                 //403 Forbidden.
                 return Result<AuthResponse>.Failure("RoleAuthorizationFailed: Unauthorized access for this app type");
             }
+            */
 
 
             await _unitOfWork.Repository<User>().Query()
@@ -78,7 +80,7 @@ namespace IdentityService.Features.Auth.Login
                 FullName = userProjection.FullName 
             };
 
-            var accessToken = _jwtService.GenerateAccessToken(dummyUserForJwt, new[] { expectedRole });
+            var accessToken = _jwtService.GenerateAccessToken(dummyUserForJwt, userProjection.RoleNames); // Use all roles for JWT claims
             var refreshTokenValue = _jwtService.GenerateRefreshTokenValue();
             
             string hashedToken;
@@ -118,6 +120,7 @@ namespace IdentityService.Features.Auth.Login
             return Result<AuthResponse>.Success(response);
         }
 
+        /*
         private string MapAppTypeToRole(string appType)
         {
             //mapping
@@ -126,6 +129,7 @@ namespace IdentityService.Features.Auth.Login
 
             return appType;
         }
+        */
 
         private async Task RecordLoginAttemptAsync(string email, bool isSuccess, string? ipAddress, CancellationToken cancellationToken)
         {
