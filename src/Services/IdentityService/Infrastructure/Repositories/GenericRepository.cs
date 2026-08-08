@@ -37,7 +37,7 @@ namespace IdentityService.Infrastructure.Repositories
             _dbSet.Update(entity);
         }
 
-        public bool Exists(Expression<Func<T, bool>> predicate)
-            => _dbSet.Any(predicate);
+        public Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate)
+            => _dbSet.AnyAsync(predicate);
     }
 }

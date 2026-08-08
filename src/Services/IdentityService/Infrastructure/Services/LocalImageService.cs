@@ -15,11 +15,13 @@ namespace IdentityService.Infrastructure.Services
             Directory.CreateDirectory(folderpath);
 
             var extention = Path.GetExtension(image.FileName);
-            var FileName = $"{Guid.NewGuid()}.{extention}";
+            var FileName = $"{Guid.NewGuid()}{extention}";
             var fullPath = Path.Combine(folderpath, FileName);
-            using var stream=File.Create(fullPath);
+
+            //using var stream=File.Create(fullPath);
+            using var stream=new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None,bufferSize: 4096, useAsync: true);
             await image.CopyToAsync(stream,cancellationToken);
-            return Path.Combine("Storage", folderName, FileName)
+            return Path.Combine("Storage", folderName,UserSubFolder ?? string.Empty, FileName)
                 .Replace("\\", "/");
 
         }

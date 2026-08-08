@@ -1,6 +1,6 @@
 ﻿namespace IdentityService.Domain.Enums
 {
-    public enum NotifcationStatusEnum
+    public enum NotificationStatusEnum
     {
         on,
         off

@@ -34,9 +34,10 @@ public class ApplyAsDriverEndpoint : IEndpoint
             var result = await mediator.Send(command, cancellationToken);
             if (!result.IsSuccess)
             {
-                return  Results.BadRequest(new { error = result.Error });
+                return  Results.BadRequest(ApiResponse<ApplyDriverResponseDto>.Fail(result.Error));
             }
-            return Results.Ok(
+            return Results.Created(
+               $"/admin/drivers/applications/{result.Value.Id}",
                 ApiResponse<ApplyDriverResponseDto>.Success(
                     result.Value,
                     "Driver application submitted successfully."));

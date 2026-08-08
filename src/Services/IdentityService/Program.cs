@@ -58,7 +58,7 @@ if (!File.Exists(fullPath))
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.ParameterFilter<EnumParameterFilter>(); // ده الجديد اللي هيحل query params
+    options.ParameterFilter<EnumParameterFilter>(); 
 });
 builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
 {
