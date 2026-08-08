@@ -26,6 +26,7 @@ namespace IdentityService.Features.Admin.AdminLogin
                     
                     return result.ToMinimalApiResult("Admin logged in successfully");
                 })
+                .RequireRateLimiting("AdminLoginPerIp")
                 .WithName("AdminLogin")
                 .WithTags("Admin-Auth")
                 .AllowAnonymous();
