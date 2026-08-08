@@ -11,7 +11,7 @@ namespace IdentityService.Infrastructure.Repositories
 
      
         public async Task<T?> GetByIdAsync(Guid id, CancellationToken ct)
-            => await Context.Set<T>().FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted, ct);
+            => await Context.Set<T>().FirstOrDefaultAsync(e => e.Id == id , ct);
 
         public async Task AddAsync(T entity, CancellationToken ct)
             => await Context.Set<T>().AddAsync(entity, ct);
