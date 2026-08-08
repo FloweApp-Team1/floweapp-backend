@@ -23,10 +23,10 @@ namespace IdentityService.Infrastructure.Persistence.Seed
             }
 
           
-            var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin", ct);
+            var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == RoleConstants.Admin, ct);
             if (adminRole is null)
             {
-                adminRole = new Role { Id = Guid.NewGuid(), Name = "Admin" };
+                adminRole = new Role { Id = Guid.NewGuid(), Name = RoleConstants.Admin };
                 context.Roles.Add(adminRole);
             }
 

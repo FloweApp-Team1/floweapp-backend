@@ -1,4 +1,6 @@
-﻿namespace IdentityService.Common.Extensions
+﻿using IdentityService.Common.Security;
+
+namespace IdentityService.Common.Extensions
 {
     public static class AuthorizationServiceExtensions
     {
@@ -6,7 +8,7 @@
         {
             services.AddAuthorization(options =>
             {
-                options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+                options.AddPolicy(Policies.AdminOnlyPolicy, policy => policy.RequireRole(RoleConstants.Admin));
             });
 
             return services;

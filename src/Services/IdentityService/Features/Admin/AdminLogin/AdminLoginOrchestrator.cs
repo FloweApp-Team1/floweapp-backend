@@ -37,7 +37,7 @@ namespace IdentityService.Features.Admin.AdminLogin
 
             var userResult = await sender.Send(new GetAdminByEmailQuery(request.Email), ct);
             var user = userResult.Value;
-            var isAdmin = user?.UserRoles.Any(ur => ur.Role.Name == "Admin") ?? false;
+            var isAdmin = user?.UserRoles.Any(ur => ur.Role.Name == RoleConstants.Admin) ?? false;
 
             if (user is null || !isAdmin || !user.IsActive)
             {
