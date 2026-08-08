@@ -13,6 +13,7 @@ using IdentityService.Infrastructure.Repositories;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -137,12 +138,23 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+
+});
 
 
 
 var app = builder.Build();
+app.UseForwardedHeaders();
+// Must be first so it can catch exceptions thrown anywhere downstream.
+app.UseExceptionHandler();
 
 app.UseRateLimiter();
+
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -151,12 +163,6 @@ using (var scope = app.Services.CreateScope())
 
     await AdminSeeder.SeedAsync(context, config);
 }
-
-
-
-// Must be first so it can catch exceptions thrown anywhere downstream.
-app.UseExceptionHandler();
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -165,6 +171,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Maps every IEndpoint feature (Auth, Users, Drivers, Vehicles, Admin, ...)
 app.MapEndpoints();
