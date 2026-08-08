@@ -1,7 +1,9 @@
 ﻿using FirebaseAdmin;
+using FluentValidation;
 using Google.Apis.Auth.OAuth2;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
+using IdentityService.Features.Users.UpdateProfile;
 using IdentityService.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +41,7 @@ builder.Services.AddInfrastructureServices(
 
 builder.Services.AddJwtAuthentication(
     builder.Configuration);
+builder.Services.AddValidatorsFromAssemblyContaining<UpdateProfileValidator>();
 
 builder.Services.AddAuthorization(options =>
 {

@@ -2,6 +2,7 @@
 using IdentityService.Common.Models;
 using IdentityService.Domain.Entities;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace IdentityService.Features.Users.UpdateProfile;
 
@@ -35,60 +36,26 @@ public class UpdateProfileCommandHandler(
                 .Failure("User Not Found");
         }
 
+        // Update the user's profile with the new information 
+        user.UpdateProfile(
+          request.FullName,
+          request.Email,
+          request.PhoneNumber,
+          request.Gender,
+          request.ProfilePictureUrl);
 
-        // Check email uniqueness if email changed
-        if (!string.Equals(
-                user.Email,
-                request.Email,
-                StringComparison.OrdinalIgnoreCase))
+
+        try
         {
-            var emailExists = await _repository.FirstOrDefaultAsync(
-                x => x.Email == request.Email && x.Id != user.Id,
-                cancellationToken);
-
-            if (emailExists is not null)
-            {
-                return Result<UpdateProfileResponse>
-                    .Failure("Email already exists");
-            }
-
-            user.Email = request.Email;
-
-            // Optional depending on business rule
-            user.IsEmailConfirmed = false;
-        }
-
-
-
-        if (user.PhoneNumber != request.PhoneNumber)
-        {
-            var phoneExists = await _repository.FirstOrDefaultAsync(
-                x => x.PhoneNumber == request.PhoneNumber && x.Id != user.Id,
-                cancellationToken);
-
-            if (phoneExists is not null)
-            {
-                return Result<UpdateProfileResponse>
-                    .Failure("Phone number already exists");
-            }
-
-            user.PhoneNumber = request.PhoneNumber;
-        }
-
-
-        // Update allowed profile fields
-        user.FullName = request.FullName;
-        user.Gender = request.Gender;
-
-
-        if (request.ProfilePictureUrl is not null)
-        {
-            user.ImageUrl = request.ProfilePictureUrl;
-        }
-
-
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        }
+        catch (DbUpdateException ex) when (
+            ex.InnerException?.Message.Contains("IX_Users_Email") == true || ex.InnerException?.Message.Contains("IX_Users_PhoneNumber") == true)
+        {
+            return Result<UpdateProfileResponse>
+                .Failure("Email or Phone number already exists");
+        }
 
         return Result<UpdateProfileResponse>
             .Success(new UpdateProfileResponse(
