@@ -1,8 +1,15 @@
 ﻿using FirebaseAdmin;
+using FluentValidation;
 using Google.Apis.Auth.OAuth2;
+using IdentityService.Common.Behaviors;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
 using IdentityService.Common.Interfaces;
+using IdentityService.Common.Security;
+using IdentityService.Infrastructure;
+using IdentityService.Infrastructure.Services;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using IdentityService.Infrastructure;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
@@ -42,12 +49,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// Needed because some stubs already call RequireAuthorization("AdminOnly")
-builder.Services.AddAuthentication(); // configure JWT bearer later
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
-});
+// Registers JWT bearer authentication plus AdminOnly/CustomerOnly/DriverOnly/DriverApproved policies
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 #region Firebase Admin SDK Configuration
 var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
@@ -60,9 +63,23 @@ if (!File.Exists(fullPath))
     throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
 #endregion
 
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+
+// Registers IUnitOfWork, IGenericRepository<>, IJwtService, IEmailService,
+// ICurrentUserService, IHttpContextAccessor, and binds JwtSettings/EmailSettings
+builder.Services.AddInfrastructureServices(builder.Configuration);
+
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
+
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
@@ -83,6 +100,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Maps every IEndpoint feature (Auth, Users, Drivers, Vehicles, Admin, ...)
 app.MapEndpoints();

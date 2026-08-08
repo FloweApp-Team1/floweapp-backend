@@ -7,9 +7,10 @@
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
+    using Microsoft.EntityFrameworkCore;
     using RefreshTokenEntity = IdentityService.Domain.Entities.RefreshToken;
 
-    namespace IdentityService.Features.Auth.RefreshToken
+    namespace IdentityService.Features.Auth.RefreshTokens
     {
         
         public record RefreshTokenCommand(
@@ -35,7 +36,8 @@
             public async Task<Result<TokenResponse>> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
             {
                 var tokenRepo = _unitOfWork.Repository<RefreshTokenEntity>();
-                var existing = await tokenRepo.FirstOrDefaultAsync(t => t.Token == request.RefreshTokenValue, cancellationToken);
+                var hashedIncoming = _jwtService.HashRefreshTokenValue(request.RefreshTokenValue);
+                var existing = await tokenRepo.FirstOrDefaultAsync(t => t.Token == hashedIncoming, cancellationToken);
 
                 if (existing is null)
                     return Result<TokenResponse>.Failure("Invalid refresh token.");
@@ -67,10 +69,11 @@
                     return Result<TokenResponse>.Failure("Invalid refresh token.");
 
              
+                var newRawRefreshToken = _jwtService.GenerateRefreshTokenValue();
                 var newRefreshToken = new RefreshTokenEntity
                 {
                     Id = Guid.NewGuid(),
-                    Token = _jwtService.GenerateRefreshTokenValue(),
+                    Token = _jwtService.HashRefreshTokenValue(newRawRefreshToken),
                     FamilyId = existing.FamilyId,
                     UserId = user.Id,
                     CreatedAt = DateTime.UtcNow,
@@ -87,17 +90,25 @@
                 tokenRepo.Update(existing);
                 await tokenRepo.AddAsync(newRefreshToken, cancellationToken);
 
-                var roles = user.UserRoles?
-                    .Where(ur => ur.Role != null)
-                    .Select(ur => ur.Role.Name) ?? Enumerable.Empty<string>();
+                var roles = await _unitOfWork.Repository<UserRole>()
+                    .Query()
+                    .Where(ur => ur.UserId == user.Id && ur.Role != null)
+                    .Select(ur => ur.Role.Name)
+                    .ToListAsync(cancellationToken);
 
-                var accessToken = _jwtService.GenerateAccessToken(user, roles);
+                string? driverStatus = null;
+                if (user is Delivery driver)
+                {
+                    driverStatus = driver.Status.ToString().ToUpperInvariant();
+                }
+
+                var accessToken = _jwtService.GenerateAccessToken(user, roles, driverStatus);
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 var response = new TokenResponse(
                     accessToken,
-                    newRefreshToken.Token,
+                    newRawRefreshToken,
                     DateTime.UtcNow.Add(AccessTokenLifetime),
                     newRefreshToken.ExpiresAt);
 

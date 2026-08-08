@@ -1,7 +1,7 @@
 using IdentityService.Common.Contracts;
 using IdentityService.Common.Responses;
 
-namespace IdentityService.Features.Auth.RefreshToken;
+namespace IdentityService.Features.Auth.RefreshTokens;
 
 public class RefreshTokenEndpoint : IEndpoint
 {
