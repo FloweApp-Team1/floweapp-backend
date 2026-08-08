@@ -1,7 +1,7 @@
 ﻿using IdentityService.Common;
 using IdentityService.Common.Results;
 using IdentityService.Common.Security;
-using IdentityService.Domain.Intefaces;
+using IdentityService.Domain.Interfaces;
 using IdentityService.Features.Admin.AdminLogin.Commands;
 using IdentityService.Features.Admin.AdminLogin.Dtos;
 using IdentityService.Features.Admin.AdminLogin.Queries;

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
 
-namespace IdentityService.Domain.Intefaces
+namespace IdentityService.Domain.Interfaces
 {
     public interface IIdentityUnitOfWork
     {

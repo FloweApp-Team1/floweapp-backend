@@ -1,6 +1,6 @@
 ﻿using IdentityService.Common.Results;
 using IdentityService.Domain.Entities;
-using IdentityService.Domain.Intefaces;
+using IdentityService.Domain.Interfaces;
 using MediatR;
 
 namespace IdentityService.Features.Admin.AdminLogin.Queries

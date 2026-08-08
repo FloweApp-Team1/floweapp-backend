@@ -1,4 +1,4 @@
-﻿using IdentityService.Domain.Intefaces;
+﻿using IdentityService.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 

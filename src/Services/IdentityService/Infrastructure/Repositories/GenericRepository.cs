@@ -1,5 +1,5 @@
 ﻿using IdentityService.Domain.Entities;
-using IdentityService.Domain.Intefaces;
+using IdentityService.Domain.Interfaces;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 

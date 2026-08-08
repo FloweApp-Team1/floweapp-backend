@@ -1,6 +1,6 @@
 ﻿using IdentityService.Domain.Entities;
 
-namespace IdentityService.Domain.Intefaces
+namespace IdentityService.Domain.Interfaces
 {
     public interface IUserRepository:IGenericRepository<User>
     {

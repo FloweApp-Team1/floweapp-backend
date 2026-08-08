@@ -6,7 +6,7 @@ using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
 using IdentityService.Common.Middlewares;
 using IdentityService.Common.Security;
-using IdentityService.Domain.Intefaces;
+using IdentityService.Domain.Interfaces;
 using IdentityService.Infrastructure;
 using IdentityService.Infrastructure.Persistence.Seed;
 using IdentityService.Infrastructure.Repositories;
