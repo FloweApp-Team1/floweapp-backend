@@ -7,5 +7,6 @@ namespace IdentityService.Common.Interfaces
 
         string GenerateAccessToken(User user, IEnumerable<string> roles, string? driverApplicationStatus = null);
         string GenerateRefreshTokenValue();
+        string HashRefreshTokenValue(string rawToken);
     }
 }

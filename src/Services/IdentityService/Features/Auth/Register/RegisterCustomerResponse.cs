@@ -1,9 +1,16 @@
-﻿namespace IdentityService.Features.Auth.Register
+﻿using System.Text.Json.Serialization;
+
+namespace IdentityService.Features.Auth.Register
 {
     public class RegisterCustomerResponse
     {
         public UserDto User { get; init; } = default!;
         public string Token { get; init; } = string.Empty;
+
+        // Never serialized to the client — the endpoint reads this to set an
+        // HttpOnly cookie, then it's discarded. Returning it in the JSON body
+        // would let anyone with the response (logs, browser devtools) replay the session.
+        [JsonIgnore]
         public string RefreshToken { get; init; } = string.Empty;
     }
 

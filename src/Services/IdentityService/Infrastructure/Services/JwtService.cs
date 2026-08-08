@@ -62,4 +62,8 @@ public class JwtService : IJwtService
         var randomBytes = RandomNumberGenerator.GetBytes(64);
         return Convert.ToBase64String(randomBytes);
     }
+
+    // Only the hash is ever persisted — a stolen DB row can't be replayed as a live session.
+    public string HashRefreshTokenValue(string rawToken) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
 }

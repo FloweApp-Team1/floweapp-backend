@@ -154,7 +154,6 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("RevokedAt")
-                        .IsRequired()
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Token")
@@ -197,7 +196,6 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateOnly?>("BirthDate")
-                        .IsRequired()
                         .HasColumnType("date");
 
                     b.Property<DateTime>("CreatedAt")
@@ -241,9 +239,15 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique();
 
                     b.ToTable("Users", "Auth");
 
@@ -307,7 +311,6 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                     b.HasBaseType("IdentityService.Domain.Entities.User");
 
                     b.Property<string>("Address")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 

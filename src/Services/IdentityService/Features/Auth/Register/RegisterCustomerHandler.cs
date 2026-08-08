@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using IdentityService.Common.Interfaces;
 using IdentityService.Common.Responses;
+using IdentityService.Common.Security;
 using IdentityService.Common.Settings;
 using IdentityService.Domain.Entities;
 using MediatR;
@@ -13,30 +14,20 @@ namespace IdentityService.Features.Auth.Register
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPasswordHasher _passwordHasher;
         private readonly IJwtService _jwtService;
-        private readonly IValidator<RegisterCustomerCommand> _validator;
+
         private readonly JwtSettings _jwtSettings;
 
         public RegisterCustomerHandler(IUnitOfWork unitOfWork , IPasswordHasher passwordHasher 
-            , IJwtService jwtService , IValidator<RegisterCustomerCommand> validator , IOptions<JwtSettings> jwtOptions)
+            , IJwtService jwtService  , IOptions<JwtSettings> jwtOptions)
         {
             _unitOfWork = unitOfWork;
             _passwordHasher = passwordHasher;
             _jwtService = jwtService;
-            _validator = validator;
             _jwtSettings = jwtOptions.Value;
 
         }
         public async Task<ApiResponse<RegisterCustomerResponse>> Handle(RegisterCustomerCommand request, CancellationToken cancellationToken)
-        {
-            var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                 var errors = validationResult.Errors
-                    .Select(x => new ApiError(x.ErrorMessage, x.PropertyName))
-                    .ToList();
-                return ApiResponse<RegisterCustomerResponse>.Fail("Validation Failed", StatusCodes.Status400BadRequest , errors);
-            }
-
+        { 
             var userRepo = _unitOfWork.Repository<User>();
             var emailTaken = await userRepo.FirstOrDefaultAsync(x=> x.Email == request.Email);
             if(emailTaken is not null)
@@ -45,7 +36,7 @@ namespace IdentityService.Features.Auth.Register
             if(phoneTaken is not null)
                 return ApiResponse<RegisterCustomerResponse>.Fail("Phone number already registered" , StatusCodes.Status409Conflict);
 
-            var customerRole = await _unitOfWork.Repository<Role>().FirstOrDefaultAsync(r => r.Name == "CUSTOMER")
+            var customerRole = await _unitOfWork.Repository<Role>().FirstOrDefaultAsync(r => r.Name == AppRoles.Customer)
            ?? throw new ValidationException("Role 'CUSTOMER' not found in the database. Please ensure that the role exists before registering a customer.");
 
             var customer = new Customer
@@ -72,16 +63,16 @@ namespace IdentityService.Features.Auth.Register
 
             var refreshToken = new RefreshToken
             {
-                Token = refreshTokenValue,
+                Token = _jwtService.HashRefreshTokenValue(refreshTokenValue),
                 FamilyId = Guid.NewGuid(), // new login session — starts a fresh token family
                 UserId = customer.Id,
                 CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.AccessTokenExpiryMinutes),
+                ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
                 
             };
 
-            await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshToken);
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshToken, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
 
             var registerResponse = new RegisterCustomerResponse
@@ -95,14 +86,14 @@ namespace IdentityService.Features.Auth.Register
                     Gender = customer.Gender.ToString(),
                     NotificationStatus = customer.NotifcationStatus.ToString(),
                     CreatedAt = customer.CreatedAt,
-                    Roles = customer.UserRoles.Select(ur => ur.Role.Name).ToList()
+                    Roles = roleNames,
 
                 },
                 Token = accessToken,
                 RefreshToken = refreshTokenValue
             };
 
-            return ApiResponse.Success(registerResponse ,  "Customer registered successfully");
+            return ApiResponse<RegisterCustomerResponse>.Created(registerResponse, "Customer registered successfully");
 
 
 

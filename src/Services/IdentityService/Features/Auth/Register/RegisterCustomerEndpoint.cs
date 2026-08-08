@@ -1,6 +1,4 @@
 using IdentityService.Common.Contracts;
-using IdentityService.Common.Responses;
-using MassTransit.Mediator;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

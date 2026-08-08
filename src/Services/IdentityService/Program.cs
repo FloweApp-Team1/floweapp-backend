@@ -7,15 +7,11 @@ using IdentityService.Common.Handlers;
 using IdentityService.Common.Interfaces;
 using IdentityService.Common.Security;
 using IdentityService.Infrastructure;
-using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using MediatR;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using System.Reflection;
-using System.Text;
 
 
 DotNetEnv.Env.TraversePath().Load();
@@ -41,45 +37,8 @@ builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// Needed because some stubs already call RequireAuthorization("AdminOnly")
-var jwtSection = builder.Configuration.GetSection("Jwt");
-
-var secretKey = jwtSection["SecretKey"]!;
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidIssuer = jwtSection["Issuer"],
-
-        ValidateAudience = true,
-        ValidAudience = jwtSection["Audience"],
-
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(secretKey)
-        ),
-
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
-});
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy(AppPolicies.AdminOnly, p => p.RequireRole(AppRoles.Admin));
-    options.AddPolicy(AppPolicies.CustomerOnly, p => p.RequireRole(AppRoles.Customer));
-    options.AddPolicy(AppPolicies.DriverOnly, p => p.RequireRole(AppRoles.Driver));
-    options.AddPolicy(AppPolicies.DriverApproved, p => p.Requirements.Add(new DriverApprovedRequirement()));
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-});
+// Registers JWT bearer authentication plus AdminOnly/CustomerOnly/DriverOnly/DriverApproved policies
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 #region Firebase Admin SDK Configuration
 var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
@@ -98,14 +57,11 @@ builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
 
-builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
-builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
+// Registers IUnitOfWork, IGenericRepository<>, IJwtService, IEmailService,
+// ICurrentUserService, IHttpContextAccessor, and binds JwtSettings/EmailSettings
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
-builder.Services.AddScoped<IAuthorizationHandler, DriverApprovedHandler>();
-//builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
 
 
 // Add services to the container.

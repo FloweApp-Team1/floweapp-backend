@@ -10,11 +10,21 @@ namespace IdentityService.Features.Auth.Sessions.Queries
     public class GetActiveSessionsHandler : IRequestHandler<GetActiveSessionsQuery, Result<List<SessionDto>>>
     {
         private readonly IUnitOfWork _unitOfWork;
-        public GetActiveSessionsHandler(IUnitOfWork unitOfWork) => _unitOfWork = unitOfWork;
+        private readonly IJwtService _jwtService;
+
+        public GetActiveSessionsHandler(IUnitOfWork unitOfWork, IJwtService jwtService)
+        {
+            _unitOfWork = unitOfWork;
+            _jwtService = jwtService;
+        }
 
         public Task<Result<List<SessionDto>>> Handle(GetActiveSessionsQuery request, CancellationToken cancellationToken)
         {
             var tokenRepo = _unitOfWork.Repository<RefresheshTokenEntity>();
+
+            var hashedCurrentToken = request.CurrentRefreshTokenValue is null
+                ? null
+                : _jwtService.HashRefreshTokenValue(request.CurrentRefreshTokenValue);
 
             var sessions = tokenRepo.Query()
                 .Where(t => t.UserId == request.UserId && t.RevokedAt == null && t.ExpiresAt > DateTime.UtcNow)
@@ -26,7 +36,7 @@ namespace IdentityService.Features.Auth.Sessions.Queries
                     t.Location,
                     t.CreatedAt,
                     t.LastUsedAt,
-                    t.Token == request.CurrentRefreshTokenValue))
+                    t.Token == hashedCurrentToken))
                 .ToList();
 
             return Task.FromResult(Result<List<SessionDto>>.Success(sessions));
