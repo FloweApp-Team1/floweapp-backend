@@ -1,5 +1,5 @@
 ﻿using IdentityService.Common.Responses;
-using IdentityService.Common.Result;
+using IdentityService.Common.Results;
 
 namespace IdentityService.Common.Extensions
 {
@@ -18,7 +18,7 @@ namespace IdentityService.Common.Extensions
         }
 
       
-        public static IResult ToMinimalApiResult(this IdentityService.Common.Result.Result result, string successMessage = "Success")
+        public static IResult ToMinimalApiResult(this Result result, string successMessage = "Success")
         {
             if (result.IsSuccess)
                 return ApiResponse<object>.Success(null, successMessage).ToHttpResult();

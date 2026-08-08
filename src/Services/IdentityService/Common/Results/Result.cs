@@ -1,7 +1,7 @@
 ﻿using Sprache;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace IdentityService.Common.Result
+namespace IdentityService.Common.Results
 {
     public class Result
     {

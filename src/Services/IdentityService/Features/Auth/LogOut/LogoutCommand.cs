@@ -1,5 +1,5 @@
 ﻿using IdentityService.Common;
-using IdentityService.Common.Result;
+using IdentityService.Common.Results;
 using IdentityService.Domain.Intefaces;
 using MediatR;
 
