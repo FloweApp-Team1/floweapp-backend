@@ -25,6 +25,13 @@ namespace IdentityService.Infrastructure.Repositories
         
         public IQueryable<T> Query() => _dbSet.AsQueryable();
 
+        public IQueryable<T> GetAll(Expression<Func<T, bool>>? expression = null)
+        {
+            if (expression is not null)
+                return _dbSet.Where(expression);
+            return _dbSet;
+        }
+
         public async Task AddAsync(T entity, CancellationToken cancellationToken = default)
             => await _dbSet.AddAsync(entity, cancellationToken);
 
@@ -36,5 +43,8 @@ namespace IdentityService.Infrastructure.Repositories
             entity.IsDeleted = true;
             _dbSet.Update(entity);
         }
+
+        public Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate)
+            => _dbSet.AnyAsync(predicate);
     }
 }

@@ -4,8 +4,9 @@ namespace IdentityService.Common.Interfaces
 {
     public interface IJwtService
     {
-        
-        string GenerateAccessToken(User user, IEnumerable<string> roles);
+
+        string GenerateAccessToken(User user, IEnumerable<string> roles, string? driverApplicationStatus = null);
         string GenerateRefreshTokenValue();
+        string HashRefreshTokenValue(string rawToken);
     }
 }

@@ -11,7 +11,6 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.ToTable("Deliveries");
 
             builder.Property(e => e.NationalIdNumber).IsRequired();
-            builder.Property(e => e.VehiclePlateNumber).IsRequired();
             builder.Property(e => e.LicenseDocument).IsRequired();
            
         }
