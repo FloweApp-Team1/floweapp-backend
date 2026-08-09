@@ -28,23 +28,7 @@ namespace IdentityService.Infrastructure.Repositories
                 public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct)
                     => await Context.Users.AnyAsync(u => u.Email == email , ct);
 
-                public async Task<bool> ExistsByPhoneNumberAsync(string phoneNumber, CancellationToken ct)
-                    => await Context.Users.AnyAsync(u => u.PhoneNumber == phoneNumber , ct);
-
-                public async Task AssignRoleAsync(Guid userId, Guid roleId, CancellationToken ct)
-                {
-                    var alreadyAssigned = await Context.UserRoles
-                        .AnyAsync(ur => ur.UserId == userId && ur.RoleId == roleId, ct);
-
-                    if (alreadyAssigned) return;
-
-                    await Context.UserRoles.AddAsync(new UserRole
-                    {
-                        Id = Guid.NewGuid(),
-                        UserId = userId,
-                        RoleId = roleId
-                    }, ct);
-                }
+            
             }
 }
   
