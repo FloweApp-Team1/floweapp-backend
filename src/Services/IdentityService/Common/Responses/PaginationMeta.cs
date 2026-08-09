@@ -9,7 +9,7 @@ namespace IdentityService.Common.Responses
         public int TotalCount { get; init; }
         public int TotalPages { get; init; }
         public bool HasNextPage { get; init; }
-        public bool HasPreviousPage { get; init; }
+        public bool HasPreviousPage { get; init; }  
 
         public static PaginationMeta Create(int totalCount, int page, int pageSize)
         {

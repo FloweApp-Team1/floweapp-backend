@@ -19,7 +19,6 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.HasIndex(x => x.PhoneNumber)
                 .IsUnique();
             builder.Property(x => x.PasswordHash).IsRequired();
-            builder.Property(x => x.BirthDate);
             builder.Property(x => x.Gender).IsRequired();
 
             builder.HasIndex(x => x.Email).IsUnique();

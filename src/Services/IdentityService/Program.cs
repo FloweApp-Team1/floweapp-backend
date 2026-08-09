@@ -5,6 +5,10 @@ using IdentityService.Common.Behaviors;
 using IdentityService.Common.Contracts;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
+using IdentityService.Common.Swagger;
+using IdentityService.Domain.Enums;
+using IdentityService.Features.Users.UpdateProfile;
+using IdentityService.Infrastructure;
 using IdentityService.Common.Interfaces;
 using IdentityService.Common.Security;
 using IdentityService.Common.Settings;
@@ -44,6 +48,9 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
                options.UseSqlServer(connectionString));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+// Registers every IEndpoint implementation found in this assembly
+builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -177,6 +184,7 @@ static string SwaggerSchemaId(Type type)
 
     return type.DeclaringType is null ? name : SwaggerSchemaId(type.DeclaringType) + name;
 }
+
 
 
 var app = builder.Build();
