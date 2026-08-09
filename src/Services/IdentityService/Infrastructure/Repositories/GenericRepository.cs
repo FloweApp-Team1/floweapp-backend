@@ -1,20 +1,50 @@
-﻿using IdentityService.Domain.Entities;
-using IdentityService.Domain.Interfaces;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using IdentityService.Common.Interfaces;
+using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace IdentityService.Infrastructure.Repositories
 {
-    public class GenericRepository<T>(AuthDbContext context) : IGenericRepository<T> where T : BaseEntity
+    public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
     {
-        protected readonly AuthDbContext Context = context;
+        private readonly AuthDbContext _context;
+        private readonly DbSet<T> _dbSet;
 
-     
-        public async Task<T?> GetByIdAsync(Guid id, CancellationToken ct)
-            => await Context.Set<T>().FirstOrDefaultAsync(e => e.Id == id , ct);
+        public GenericRepository(AuthDbContext context)
+        {
+            _context = context;
+            _dbSet = context.Set<T>();
+        }
 
-        public async Task AddAsync(T entity, CancellationToken ct)
-            => await Context.Set<T>().AddAsync(entity, ct);
+        public async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+            => await _dbSet.FirstOrDefaultAsync(e => e.Id == id , cancellationToken);
+
+        public async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            => await _dbSet.FirstOrDefaultAsync(predicate, cancellationToken);
+
+        
+        public IQueryable<T> Query() => _dbSet.AsQueryable();
+
+        public IQueryable<T> GetAll(Expression<Func<T, bool>>? expression = null)
+        {
+            if (expression is not null)
+                return _dbSet.Where(expression);
+            return _dbSet;
+        }
+
+        public async Task AddAsync(T entity, CancellationToken cancellationToken = default)
+            => await _dbSet.AddAsync(entity, cancellationToken);
+
+        public void Update(T entity) => _dbSet.Update(entity);
+
+        public void Remove(T entity)
+        {
+        
+            entity.IsDeleted = true;
+            _dbSet.Update(entity);
+        }
+
+        public Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate)
+            => _dbSet.AnyAsync(predicate);
     }
 }
-
