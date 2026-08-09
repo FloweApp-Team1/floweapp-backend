@@ -1,10 +1,14 @@
-﻿using IdentityService.Common.Responses;
+using IdentityService.Common.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 
 namespace IdentityService.Common.Security
 {
-    public class ApiAuthorizationMiddlewareResultHandler : IAuthorizationMiddlewareResultHandler
+    // The single IAuthorizationMiddlewareResultHandler: renders 401/403 in the same
+    // ApiResponse envelope as every other failure, and audits the denial.
+    public sealed class ApiAuthorizationMiddlewareResultHandler(
+        ILogger<ApiAuthorizationMiddlewareResultHandler> logger)
+        : IAuthorizationMiddlewareResultHandler
     {
         private readonly AuthorizationMiddlewareResultHandler _fallback = new();
 
@@ -19,6 +23,13 @@ namespace IdentityService.Common.Security
                 await next(context);
                 return;
             }
+
+            logger.LogWarning(
+                "Authorization denied. Path: {Path}, IP: {Ip}, UserAgent: {UserAgent}, User: {User}",
+                context.Request.Path,
+                context.Connection.RemoteIpAddress,
+                context.Request.Headers.UserAgent.ToString(),
+                context.User.Identity?.Name ?? "anonymous");
 
             if (authorizeResult.Challenged) // no token / invalid token
             {

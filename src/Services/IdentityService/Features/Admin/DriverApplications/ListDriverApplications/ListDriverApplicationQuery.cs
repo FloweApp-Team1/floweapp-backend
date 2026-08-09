@@ -1,4 +1,5 @@
 ﻿using IdentityService.Common.Models;
+using IdentityService.Common.Results;
 using IdentityService.Common.Requests;
 using IdentityService.Common.Responses;
 using IdentityService.Domain.Entities;

@@ -1,65 +1,171 @@
-﻿using FluentValidation;
+using FirebaseAdmin;
+using FluentValidation;
+using Google.Apis.Auth.OAuth2;
+using IdentityService.Common.Behaviors;
+using IdentityService.Common.Contracts;
+using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
 using IdentityService.Common.Interfaces;
 using IdentityService.Common.Security;
 using IdentityService.Common.Settings;
-using IdentityService.Features.Drivers.ApplyAsDriver;
+using IdentityService.Common.Swagger;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using IdentityService.Infrastructure.Services.Email;
+using IdentityService.Infrastructure.Services.OTP;
+using IdentityService.Infrastructure.Services.Redis;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
+using System.Reflection;
 using System.Text;
+using System.Threading.RateLimiting;
 
 namespace IdentityService.Infrastructure
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+        private static readonly Assembly ApplicationAssembly = typeof(DependencyInjection).Assembly;
+
+        public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
-            services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
-            services.Configure<EmailSettings>(configuration.GetSection("Email"));
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(ApplicationAssembly));
+
+            services.AddValidatorsFromAssembly(ApplicationAssembly);
+            services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+            // Registers every IEndpoint implementation; MapEndpoints() maps them.
+            services.AddEndpoints(ApplicationAssembly);
+
+            services.AddExceptionHandler<GlobalExceptionHandler>();
+            services.AddProblemDetails();
+
+            // Renders 401/403 in the same ApiResponse shape as every other failure.
+            services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
 
             services.AddHttpContextAccessor();
-
-            // Generic Repository + Unit of Work
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-
-            // Remaining infrastructure services
-            services.AddScoped<IJwtService, JwtService>();
-            services.AddScoped<ICurrentUserService, CurrentUserService>();
-            services.AddScoped<IEmailService, SmtpEmailService>();
-            services.AddScoped<IEmailService, EmailService>();
-            services.AddScoped<IImageService, LocalImageService>();
-            services.AddScoped<IPasswordHasher, PasswordHasher>();
-            services.AddMediatR(typeof(Program).Assembly);
-
-            services.AddValidatorsFromAssemblyContaining<ApplyDriverRequestCommandValidator>();
-            services.AddTransient(typeof(IPipelineBehavior<,>),typeof(ValidationBehavior<,>));
 
             return services;
         }
 
-        public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddInfrastructureServices(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            IWebHostEnvironment environment)
         {
-            // Jwt__SecretKey / Jwt__Issuer / Jwt__Audience come from the environment
-            // (.env locally, docker-compose `environment:` in containers).
+            services.AddConfigurationOptions(configuration);
+
+            var connectionString = Required(configuration, "ConnectionStrings:AuthDatabase");
+            services.AddDbContext<AuthDbContext>(options => options.UseSqlServer(connectionString));
+
+            // Persistence
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            services.AddScoped<IUserRepository, UserRepository>();
+
+            // Security / identity
+            services.AddScoped<IPasswordHasher, PasswordHasher>();
+            services.AddScoped<IJwtService, JwtService>();
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+            // Messaging / storage
+            services.AddScoped<IEmailService, SmtpEmailService>();
+            services.AddScoped<IImageService, LocalImageService>();
+
+            services.AddRedis(configuration);
+            services.AddOtpServices();
+            services.AddFirebase(configuration, environment);
+
+            return services;
+        }
+
+        private static IServiceCollection AddConfigurationOptions(
+            this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddOptions<JwtSettings>()
+                .Bind(configuration.GetSection("Jwt"))
+                .Validate(s => !string.IsNullOrWhiteSpace(s.SecretKey), "Jwt__SecretKey is not set.")
+                .Validate(s => Encoding.UTF8.GetByteCount(s.SecretKey ?? "") >= 32, "Jwt__SecretKey must be at least 32 characters.")
+                .Validate(s => !string.IsNullOrWhiteSpace(s.Issuer), "Jwt__Issuer is not set.")
+                .Validate(s => !string.IsNullOrWhiteSpace(s.Audience), "Jwt__Audience is not set.")
+                .Validate(s => s.AccessTokenExpiryMinutes > 0, "Jwt__AccessTokenExpiryMinutes must be greater than 0.")
+                .Validate(s => s.RefreshTokenExpiryDays > 0, "Jwt__RefreshTokenExpiryDays must be greater than 0.")
+                .ValidateOnStart();
+
+            services.AddOptions<EmailSettings>()
+                .Bind(configuration.GetSection("Email"))
+                .Validate(s => !string.IsNullOrWhiteSpace(s.SmtpHost), "Email__SmtpHost is not set.")
+                .Validate(s => s.SmtpPort > 0, "Email__SmtpPort is not set.")
+                .Validate(s => !string.IsNullOrWhiteSpace(s.SenderEmail), "Email__SenderEmail is not set.")
+                .Validate(s => !string.IsNullOrWhiteSpace(s.SenderName), "Email__SenderName is not set.")
+                .Validate(s => !string.IsNullOrWhiteSpace(s.Username), "Email__Username is not set.")
+                .Validate(s => !string.IsNullOrWhiteSpace(s.Password), "Email__Password is not set.")
+                .ValidateOnStart();
+
+            return services;
+        }
+
+        private static IServiceCollection AddRedis(this IServiceCollection services, IConfiguration configuration)
+        {
+            // Inside Docker this resolves to the compose service name (redis:6379).
+            var redisConnectionString = Required(configuration, "Redis:ConnectionString");
+
+            services.AddSingleton<IConnectionMultiplexer>(
+                _ => ConnectionMultiplexer.Connect(redisConnectionString));
+
+            services.AddSingleton<IRedisCacheService, RedisCacheService>();
+
+            return services;
+        }
+
+        private static IServiceCollection AddOtpServices(this IServiceCollection services)
+        {
+            services.AddSingleton<IOtpGenerator, OtpGenerator>();
+
+            // Pepper mixed into every OTP hash so a leaked Redis dump alone isn't
+            // enough to replay codes.
+            services.AddSingleton(sp => new OtpSettings(
+                Required(sp.GetRequiredService<IConfiguration>(), "Otp:PepperSecret")));
+            services.AddSingleton<IOtpHasher, OtpHasher>();
+
+            services.AddScoped<IOtpService, OtpService>();
+
+            services.AddScoped<IResetTokenService, ResetTokenService>();
+
+            return services;
+        }
+
+        private static IServiceCollection AddFirebase(
+            this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
+        {
+            var credentialsPath = Required(configuration, "Firebase:CredentialsPath");
+
+            var fullPath = Path.IsPathRooted(credentialsPath)
+                ? credentialsPath
+                : Path.Combine(environment.ContentRootPath, credentialsPath);
+
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
+
+            services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
+            {
+                Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
+            }));
+
+            return services;
+        }
+
+        // The single authentication + authorization configuration.
+        public static IServiceCollection AddJwtAuthentication(
+            this IServiceCollection services, IConfiguration configuration)
+        {
             var jwtSettings = configuration.GetSection("Jwt").Get<JwtSettings>()
                 ?? throw new InvalidOperationException(
-                    "Jwt settings are missing in configuration. Set Jwt__SecretKey, Jwt__Issuer and Jwt__Audience in your .env file.");
-
-            foreach (var (key, value) in new[]
-                     {
-                         ("Jwt__SecretKey", jwtSettings.SecretKey),
-                         ("Jwt__Issuer", jwtSettings.Issuer),
-                         ("Jwt__Audience", jwtSettings.Audience)
-                     })
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                    throw new InvalidOperationException($"'{key}' is not set. Add it to your .env file.");
-            }
+                    "Jwt settings are missing. Set Jwt__SecretKey, Jwt__Issuer and Jwt__Audience in your .env file.");
 
             services
                 .AddAuthentication(options =>
@@ -91,6 +197,7 @@ namespace IdentityService.Infrastructure
                 options.AddPolicy(AppPolicies.CustomerOnly, p => p.RequireRole(AppRoles.Customer));
                 options.AddPolicy(AppPolicies.DriverOnly, p => p.RequireRole(AppRoles.Driver));
                 options.AddPolicy(AppPolicies.DriverApproved, p => p.Requirements.Add(new DriverApprovedRequirement()));
+
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
                     .RequireAuthenticatedUser()
                     .Build();
@@ -100,5 +207,85 @@ namespace IdentityService.Infrastructure
 
             return services;
         }
+
+        // Per-IP throttle for the admin login endpoint (.RequireRateLimiting("AdminLoginPerIp")).
+        public static IServiceCollection AddAdminLoginRateLimiting(this IServiceCollection services)
+        {
+            services.AddRateLimiter(options =>
+            {
+                options.AddPolicy(RateLimitPolicies.AdminLoginPerIp, httpContext =>
+                    RateLimitPartition.GetSlidingWindowLimiter(
+                        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        factory: _ => new SlidingWindowRateLimiterOptions
+                        {
+                            PermitLimit = 10,
+                            Window = TimeSpan.FromMinutes(15),
+                            SegmentsPerWindow = 3,
+                            QueueLimit = 0
+                        }));
+
+                options.OnRejected = async (context, ct) =>
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    await context.HttpContext.Response.WriteAsync(
+                        "Too many requests from this IP. Please try again later.", ct);
+                };
+            });
+
+            return services;
+        }
+
+        public static IServiceCollection AddSwaggerDocumentation(this IServiceCollection services)
+        {
+            services.AddEndpointsApiExplorer();
+            services.AddSwaggerGen(options =>
+            {
+                options.CustomSchemaIds(SwaggerSchemaId);
+                options.ParameterFilter<EnumParameterFilter>();
+
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Paste the access token only - Swagger adds the \"Bearer \" prefix."
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                    }] = Array.Empty<string>()
+                });
+            });
+
+            return services;
+        }
+
+        private static string SwaggerSchemaId(Type type)
+        {
+            var name = type.Name;
+
+            if (type.IsGenericType)
+            {
+                name = string.Concat(
+                    name.AsSpan(0, name.IndexOf('`')),
+                    "Of",
+                    string.Join("And", type.GetGenericArguments().Select(SwaggerSchemaId)));
+            }
+
+            return type.DeclaringType is null ? name : SwaggerSchemaId(type.DeclaringType) + name;
+        }
+
+        // Configuration comes from environment variables only (.env locally,
+        // docker-compose `environment:` in containers) - never from appsettings.json.
+        private static string Required(IConfiguration configuration, string key) =>
+            configuration[key] is { Length: > 0 } value
+                ? value
+                : throw new InvalidOperationException(
+                    $"Required configuration '{key}' is not set. Add '{key.Replace(':', '_').Replace("_", "__")}' to your .env file.");
     }
 }

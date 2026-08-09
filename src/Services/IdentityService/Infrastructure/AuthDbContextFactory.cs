@@ -18,11 +18,13 @@ namespace IdentityService.Infrastructure
                 .AddEnvironmentVariables()
                 .Build();
 
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            // Same key the running application uses, so `dotnet ef` always targets the
+            // dedicated auth database rather than a shared one.
+            var connectionString = configuration.GetConnectionString("AuthDatabase");
 
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new Exception(
-                    "Connection string was not found. Set ConnectionStrings__DefaultConnection in your .env file.");
+                    "Connection string was not found. Set ConnectionStrings__AuthDatabase in your .env file.");
 
             var optionsBuilder = new DbContextOptionsBuilder<AuthDbContext>();
 

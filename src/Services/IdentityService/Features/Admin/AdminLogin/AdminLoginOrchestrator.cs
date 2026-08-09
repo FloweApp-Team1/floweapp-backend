@@ -1,32 +1,37 @@
-﻿using IdentityService.Common;
+using IdentityService.Common;
+using IdentityService.Common.Contracts;
+using IdentityService.Common.Interfaces;
 using IdentityService.Common.Results;
 using IdentityService.Common.Security;
-using IdentityService.Domain.Interfaces;
+using IdentityService.Common.Settings;
 using IdentityService.Features.Admin.AdminLogin.Commands;
 using IdentityService.Features.Admin.AdminLogin.Dtos;
 using IdentityService.Features.Admin.AdminLogin.Queries;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace IdentityService.Features.Admin.AdminLogin
 {
-
     public sealed record AdminLoginCommand(
           string Email,
           string Password,
           string IpAddress,
           string UserAgent) : IRequest<Result<LoginAdminResponseDto>>;
 
-
-   
     public sealed class AdminLoginHandler(
-        ITokenService tokenService,
+        IJwtService jwtService,
         IPasswordHasher passwordHasher,
-        IIdentityUnitOfWork unitOfWork,
+        IUnitOfWork unitOfWork,
+        IOptions<JwtSettings> jwtOptions,
         ISender sender)
         : IRequestHandler<AdminLoginCommand, Result<LoginAdminResponseDto>>
     {
+        // Verified against on unknown accounts so a missing user costs the same
+        // wall-clock time as a wrong password.
         private const string DummyHash = "$2a$12$DummyHashStringForTimingAttackMitigationXXXXXXXXXXXX";
-        private static readonly TimeSpan AccessTokenLifetime = TimeSpan.FromMinutes(15);
+
+        private readonly TimeSpan _accessTokenLifetime =
+            TimeSpan.FromMinutes(jwtOptions.Value.AccessTokenExpiryMinutes);
 
         public async Task<Result<LoginAdminResponseDto>> Handle(
             AdminLoginCommand request, CancellationToken ct)
@@ -40,7 +45,8 @@ namespace IdentityService.Features.Admin.AdminLogin
 
             var userResult = await sender.Send(new GetAdminByEmailQuery(request.Email), ct);
             var user = userResult.Value;
-            var isAdmin = user?.UserRoles.Any(ur => ur.Role.Name == RoleConstants.Admin) ?? false;
+            var roleNames = user?.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? [];
+            var isAdmin = roleNames.Contains(AppRoles.Admin, StringComparer.OrdinalIgnoreCase);
 
             if (user is null || !isAdmin || !user.IsActive)
             {
@@ -49,45 +55,46 @@ namespace IdentityService.Features.Admin.AdminLogin
                 return Result.Failure<LoginAdminResponseDto>(AuthErrors.InvalidCredentials);
             }
 
-            var passwordValid = passwordHasher.Verify(request.Password, user.PasswordHash);
-            if (!passwordValid)
+            if (!passwordHasher.Verify(request.Password, user.PasswordHash))
             {
                 await LogFailedAttempt(request, ct);
                 return Result.Failure<LoginAdminResponseDto>(AuthErrors.InvalidCredentials);
             }
 
-            await using var transaction = await unitOfWork.BeginTransactionAsync(ct);
+            await unitOfWork.BeginTransactionAsync(ct);
             Result<string> refreshTokenResult;
             try
             {
                 refreshTokenResult = await sender.Send(new IssueRefreshTokenCommand(user.Id), ct);
                 await sender.Send(new RecordAdminLoginAuditCommand(request.Email, true, request.IpAddress, request.UserAgent), ct);
-                await transaction.CommitAsync(ct);
-               
+                await unitOfWork.CommitTransactionAsync(ct);
             }
             catch
             {
-                await transaction.RollbackAsync(ct);
+                await unitOfWork.RollbackTransactionAsync(ct);
                 throw;
             }
-            var accessToken = tokenService.GenerateAccessToken(user, AccessTokenLifetime);
+
+            var accessToken = jwtService.GenerateAccessToken(user, roleNames);
 
             var userProfile = new UserProfileDto(
                 user.Id,
                 user.FullName,
                 user.Email,
-                user.UserRoles.Select(ur => ur.Role.Name).ToList()
+                roleNames
             );
 
             var responseDto = new LoginAdminResponseDto(
                 userProfile,
                 accessToken,
                 refreshTokenResult.Value,
-                DateTime.UtcNow.Add(AccessTokenLifetime)
+                DateTime.UtcNow.Add(_accessTokenLifetime)
             );
+
             return Result.Success(responseDto);
         }
+
         private async Task LogFailedAttempt(AdminLoginCommand request, CancellationToken ct)
-    => await sender.Send(new RecordAdminLoginAuditCommand(request.Email, false, request.IpAddress, request.UserAgent), ct);
+            => await sender.Send(new RecordAdminLoginAuditCommand(request.Email, false, request.IpAddress, request.UserAgent), ct);
     }
 }

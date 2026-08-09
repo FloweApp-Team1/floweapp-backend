@@ -1,5 +1,6 @@
 using IdentityService.Common.Contracts;
 using IdentityService.Common.Models;
+using IdentityService.Common.Results;
 using IdentityService.Common.Responses;
 using IdentityService.Features.Drivers.Dtos_VM;
 using MediatR;
@@ -34,7 +35,7 @@ public class ApplyAsDriverEndpoint : IEndpoint
             var result = await mediator.Send(command, cancellationToken);
             if (!result.IsSuccess)
             {
-                return  Results.BadRequest(ApiResponse<ApplyDriverResponseDto>.Fail(result.Error));
+                return  Results.BadRequest(ApiResponse<ApplyDriverResponseDto>.Fail(result.Error.Message));
             }
             return Results.Created(
                $"/admin/drivers/applications/{result.Value.Id}",

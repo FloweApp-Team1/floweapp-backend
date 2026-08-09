@@ -38,26 +38,16 @@ services:
 
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ConnectionStrings__DefaultConnection: Server=${SQL_SERVER};Database=${DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      ConnectionStrings__AuthDatabase: Server=${SQL_SERVER};Database=${AUTH_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
 
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
       Jwt__AccessTokenExpiryMinutes: ${Jwt__AccessTokenExpiryMinutes}
+      Jwt__RefreshTokenExpiryDays: ${Jwt__RefreshTokenExpiryDays}
 
       Firebase__CredentialsPath: /run/secrets/firebase-service-account.json
-
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: ${RABBITMQ_PORT}
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD}
-
-      Redis__ConnectionString: redis:${REDIS_PORT}
-
-      Jwt__SecretKey: ${Jwt__SecretKey}
-      Jwt__Issuer: ${Jwt__Issuer}
-      Jwt__Audience: ${Jwt__Audience}
-      Jwt__AccessTokenExpiryMinutes: ${Jwt__AccessTokenExpiryMinutes}
+      Redis__ConnectionString: redis:6379
 
       Email__SmtpHost: ${Email__SmtpHost}
       Email__SmtpPort: ${Email__SmtpPort}
@@ -68,6 +58,15 @@ services:
       Email__EnableSsl: ${Email__EnableSsl}
 
       Otp__PepperSecret: ${Otp__PepperSecret}
+
+      AdminSeed__Email: ${AdminSeed__Email}
+      AdminSeed__Password: ${AdminSeed__Password}
+      AdminSeed__FullName: ${AdminSeed__FullName}
+      AdminSeed__PhoneNumber: ${AdminSeed__PhoneNumber}
+
+      # NOTE: no RabbitMQ__* variables are passed - the application references
+      # MassTransit but does not configure a bus yet, so nothing would read them.
+      # Add them here together with the bus registration.
 
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro

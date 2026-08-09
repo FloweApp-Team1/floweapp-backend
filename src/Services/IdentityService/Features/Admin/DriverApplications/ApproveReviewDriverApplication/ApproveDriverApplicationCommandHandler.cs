@@ -1,6 +1,6 @@
 ﻿using IdentityService.Common.Interfaces;
-using IdentityService.Common.Models;
-using IdentityService.Common.StaticData;
+using IdentityService.Common.Results;
+using IdentityService.Common.Security;
 using IdentityService.Domain.Entities;
 using IdentityService.Domain.Enums;
 using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication.Dtos_VM;
@@ -85,18 +85,13 @@ namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverA
                 await _deliveryRepository.AddAsync(delivery, cancellationToken);
 
 
-                var driverRole = await _roleRepository.FirstOrDefaultAsync(x => x.Name == RolesSD.Driver, cancellationToken);
+                var driverRole = await _roleRepository.FirstOrDefaultAsync(x => x.Name == AppRoles.Driver, cancellationToken);
 
-                if(driverRole is null)
+                if (driverRole is null)
                 {
                     await unitOfWork.RollbackTransactionAsync(cancellationToken);
                     return Result<ApproveDriverApplicationDto>.Failure(
                             "Driver role not found.");
-                }
-                if (driverRole is null)
-                {
-                    return Result<ApproveDriverApplicationDto>.Failure(
-                            "Driver role not found.");     
                 }
                 var userRole = new UserRole
                 {

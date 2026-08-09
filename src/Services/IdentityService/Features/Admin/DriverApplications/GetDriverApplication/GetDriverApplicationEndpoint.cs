@@ -1,4 +1,5 @@
 using IdentityService.Common.Contracts;
+using IdentityService.Common.Security;
 using IdentityService.Common.Responses;
 using IdentityService.Features.Admin.DriverApplications.GetDriverApplication.Dtos;
 using MediatR;
@@ -35,7 +36,7 @@ public class GetDriverApplicationEndpoint : IEndpoint
                 return Results.Ok(ApiResponse<DriverApplicationDetailsVM>.Success(_deiverApplicationDetailsVM));
 
             }
-            return Results.NotFound(ApiResponse<DriverApplicationDetailsVM>.Fail(result.Error));
+            return Results.NotFound(ApiResponse<DriverApplicationDetailsVM>.Fail(result.Error.Message));
 
         })
             .WithTags("Admin")

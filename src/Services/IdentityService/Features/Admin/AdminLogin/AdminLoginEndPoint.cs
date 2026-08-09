@@ -1,5 +1,6 @@
 ﻿using IdentityService.Common.Contracts;
 using IdentityService.Common.Extensions;
+using IdentityService.Common.Security;
 using IdentityService.Features.Admin.AdminLogin.Dtos;
 using MediatR;
 
@@ -26,7 +27,7 @@ namespace IdentityService.Features.Admin.AdminLogin
                     
                     return result.ToMinimalApiResult("Admin logged in successfully");
                 })
-                .RequireRateLimiting("AdminLoginPerIp")
+                .RequireRateLimiting(RateLimitPolicies.AdminLoginPerIp)
                 .WithName("AdminLogin")
                 .WithTags("Admin-Auth")
                 .AllowAnonymous();

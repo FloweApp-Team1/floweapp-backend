@@ -27,7 +27,7 @@ public class RejectReviewDriverApplicationEndpoint : IEndpoint
                 };
                 return Results.Ok(ApiResponse<RejectReviewDriverApplicationVM>.Success(RejectVM));
             }
-            return Results.BadRequest(ApiResponse<RejectReviewDriverApplicationVM>.Fail(result.Error));
+            return Results.BadRequest(ApiResponse<RejectReviewDriverApplicationVM>.Fail(result.Error.Message));
         })
             .WithTags("Admin")
             .WithName("RejectReviewDriverApplication");

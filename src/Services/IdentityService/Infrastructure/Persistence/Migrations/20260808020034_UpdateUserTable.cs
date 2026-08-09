@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -8,27 +8,17 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
     /// <inheritdoc />
     public partial class UpdateUserTable : Migration
     {
+        // Generated against a stale model snapshot, so the original version of this
+        // migration re-created IX_Users_Email / IX_Users_PhoneNumber (already created by
+        // 20260805093658_AddIndexToEmailAndPhoneNumber), widened Users.PhoneNumber to
+        // nvarchar(450) even though the model maps it as nvarchar(20), and altered
+        // Users.BirthDate after 20260805212159_remove-BD had dropped that column.
+        // Each of those failed on a fresh database; only the Customers.Address and
+        // RefreshTokens.RevokedAt changes below reflect the real model.
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<string>(
-                name: "PhoneNumber",
-                schema: "Auth",
-                table: "Users",
-                type: "nvarchar(450)",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
-
-            migrationBuilder.AlterColumn<DateOnly>(
-                name: "BirthDate",
-                schema: "Auth",
-                table: "Users",
-                type: "date",
-                nullable: true,
-                oldClrType: typeof(DateOnly),
-                oldType: "date");
-
             migrationBuilder.AlterColumn<DateTime>(
                 name: "RevokedAt",
                 schema: "Auth",
@@ -48,55 +38,11 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                 oldClrType: typeof(string),
                 oldType: "nvarchar(255)",
                 oldMaxLength: 255);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Users_Email",
-                schema: "Auth",
-                table: "Users",
-                column: "Email",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Users_PhoneNumber",
-                schema: "Auth",
-                table: "Users",
-                column: "PhoneNumber",
-                unique: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Users_Email",
-                schema: "Auth",
-                table: "Users");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Users_PhoneNumber",
-                schema: "Auth",
-                table: "Users");
-
-            migrationBuilder.AlterColumn<string>(
-                name: "PhoneNumber",
-                schema: "Auth",
-                table: "Users",
-                type: "nvarchar(max)",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(450)");
-
-            migrationBuilder.AlterColumn<DateOnly>(
-                name: "BirthDate",
-                schema: "Auth",
-                table: "Users",
-                type: "date",
-                nullable: false,
-                defaultValue: new DateOnly(1, 1, 1),
-                oldClrType: typeof(DateOnly),
-                oldType: "date",
-                oldNullable: true);
-
             migrationBuilder.AlterColumn<DateTime>(
                 name: "RevokedAt",
                 schema: "Auth",

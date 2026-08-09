@@ -1,8 +1,8 @@
-﻿using Sprache;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace IdentityService.Common.Results
 {
+    // The single Result type for the service. It carries a structured Error so
+    // ResultExtensions can map a failure onto the right HTTP status code, and it
+    // still accepts a plain message for handlers that have nothing richer to say.
     public class Result
     {
         public bool IsSuccess { get; }
@@ -21,23 +21,32 @@ namespace IdentityService.Common.Results
         }
 
         public static Result Success() => new(true, Error.None);
+
         public static Result Failure(Error error) => new(false, error);
 
+        public static Result Failure(string message) => new(false, Error.General(message));
+
         public static Result<T> Success<T>(T value) => new(value, true, Error.None);
+
         public static Result<T> Failure<T>(Error error) => new(default!, false, error);
+
+        public static Result<T> Failure<T>(string message) => new(default!, false, Error.General(message));
     }
 
     public sealed class Result<T> : Result
     {
-        private readonly T _value;
-
         internal Result(T value, bool isSuccess, Error error) : base(isSuccess, error)
         {
-            _value = value;
+            Value = value;
         }
 
-        public T Value => IsSuccess
-            ? _value
-            : throw new InvalidOperationException("Cannot access the value of a failed result.");
+        // Only meaningful when IsSuccess is true; default(T) otherwise.
+        public T Value { get; }
+
+        public static Result<T> Success(T value) => new(value, true, Error.None);
+
+        public static new Result<T> Failure(Error error) => new(default!, false, error);
+
+        public static new Result<T> Failure(string message) => new(default!, false, Error.General(message));
     }
 }

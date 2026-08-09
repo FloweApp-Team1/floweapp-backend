@@ -1,5 +1,6 @@
 ﻿using IdentityService.Common.Interfaces;
 using IdentityService.Common.Models;
+using IdentityService.Common.Results;
 using IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +22,7 @@ public class UpdateProfileCommandHandler(
         if (userId is null)
         {
             return Result<UpdateProfileResponse>
-                .Failure("Unauthorized");
+                .Failure(Error.New("Users.Unauthorized", "Unauthorized"));
         }
 
 
@@ -33,7 +34,7 @@ public class UpdateProfileCommandHandler(
         if (user is null)
         {
             return Result<UpdateProfileResponse>
-                .Failure("User Not Found");
+                .Failure(Error.New("Users.NotFound", "User not found"));
         }
 
         // Update the user's profile with the new information 
@@ -54,7 +55,7 @@ public class UpdateProfileCommandHandler(
             ex.InnerException?.Message.Contains("IX_Users_Email") == true || ex.InnerException?.Message.Contains("IX_Users_PhoneNumber") == true)
         {
             return Result<UpdateProfileResponse>
-                .Failure("Email or Phone number already exists");
+                .Failure(Error.New("Users.Conflict", "Email or Phone number already exists"));
         }
 
         return Result<UpdateProfileResponse>
