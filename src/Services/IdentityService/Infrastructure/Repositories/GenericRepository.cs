@@ -17,7 +17,7 @@ namespace IdentityService.Infrastructure.Repositories
         }
 
         public async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-            => await _dbSet.FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted, cancellationToken);
+            => await _dbSet.FirstOrDefaultAsync(e => e.Id == id , cancellationToken);
 
         public async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
             => await _dbSet.FirstOrDefaultAsync(predicate, cancellationToken);

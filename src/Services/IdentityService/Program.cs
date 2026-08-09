@@ -2,6 +2,13 @@
 using FluentValidation;
 using Google.Apis.Auth.OAuth2;
 using IdentityService.Common.Behaviors;
+using IdentityService.Common.Middlewares;
+using IdentityService.Infrastructure.Persistence.Seed;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using System.Threading.RateLimiting;
 using IdentityService.Common.Contracts;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
@@ -47,7 +54,19 @@ var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
 builder.Services.AddDbContext<AuthDbContext>(options =>
                options.UseSqlServer(connectionString));
 
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, AuditingAuthorizationMiddlewareResultHandler>();
+
+builder.Services.AddScoped<IAdminLoginAuditRepository, AdminLoginAuditRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IIdentityUnitOfWork, IdentityUnitOfWork>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+builder.Services.AddScoped<ITokenService, JwtTokenService>();
+builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+
+
 // Registers every IEndpoint implementation found in this assembly
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
@@ -73,6 +92,34 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+
+
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    var secretKey = builder.Configuration["Jwt:SecretKey"]
+                    ?? builder.Configuration["JWT_SECRET"];
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? builder.Configuration["JWT_ISSUER"],
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? builder.Configuration["JWT_AUDIENCE"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!))
+    };
+});
+
+// Admin Policy 
+
+builder.Services.AddAdminAuthorization();
 // MediatR + the FluentValidation pipeline that runs request validators before handlers.
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
@@ -109,12 +156,6 @@ builder.Services.AddOptions<EmailSettings>()
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy(
-        "AdminOnly",
-        policy => policy.RequireRole("ADMIN"));
-});
 
 
 #region Firebase Admin SDK Configuration
@@ -132,6 +173,40 @@ builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
     Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
 }));
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("AdminLoginPerIp", httpContext =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 10,          
+                Window = TimeSpan.FromMinutes(15),
+                SegmentsPerWindow = 3,
+                QueueLimit = 0
+            }));
+
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsync(
+            "Too many requests from this IP. Please try again later.", ct);
+    };
+});
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+
+});
+
+
+
+var app = builder.Build();
+app.UseForwardedHeaders();
+// Must be first so it can catch exceptions thrown anywhere downstream.
 #endregion
 
 
@@ -191,6 +266,16 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
+app.UseRateLimiter();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+ 
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    await AdminSeeder.SeedAsync(context, config);
+}
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

@@ -15,6 +15,9 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.Property(e => e.UserAgent).HasMaxLength(500);
             builder.Property(x => x.IsSuccess).IsRequired();
 
+            builder.HasIndex(x => new { x.Email, x.AttemptedAt });
+            builder.HasIndex(x => new { x.IpAddress, x.AttemptedAt });
+
         }
     }
 }

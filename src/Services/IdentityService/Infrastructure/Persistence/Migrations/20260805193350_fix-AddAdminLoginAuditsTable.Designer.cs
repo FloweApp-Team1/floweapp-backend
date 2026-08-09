@@ -12,14 +12,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IdentityService.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    [Migration("20260804114512_AddAdminLoginAudit")]
-    partial class AddAdminLoginAudit
+    [Migration("20260805193350_fix-AddAdminLoginAuditsTable")]
+    partial class fixAddAdminLoginAuditsTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("Auth")
                 .HasAnnotation("ProductVersion", "8.0.26")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
@@ -57,7 +58,11 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AdminLoginAudits");
+                    b.HasIndex("Email", "AttemptedAt");
+
+                    b.HasIndex("IpAddress", "AttemptedAt");
+
+                    b.ToTable("AdminLoginAudits", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.LoginAttempt", b =>
@@ -87,7 +92,7 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LoginAttempts", (string)null);
+                    b.ToTable("LoginAttempts", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.OtpCode", b =>
@@ -119,7 +124,7 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("OtpCodes", (string)null);
+                    b.ToTable("OtpCodes", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.RefreshToken", b =>
@@ -143,16 +148,19 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Token")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Token")
+                        .IsUnique();
+
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens", (string)null);
+                    b.ToTable("RefreshTokens", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.Role", b =>
@@ -171,7 +179,7 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.User", b =>
@@ -221,7 +229,7 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users", "Auth");
 
                     b.UseTptMappingStrategy();
                 });
@@ -244,7 +252,7 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("UserRoles", (string)null);
+                    b.ToTable("UserRoles", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.VehicleInfo", b =>
@@ -275,7 +283,7 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                     b.HasIndex("DeliveryId")
                         .IsUnique();
 
-                    b.ToTable("VehicleInfos", (string)null);
+                    b.ToTable("VehicleInfos", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.Customer", b =>
@@ -287,7 +295,7 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.Delivery", b =>
@@ -309,7 +317,7 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.ToTable("Deliveries", (string)null);
+                    b.ToTable("Deliveries", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.RefreshToken", b =>

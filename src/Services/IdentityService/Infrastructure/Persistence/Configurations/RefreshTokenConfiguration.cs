@@ -17,6 +17,7 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.Property(x => x.CreatedAt).IsRequired();
             builder.Property(x => x.RevokedAt);
 
+            builder.HasIndex(x => x.Token).IsUnique();
             builder.HasOne(x => x.User)
                 .WithMany(x => x.RefreshTokens)
                 .HasForeignKey(x => x.UserId)

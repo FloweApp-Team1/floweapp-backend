@@ -30,8 +30,11 @@ namespace IdentityService.Infrastructure
 .HasQueryFilter(x => !x.IsDeleted);
             base.OnModelCreating(builder);
 
-            // This service owns the "Auth" schema inside the shared FloweApp database.
-            // Other microservices will use their own schemas in the same database.
+            builder.Entity<User>().HasQueryFilter(u => !u.IsDeleted);
+            builder.Entity<RefreshToken>().HasQueryFilter(rt => !rt.User.IsDeleted);
+            builder.Entity<UserRole>().HasQueryFilter(ur => !ur.User.IsDeleted);
+            builder.Entity<VehicleInfo>().HasQueryFilter(v => !v.Delivery.IsDeleted);
+
             builder.HasDefaultSchema("Auth");
 
             builder.ApplyConfigurationsFromAssembly(typeof(AuthDbContext).Assembly);
