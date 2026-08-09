@@ -34,7 +34,7 @@ namespace IdentityService.Features.Admin.AdminLogin
             var rateLimitResult = await sender.Send(new CheckAdminRateLimitQuery(request.Email, request.IpAddress), ct);
             if (rateLimitResult.Value)
             {
-                await sender.Send(new RecordAdminLoginAuditCommand(request.Email, false, request.IpAddress, request.UserAgent), ct);
+                await LogFailedAttempt(request, ct);
                 return Result.Failure<LoginAdminResponseDto>(AuthErrors.TooManyAttempts);
             }
 
@@ -45,14 +45,14 @@ namespace IdentityService.Features.Admin.AdminLogin
             if (user is null || !isAdmin || !user.IsActive)
             {
                 passwordHasher.Verify(request.Password, DummyHash);
-                await sender.Send(new RecordAdminLoginAuditCommand(request.Email, false, request.IpAddress, request.UserAgent), ct);
+                await LogFailedAttempt(request, ct);
                 return Result.Failure<LoginAdminResponseDto>(AuthErrors.InvalidCredentials);
             }
 
             var passwordValid = passwordHasher.Verify(request.Password, user.PasswordHash);
             if (!passwordValid)
             {
-                await sender.Send(new RecordAdminLoginAuditCommand(request.Email, false, request.IpAddress, request.UserAgent), ct);
+                await LogFailedAttempt(request, ct);
                 return Result.Failure<LoginAdminResponseDto>(AuthErrors.InvalidCredentials);
             }
 
@@ -87,6 +87,10 @@ namespace IdentityService.Features.Admin.AdminLogin
                 await transaction.RollbackAsync(ct);
                 throw;
             }
+
+
         }
+        private async Task LogFailedAttempt(AdminLoginCommand request, CancellationToken ct)
+    => await sender.Send(new RecordAdminLoginAuditCommand(request.Email, false, request.IpAddress, request.UserAgent), ct);
     }
 }
