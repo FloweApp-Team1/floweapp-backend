@@ -3,12 +3,10 @@ using MediatR;
 
 namespace IdentityService.Common.Behaviors
 {
-    // Runs every FluentValidation validator registered for the incoming request
-    // before its handler executes. On failure it throws ValidationException, which
-    // GlobalExceptionHandler converts into the unified 400 ApiResponse envelope.
+    
     public sealed class ValidationBehavior<TRequest, TResponse>
         : IPipelineBehavior<TRequest, TResponse>
-        where TRequest : IRequest<TResponse>
+        where TRequest : notnull
     {
         private readonly IEnumerable<IValidator<TRequest>> _validators;
 
@@ -19,8 +17,8 @@ namespace IdentityService.Common.Behaviors
 
         public async Task<TResponse> Handle(
             TRequest request,
-            CancellationToken cancellationToken,
-            RequestHandlerDelegate<TResponse> next)
+            RequestHandlerDelegate<TResponse> next,
+            CancellationToken cancellationToken)
         {
             if (_validators.Any())
             {
@@ -37,7 +35,7 @@ namespace IdentityService.Common.Behaviors
                     throw new ValidationException(failures);
             }
 
-            return await next();
+            return await next(cancellationToken);
         }
     }
 }

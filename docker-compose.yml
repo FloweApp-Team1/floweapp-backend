@@ -40,9 +40,11 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ConnectionStrings__DefaultConnection: Server=${SQL_SERVER};Database=${DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
 
-      # Container path where the secret is mounted (see volumes below).
-      # Hardcoded here so it overrides the host path in .env, exactly like the
-      # connection string overrides localhost with the sqlserver service name.
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+      Jwt__AccessTokenExpiryMinutes: ${Jwt__AccessTokenExpiryMinutes}
+
       Firebase__CredentialsPath: /run/secrets/firebase-service-account.json
 
       RabbitMQ__Host: rabbitmq

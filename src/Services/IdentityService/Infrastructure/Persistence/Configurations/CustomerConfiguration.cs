@@ -10,7 +10,7 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
         {
             builder.ToTable("Customers");
 
-            builder.Property(e => e.Address).HasMaxLength(255).IsRequired();
+            builder.Property(e => e.Address).HasMaxLength(255);
         }
     }
 }

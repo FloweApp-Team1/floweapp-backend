@@ -1,10 +1,12 @@
 ﻿using IdentityService.Common.Contracts;
 using IdentityService.Common.Interfaces;
+using IdentityService.Common.Security;
 using IdentityService.Common.Settings;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using IdentityService.Infrastructure.Services.Email;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -23,10 +25,11 @@ namespace IdentityService.Infrastructure
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-            // باقي الـ Services
+            // Remaining infrastructure services
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IEmailService, SmtpEmailService>();
+            services.AddScoped<IPasswordHasher, PasswordHasher>();
 
             return services;
         }
@@ -61,17 +64,31 @@ namespace IdentityService.Infrastructure
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
                         ValidIssuer = jwtSettings.Issuer,
+
+                        ValidateAudience = true,
                         ValidAudience = jwtSettings.Audience,
+
+                        ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
+
+                        ValidateLifetime = true,
                         ClockSkew = TimeSpan.Zero
                     };
                 });
 
-            services.AddAuthorization();
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy(AppPolicies.AdminOnly, p => p.RequireRole(AppRoles.Admin));
+                options.AddPolicy(AppPolicies.CustomerOnly, p => p.RequireRole(AppRoles.Customer));
+                options.AddPolicy(AppPolicies.DriverOnly, p => p.RequireRole(AppRoles.Driver));
+                options.AddPolicy(AppPolicies.DriverApproved, p => p.Requirements.Add(new DriverApprovedRequirement()));
+                options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+            });
+
+            services.AddScoped<IAuthorizationHandler, DriverApprovedHandler>();
 
             return services;
         }

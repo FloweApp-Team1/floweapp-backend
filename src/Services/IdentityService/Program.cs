@@ -6,7 +6,10 @@ using IdentityService.Common.Contracts;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
 using IdentityService.Common.Interfaces;
+using IdentityService.Common.Security;
 using IdentityService.Common.Settings;
+using IdentityService.Features.Auth.Logout;
+using IdentityService.Features.Auth.Sessions;
 using IdentityService.Infrastructure;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
@@ -14,6 +17,7 @@ using IdentityService.Infrastructure.Services.Email;
 using IdentityService.Infrastructure.Services.OTP;
 using IdentityService.Infrastructure.Services.Redis;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
@@ -26,6 +30,8 @@ DotNetEnv.Env.TraversePath().Load();
 var builder = WebApplication.CreateBuilder(args);
 
 
+builder.Configuration.AddEnvironmentVariables();
+
 static string GetRequiredEnv(string key) =>
     Environment.GetEnvironmentVariable(key)
         ?? throw new InvalidOperationException(
@@ -37,20 +43,16 @@ var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
 builder.Services.AddDbContext<AuthDbContext>(options =>
                options.UseSqlServer(connectionString));
 
-// Handlers depend on IUserRepository, never on AuthDbContext directly.
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
-// Generic repository + unit of work, used by ChangePassword/Sessions/RefreshToken/Logout handlers.
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 
 // Ambient access to the authenticated user for the current request.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-// Access/refresh token issuance for the RefreshToken handler.
-// Jwt__* env vars (.env locally, docker-compose `environment:` in containers) bind to Jwt:*.
 builder.Services.AddOptions<JwtSettings>()
     .Bind(builder.Configuration.GetSection("Jwt"))
     .Validate(s => !string.IsNullOrWhiteSpace(s.SecretKey), "Jwt__SecretKey is not set.")
@@ -61,19 +63,15 @@ builder.Services.AddOptions<JwtSettings>()
     .ValidateOnStart();
 builder.Services.AddScoped<IJwtService, JwtService>();
 
-
-// Turns unhandled exceptions (and FluentValidation failures) into the unified ApiResponse shape
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // MediatR + the FluentValidation pipeline that runs request validators before handlers.
-// MediatR.Extensions.Microsoft.DependencyInjection 10.0.1's AddMediatR predates the
-// RegisterServicesFromAssembly(cfg) fluent config API - it takes the assembly directly.
-builder.Services.AddMediatR(Assembly.GetExecutingAssembly());
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
-// Redis: OTP and reset tokens are stored here (see RedisCacheService).
 var redisConnectionString = GetRequiredEnv("Redis__ConnectionString");
 builder.Services.AddSingleton<IConnectionMultiplexer>(
     _ => ConnectionMultiplexer.Connect(redisConnectionString));
@@ -92,7 +90,6 @@ builder.Services.AddScoped<IResetTokenService, ResetTokenService>();
 
 builder.Services.AddScoped<IOtpService, OtpService>();
 
-// Transactional email (SMTP via MailKit). Binds Email__* env vars -> EmailSettings.
 builder.Services.AddOptions<EmailSettings>()
     .Bind(builder.Configuration.GetSection("Email"))
     .Validate(s => !string.IsNullOrWhiteSpace(s.SmtpHost), "Email__SmtpHost is not set.")
@@ -104,12 +101,14 @@ builder.Services.AddOptions<EmailSettings>()
     .ValidateOnStart();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
-// JWT bearer, wired from the same Jwt:* configuration the token issuer uses.
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
+    options.AddPolicy(
+        "AdminOnly",
+        policy => policy.RequireRole("ADMIN"));
 });
+
 
 #region Firebase Admin SDK Configuration
 var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
@@ -129,13 +128,20 @@ builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
 #endregion
 
 
+// Registers IGenericRepository<> (used by UpdateProfile/CreateGuest) alongside the
+// IUnitOfWork / IJwtService / IEmailService / IPasswordHasher / ICurrentUserService
+// registrations above, and binds JwtSettings/EmailSettings.
+builder.Services.AddInfrastructureServices(builder.Configuration);
+
+// Renders 401/403 in the same ApiResponse shape as every other failure.
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
+
+
+
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    // Endpoints declare their payloads as nested types (e.g. ResetPasswordEndpoint.Request).
-    // The default schemaId is the bare type name, so every `Request` collides and swagger.json
-    // fails with a 500. Qualify nested types with their declaring type instead.
     options.CustomSchemaIds(SwaggerSchemaId);
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -191,5 +197,9 @@ app.UseAuthorization();
 
 // Maps every IEndpoint feature (Auth, Users, Drivers, Vehicles, Admin, ...)
 app.MapEndpoints();
+
+// Session management predates the IEndpoint convention, so it is mapped explicitly.
+app.MapLogoutEndpoint();
+app.MapSessionsEndpoints();
 
 app.Run();

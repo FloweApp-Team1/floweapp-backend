@@ -10,13 +10,19 @@ namespace IdentityService.Features.Auth.Logout.Commends
     public class LogoutHandler : IRequestHandler<LogoutCommand, Result>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IJwtService _jwtService;
 
-        public LogoutHandler(IUnitOfWork unitOfWork) => _unitOfWork = unitOfWork;
+        public LogoutHandler(IUnitOfWork unitOfWork, IJwtService jwtService)
+        {
+            _unitOfWork = unitOfWork;
+            _jwtService = jwtService;
+        }
 
         public async Task<Result> Handle(LogoutCommand request, CancellationToken cancellationToken)
         {
             var tokenRepo = _unitOfWork.Repository<RefresheshTokenEntity>();
-            var token = await tokenRepo.FirstOrDefaultAsync(t => t.Token == request.RefreshTokenValue, cancellationToken);
+            var hashedToken = _jwtService.HashRefreshTokenValue(request.RefreshTokenValue);
+            var token = await tokenRepo.FirstOrDefaultAsync(t => t.Token == hashedToken, cancellationToken);
 
             
             if (token is null || token.IsRevoked)

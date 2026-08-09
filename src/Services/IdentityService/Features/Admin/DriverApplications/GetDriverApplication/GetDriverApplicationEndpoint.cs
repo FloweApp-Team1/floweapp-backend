@@ -1,5 +1,6 @@
 using IdentityService.Common.Contracts;
 using IdentityService.Common.Responses;
+using IdentityService.Common.Security;
 
 namespace IdentityService.Features.Admin.DriverApplications.GetDriverApplication;
 
@@ -11,6 +12,6 @@ public class GetDriverApplicationEndpoint : IEndpoint
                 ApiResponse.Success(new { driverId }, "Driver application retrieved").ToHttpResult())
             .WithTags("Admin")
             .WithName("GetDriverApplication")
-            .RequireAuthorization("AdminOnly");
+            .RequireAuthorization(AppPolicies.AdminOnly);
     }
 }

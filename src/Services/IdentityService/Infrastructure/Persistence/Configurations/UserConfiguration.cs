@@ -13,15 +13,20 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.HasKey(x => x.Id);
             builder.Property(x => x.FullName).HasMaxLength(100).IsRequired();
             builder.Property(x => x.Email).HasMaxLength(255).IsRequired();
-            builder.Property(x => x.PhoneNumber).IsRequired();
+            builder.Property(x => x.PhoneNumber).HasMaxLength(20).IsRequired();
+            builder.HasIndex(x => x.Email)
+             .IsUnique();
+            builder.HasIndex(x => x.PhoneNumber)
+                .IsUnique();
             builder.Property(x => x.PasswordHash).IsRequired();
-            builder.Property(x => x.BirthDate).IsRequired();
+            builder.Property(x => x.BirthDate);
             builder.Property(x => x.Gender).IsRequired();
 
-            // ForgetPassword/VerifyOtp/ResetPassword/Login all look users up by email;
-            // not unique because a deleted account's row (IsDeleted) can share an email
-            // with the account that replaces it.
-            builder.HasIndex(x => x.Email);
+            builder.HasIndex(x => x.Email).IsUnique();
+            builder.HasIndex(x => x.PhoneNumber).IsUnique();
+
+
+
         }
     }
 }
