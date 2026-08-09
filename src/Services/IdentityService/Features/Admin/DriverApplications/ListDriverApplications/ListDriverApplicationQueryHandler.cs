@@ -1,5 +1,6 @@
 ﻿using IdentityService.Common.Interfaces;
 using IdentityService.Common.Models;
+using IdentityService.Common.Results;
 using IdentityService.Common.Responses;
 using IdentityService.Domain.Entities;
 using IdentityService.Features.Admin.DriverApplications.ListDriverApplications.Dtos;

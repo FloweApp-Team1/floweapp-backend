@@ -1,4 +1,5 @@
 using IdentityService.Common.Contracts;
+using IdentityService.Common.Security;
 using IdentityService.Common.Requests;
 using IdentityService.Common.Responses;
 using IdentityService.Domain.Enums;
@@ -22,7 +23,7 @@ public class ListDriverApplicationsEndpoint : IEndpoint
             {
                 return Results.Ok(ApiResponse.Paginated(result.Value.Items, result.Value.TotalCount, request));
             }
-            return Results.NotFound(ApiResponse.Fail(result.Error));
+            return Results.NotFound(ApiResponse.Fail(result.Error.Message));
         })
 
             .WithTags("Admin")

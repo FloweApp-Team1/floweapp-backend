@@ -1,53 +1,32 @@
-using FluentValidation;
 using IdentityService.Common.Contracts;
+using IdentityService.Common.Extensions;
 using IdentityService.Common.Responses;
 using MediatR;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
 
 namespace IdentityService.Features.Users.UpdateProfile;
 
 public class UpdateProfileEndpoint : IEndpoint
 {
-
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
+        // Validation is handled once, by the FluentValidation pipeline behavior;
+        // the endpoint only translates the Result into the ApiResponse envelope.
         app.MapPut(
-            "/users/profile",                        // ← corrected route
+            "/users/profile",
             async Task<IResult> (
                 UpdateProfileCommand request,
-                [FromServices] IMediator mediator,
-                [FromServices] IValidator<UpdateProfileCommand> validator, // ← injected
+                [FromServices] ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                var validationResult = await validator.ValidateAsync(request, cancellationToken);
+                var result = await sender.Send(request, cancellationToken);
 
-                if (!validationResult.IsValid)
-                {
-                    return Results.BadRequest(ApiResponse<UpdateProfileResponse>.Fail(
-                        "Validation failed",
-                        400,
-                        validationResult.Errors
-                            .Select(e => new ApiError(e.PropertyName, e.ErrorMessage))
-                            .ToList()));
-                }
-
-                var result = await mediator.Send(request, cancellationToken);
-
-                if (!result.IsSuccess)
-                {
-                    if (result.Error == "Unauthorized")
-                        return Results.Unauthorized();
-
-                    return Results.BadRequest(
-                        ApiResponse<UpdateProfileResponse>.Fail(result.Error!));
-                }
-
-                return Results.Ok(ApiResponse<UpdateProfileResponse>.Success(result.Value));
+                return result.ToMinimalApiResult("Profile updated");
             })
             .WithTags("Users")
             .WithName("UpdateProfile")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .Produces<ApiResponse<UpdateProfileResponse>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
     }
 }

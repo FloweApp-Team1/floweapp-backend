@@ -1,11 +1,10 @@
 using IdentityService.Common.Contracts;
 using IdentityService.Common.Interfaces;
 using IdentityService.Common.Models;
+using IdentityService.Common.Results;
 using IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace IdentityService.Features.Auth.Login
 {
@@ -41,7 +40,7 @@ namespace IdentityService.Features.Auth.Login
                     u.FullName,
                     u.CreatedAt,
                     u.Gender,
-                    u.NotifcationStatus,
+                    u.NotificationStatus,
                     u.PasswordHash,
                     u.IsActive,
                     RoleNames = u.UserRoles.Select(ur => ur.Role.Name).ToList()
@@ -84,12 +83,11 @@ namespace IdentityService.Features.Auth.Login
             var accessToken = _jwtService.GenerateAccessToken(dummyUserForJwt, userProjection.RoleNames); // Use all roles for JWT claims
             var refreshTokenValue = _jwtService.GenerateRefreshTokenValue();
             
-            string hashedToken;
-            using (var sha256 = SHA256.Create())
-            {
-                var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(refreshTokenValue));
-                hashedToken = Convert.ToBase64String(bytes);
-            }
+            // Must use the same hashing as IJwtService: /auth/refresh-token looks the
+            // token up by its hex-encoded SHA-256. Hashing it locally to base64 here
+            // produced a value that lookup could never match, so every refresh of a
+            // token issued by /auth/login failed with "Invalid refresh token".
+            var hashedToken = _jwtService.HashRefreshTokenValue(refreshTokenValue);
 
             var refreshTokenEntity = new IdentityService.Domain.Entities.RefreshToken
             {
@@ -114,7 +112,7 @@ namespace IdentityService.Features.Auth.Login
                 CreatedAt: userProjection.CreatedAt,
                 UpdatedAt: userProjection.CreatedAt, // Binding UpdatedAt to CreatedAt
                 Gender: userProjection.Gender.ToString().ToUpper(),
-                NotificationStatus: userProjection.NotifcationStatus.ToString().ToUpper()
+                NotificationStatus: userProjection.NotificationStatus.ToString().ToUpper()
             );
 
             var response = new AuthResponse(userDto, accessToken, refreshTokenValue);

@@ -1,5 +1,6 @@
 ﻿using IdentityService.Common.Interfaces;
 using IdentityService.Common.Models;
+using IdentityService.Common.Results;
 using MediatR;
 using RefresheshTokenEntity = IdentityService.Domain.Entities.RefreshToken;
 

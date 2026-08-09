@@ -1,5 +1,6 @@
 ﻿using IdentityService.Common.Interfaces;
 using IdentityService.Common.Models;
+using IdentityService.Common.Results;
 using IdentityService.Domain.Entities;
 using MediatR;
 

@@ -49,7 +49,7 @@ namespace IdentityService.Features.Auth.Register
                 Gender = request.Gender,
                 PasswordHash = _passwordHasher.Hash(request.Password),
                 FcmToken = request.FcmToken,
-                NotifcationStatus = request.NotificationStatus,
+                NotificationStatus = request.NotificationStatus,
                 CreatedAt = DateTime.UtcNow,
                 UserRoles = new List<UserRole>()
             };
@@ -85,7 +85,7 @@ namespace IdentityService.Features.Auth.Register
                     Email = customer.Email,
                     Phone = customer.PhoneNumber,
                     Gender = customer.Gender.ToString(),
-                    NotificationStatus = customer.NotifcationStatus.ToString(),
+                    NotificationStatus = customer.NotificationStatus.ToString(),
                     CreatedAt = customer.CreatedAt,
                     Roles = roleNames,
 

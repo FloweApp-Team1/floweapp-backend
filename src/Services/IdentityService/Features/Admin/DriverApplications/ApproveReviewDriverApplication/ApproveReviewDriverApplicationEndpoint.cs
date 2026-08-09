@@ -1,5 +1,6 @@
 using IdentityService.Common.Contracts;
 using IdentityService.Common.Models;
+using IdentityService.Common.Results;
 using IdentityService.Common.Responses;
 using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication;
 using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication.Dtos_VM;
@@ -29,7 +30,7 @@ public class ApproveReviewDriverApplicationEndpoint : IEndpoint
                 };
                 return Results.Created($"/admin/drivers/applications/{ApplicationId.ToString()}", ApiResponse<ApproveDriverApplicationVM>.Success(ApproveVM));
             }
-            return Results.BadRequest(ApiResponse<ApproveDriverApplicationVM>.Fail(result.Error));
+            return Results.BadRequest(ApiResponse<ApproveDriverApplicationVM>.Fail(result.Error.Message));
         })
             .WithTags("Admin")
             .WithName("ApproveReviewDriverApplication");

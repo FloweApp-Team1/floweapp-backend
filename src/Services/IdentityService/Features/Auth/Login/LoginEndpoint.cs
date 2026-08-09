@@ -28,14 +28,10 @@ public class LoginEndpoint : IEndpoint
                 var command = new LoginCommand(request, /* appType, */ ipAddress);
                 var result = await mediator.Send(command, cancellationToken);
 
-                if (!result.IsSuccess)
+                if (result.IsFailure)
                 {
-                    if (result.Error != null && result.Error.StartsWith("RoleAuthorizationFailed"))
-                    {
-                        return ApiResponse.Fail(result.Error, StatusCodes.Status403Forbidden).ToHttpResult();
-                    }
-                    
-                    return ApiResponse.Fail(result.Error ?? "Authentication failed", StatusCodes.Status401Unauthorized).ToHttpResult();
+                    return ApiResponse.Fail(
+                        result.Error.Message, StatusCodes.Status401Unauthorized).ToHttpResult();
                 }
 
                 return ApiResponse.Success(result.Value, "Logged in").ToHttpResult();

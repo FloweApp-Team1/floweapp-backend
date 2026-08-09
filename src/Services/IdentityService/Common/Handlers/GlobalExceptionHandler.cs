@@ -22,6 +22,13 @@ namespace IdentityService.Common.Handlers
                         .Select(e => new ApiError(e.ErrorMessage, e.PropertyName))
                         .ToList()),
 
+                // Minimal APIs throw this when a required route/query parameter is
+                // missing or cannot be parsed. That is bad client input, not a server
+                // fault, so it must not surface as a 500.
+                BadHttpRequestException badRequest => ApiResponse.Fail(
+                    badRequest.Message,
+                    StatusCodes.Status400BadRequest),
+
                 _ => ApiResponse.Fail(
                     "An unexpected error occurred",
                     StatusCodes.Status500InternalServerError)

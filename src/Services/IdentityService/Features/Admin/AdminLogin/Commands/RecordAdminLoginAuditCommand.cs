@@ -1,6 +1,6 @@
-﻿using IdentityService.Common.Results;
+using IdentityService.Common.Interfaces;
+using IdentityService.Common.Results;
 using IdentityService.Domain.Entities;
-using IdentityService.Domain.Interfaces;
 using MediatR;
 
 namespace IdentityService.Features.Admin.AdminLogin.Commands
@@ -11,9 +11,7 @@ namespace IdentityService.Features.Admin.AdminLogin.Commands
          string IpAddress,
          string UserAgent) : IRequest<Result>;
 
-    public sealed class RecordAdminLoginAuditHandler(
-       
-        IIdentityUnitOfWork UOW)
+    public sealed class RecordAdminLoginAuditHandler(IUnitOfWork unitOfWork)
         : IRequestHandler<RecordAdminLoginAuditCommand, Result>
     {
         public async Task<Result> Handle(RecordAdminLoginAuditCommand request, CancellationToken ct)
@@ -28,8 +26,8 @@ namespace IdentityService.Features.Admin.AdminLogin.Commands
                 UserAgent = request.UserAgent
             };
 
-            await UOW.AdminLoginAudits.AddAsync(audit, ct);
-            await UOW.SaveChangesAsync(ct);
+            await unitOfWork.Repository<AdminLoginAudit>().AddAsync(audit, ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             return Result.Success();
         }

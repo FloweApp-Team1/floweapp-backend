@@ -12,6 +12,6 @@ namespace IdentityService.Features.Auth.Register
     string Password,
     string ConfirmPassword,
     string FcmToken,
-    NotifcationStatusEnum NotificationStatus = NotifcationStatusEnum.on
+    NotificationStatusEnum NotificationStatus = NotificationStatusEnum.on
     ) : IRequest<ApiResponse<RegisterCustomerResponse>>;
 }

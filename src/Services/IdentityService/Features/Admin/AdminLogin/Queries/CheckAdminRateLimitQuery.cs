@@ -1,11 +1,14 @@
-﻿using IdentityService.Common.Results;
-using IdentityService.Domain.Interfaces;
+using IdentityService.Common.Interfaces;
+using IdentityService.Common.Results;
+using IdentityService.Domain.Entities;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace IdentityService.Features.Admin.AdminLogin.Queries
 {
     public sealed record CheckAdminRateLimitQuery(string Email, string IpAddress) : IRequest<Result<bool>>;
-    public sealed class CheckAdminRateLimitHandler(IAdminLoginAuditRepository auditRepository)
+
+    public sealed class CheckAdminRateLimitHandler(IUnitOfWork unitOfWork)
         : IRequestHandler<CheckAdminRateLimitQuery, Result<bool>>
     {
         private static readonly TimeSpan RateLimitWindow = TimeSpan.FromMinutes(15);
@@ -13,10 +16,16 @@ namespace IdentityService.Features.Admin.AdminLogin.Queries
 
         public async Task<Result<bool>> Handle(CheckAdminRateLimitQuery request, CancellationToken ct)
         {
-            var failedByEmail = await auditRepository.CountRecentFailedAttemptsByEmailAsync(request.Email, RateLimitWindow, ct);
-            var failedByIp = await auditRepository.CountRecentFailedAttemptsByIpAsync(request.IpAddress, RateLimitWindow, ct);
+            var since = DateTime.UtcNow.Subtract(RateLimitWindow);
+
+            var audits = unitOfWork.Repository<AdminLoginAudit>().Query()
+                .Where(a => !a.IsSuccess && a.AttemptedAt >= since);
+
+            var failedByEmail = await audits.CountAsync(a => a.Email == request.Email, ct);
+            var failedByIp = await audits.CountAsync(a => a.IpAddress == request.IpAddress, ct);
 
             var isRateLimited = failedByEmail >= MaxFailedAttempts || failedByIp >= MaxFailedAttempts;
+
             return Result.Success(isRateLimited);
         }
     }
