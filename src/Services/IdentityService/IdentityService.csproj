@@ -38,7 +38,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Features\Auth\" />
     <Folder Include="Infrastructure\Persistence\Migrations\" />
+    <Folder Include="Infrastructure\Repositories\" />
   </ItemGroup>
 
 </Project>

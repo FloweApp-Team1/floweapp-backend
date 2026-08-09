@@ -4,6 +4,8 @@ using Google.Apis.Auth.OAuth2;
 using IdentityService.Common.Behaviors;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
+using IdentityService.Common.Swagger;
+using IdentityService.Domain.Enums;
 using IdentityService.Features.Users.UpdateProfile;
 using IdentityService.Infrastructure;
 using IdentityService.Common.Interfaces;
@@ -17,7 +19,10 @@ using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Any;
+using Microsoft.OpenApi.Models;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 
 DotNetEnv.Env.TraversePath().Load();
@@ -37,8 +42,8 @@ var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
                options.UseSqlServer(connectionString));
-
 // Registers every IEndpoint implementation found in this assembly
+builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 
 //Services Registeration
@@ -96,16 +101,24 @@ builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthoriz
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-
-builder.Services.AddSwaggerGen();
-
+builder.Services.AddSwaggerGen(options =>
+{
+    options.ParameterFilter<EnumParameterFilter>(); 
+});
 builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
 {
     Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
 }));
 
+
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+
+    db.Database.Migrate();
+}
 // Must be first so it can catch exceptions thrown anywhere downstream.
 app.UseExceptionHandler();
 
