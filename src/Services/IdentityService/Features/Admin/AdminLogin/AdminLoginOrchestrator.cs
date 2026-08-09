@@ -57,38 +57,35 @@ namespace IdentityService.Features.Admin.AdminLogin
             }
 
             await using var transaction = await unitOfWork.BeginTransactionAsync(ct);
+            Result<string> refreshTokenResult;
             try
             {
-                var refreshTokenResult = await sender.Send(new IssueRefreshTokenCommand(user.Id), ct);
+                refreshTokenResult = await sender.Send(new IssueRefreshTokenCommand(user.Id), ct);
                 await sender.Send(new RecordAdminLoginAuditCommand(request.Email, true, request.IpAddress, request.UserAgent), ct);
-
-                
-
-                var accessToken = tokenService.GenerateAccessToken(user, AccessTokenLifetime);
-
-                var userProfile = new UserProfileDto(
-                    user.Id,
-                    user.FullName,
-                    user.Email,
-                    user.UserRoles.Select(ur => ur.Role.Name).ToList()
-                );
-
-                var responseDto = new LoginAdminResponseDto(
-                    userProfile,
-                    accessToken,
-                    refreshTokenResult.Value,
-                    DateTime.UtcNow.Add(AccessTokenLifetime)
-                );
                 await transaction.CommitAsync(ct);
-                return Result.Success(responseDto);  
+               
             }
             catch
             {
                 await transaction.RollbackAsync(ct);
                 throw;
             }
+            var accessToken = tokenService.GenerateAccessToken(user, AccessTokenLifetime);
 
+            var userProfile = new UserProfileDto(
+                user.Id,
+                user.FullName,
+                user.Email,
+                user.UserRoles.Select(ur => ur.Role.Name).ToList()
+            );
 
+            var responseDto = new LoginAdminResponseDto(
+                userProfile,
+                accessToken,
+                refreshTokenResult.Value,
+                DateTime.UtcNow.Add(AccessTokenLifetime)
+            );
+            return Result.Success(responseDto);
         }
         private async Task LogFailedAttempt(AdminLoginCommand request, CancellationToken ct)
     => await sender.Send(new RecordAdminLoginAuditCommand(request.Email, false, request.IpAddress, request.UserAgent), ct);
