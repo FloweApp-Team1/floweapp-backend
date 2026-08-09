@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using MimeKit.Encodings;
 using System.Reflection.Emit;
 
 namespace IdentityService.Infrastructure
@@ -17,7 +18,7 @@ namespace IdentityService.Infrastructure
         public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
-
+        public DbSet<Guest> Guests { get; set; }
         public DbSet<AdminLoginAudit> AdminLoginAudits { get; set; }
 
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)
@@ -26,6 +27,8 @@ namespace IdentityService.Infrastructure
 
         override protected void OnModelCreating(ModelBuilder builder)
         {
+            builder.Entity<User>()
+.HasQueryFilter(x => !x.IsDeleted);
             base.OnModelCreating(builder);
 
             // This service owns the "Auth" schema inside the shared FloweApp database.

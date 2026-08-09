@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace IdentityService.Domain.Entities
 {
-    public class User:BaseEntity
+    public class User : BaseEntity
     {
         public string FullName { get; set; } = null!;
         public string Email { get; set; } = null!;
@@ -22,6 +22,25 @@ namespace IdentityService.Domain.Entities
         public ICollection<RefreshToken>? RefreshTokens { get; set; }
 
 
+        public void UpdateProfile(
+         string fullName,
+         string email,
+         string phoneNumber,
+         GenderEnum gender,
+         string? profilePictureUrl)
+        {
+            if (!string.Equals(Email, email, StringComparison.OrdinalIgnoreCase))
+            {
+                Email = email;
+                IsEmailConfirmed = false; 
+            }
 
+            if (PhoneNumber != phoneNumber)
+                PhoneNumber = phoneNumber;
+
+            FullName = fullName;
+            Gender = gender;
+            ImageUrl = profilePictureUrl; 
+        }
     }
 }

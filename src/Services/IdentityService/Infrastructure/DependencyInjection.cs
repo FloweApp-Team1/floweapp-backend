@@ -3,6 +3,7 @@ using IdentityService.Common.Security;
 using IdentityService.Common.Settings;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -27,6 +28,7 @@ namespace IdentityService.Infrastructure
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IEmailService, EmailService>();
+            services.AddMediatR(typeof(DependencyInjection).Assembly);
             services.AddScoped<IPasswordHasher, PasswordHasher>();
 
             return services;
