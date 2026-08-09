@@ -1,16 +1,17 @@
 ﻿using IdentityService.Common.Interfaces;
+using IdentityService.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 
 namespace IdentityService.Infrastructure.Services
 {
-    public class PasswordHasher:IPasswordHasher
+    public class PasswordHasher : IPasswordHasher
     {
-        private const int WorkFactor = 12;
+        private readonly Microsoft.AspNetCore.Identity.PasswordHasher<User> _hasher = new();
 
         public string Hash(string password) =>
-            BCrypt.Net.BCrypt.HashPassword(password, workFactor: WorkFactor);
+            _hasher.HashPassword(new User(), password);
 
         public bool Verify(string password, string hash) =>
-            BCrypt.Net.BCrypt.Verify(password, hash);
+            _hasher.VerifyHashedPassword(new User(), hash, password) != PasswordVerificationResult.Failed;
     }
 }

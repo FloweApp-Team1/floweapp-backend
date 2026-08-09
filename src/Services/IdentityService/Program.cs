@@ -1,10 +1,20 @@
 ﻿using FirebaseAdmin;
 using FluentValidation;
 using Google.Apis.Auth.OAuth2;
+using IdentityService.Common.Behaviors;
 using IdentityService.Common.Extensions;
 using IdentityService.Common.Handlers;
 using IdentityService.Features.Users.UpdateProfile;
 using IdentityService.Infrastructure;
+using IdentityService.Common.Interfaces;
+using IdentityService.Common.Security;
+using IdentityService.Infrastructure;
+using IdentityService.Infrastructure.Services;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using IdentityService.Infrastructure;
+using IdentityService.Infrastructure.Repositories;
+using IdentityService.Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
@@ -30,6 +40,14 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 
 // Registers every IEndpoint implementation found in this assembly
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
+
+//Services Registeration
+builder.Services.AddMediatR(Assembly.GetExecutingAssembly());
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Turns unhandled exceptions (and FluentValidation failures) into the unified ApiResponse shape
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -62,9 +80,23 @@ if (!File.Exists(fullPath))
     throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
 #endregion
 
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+
+// Registers IUnitOfWork, IGenericRepository<>, IJwtService, IEmailService,
+// ICurrentUserService, IHttpContextAccessor, and binds JwtSettings/EmailSettings
+builder.Services.AddInfrastructureServices(builder.Configuration);
+
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
+
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
