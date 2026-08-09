@@ -9,11 +9,13 @@ using MediatR;
 
 namespace IdentityService.Features.Admin.AdminLogin
 {
+
     public sealed record AdminLoginCommand(
           string Email,
           string Password,
           string IpAddress,
           string UserAgent) : IRequest<Result<LoginAdminResponseDto>>;
+
 
    
     public sealed class AdminLoginHandler(
@@ -23,6 +25,7 @@ namespace IdentityService.Features.Admin.AdminLogin
         ISender sender)
         : IRequestHandler<AdminLoginCommand, Result<LoginAdminResponseDto>>
     {
+        private const string DummyHash = "$2a$12$DummyHashStringForTimingAttackMitigationXXXXXXXXXXXX";
         private static readonly TimeSpan AccessTokenLifetime = TimeSpan.FromMinutes(15);
 
         public async Task<Result<LoginAdminResponseDto>> Handle(
@@ -41,6 +44,7 @@ namespace IdentityService.Features.Admin.AdminLogin
 
             if (user is null || !isAdmin || !user.IsActive)
             {
+                passwordHasher.Verify(request.Password, DummyHash);
                 await sender.Send(new RecordAdminLoginAuditCommand(request.Email, false, request.IpAddress, request.UserAgent), ct);
                 return Result.Failure<LoginAdminResponseDto>(AuthErrors.InvalidCredentials);
             }
