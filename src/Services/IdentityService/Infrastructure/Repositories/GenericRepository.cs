@@ -43,5 +43,8 @@ namespace IdentityService.Infrastructure.Repositories
             entity.IsDeleted = true;
             _dbSet.Update(entity);
         }
+
+        public Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate)
+            => _dbSet.AnyAsync(predicate);
     }
 }

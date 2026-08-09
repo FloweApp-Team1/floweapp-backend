@@ -20,6 +20,7 @@ namespace IdentityService.Infrastructure
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
         public DbSet<Guest> Guests { get; set; }
         public DbSet<AdminLoginAudit> AdminLoginAudits { get; set; }
+        public DbSet<DriverApplication> DriverApplications { get; set; }
 
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)
         {
