@@ -5,7 +5,8 @@ using MediatR;
 namespace IdentityService.Features.Auth.Register
 {
     public record RegisterCustomerCommand(
-    string FullName,
+    string FirstName,
+    string LastName,
     string Email,
     string Phone,
     GenderEnum Gender,

@@ -11,7 +11,8 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.ToTable("Users");
 
             builder.HasKey(x => x.Id);
-            builder.Property(x => x.FullName).HasMaxLength(100).IsRequired();
+            builder.Property(x => x.FirstName).HasMaxLength(50).IsRequired();
+            builder.Property(x => x.LastName).HasMaxLength(50).IsRequired();
             builder.Property(x => x.Email).HasMaxLength(255).IsRequired();
             builder.Property(x => x.PhoneNumber).HasMaxLength(20).IsRequired();
             builder.HasIndex(x => x.Email)

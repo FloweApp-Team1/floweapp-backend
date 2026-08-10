@@ -13,9 +13,13 @@ namespace IdentityService.Features.Auth.Register
 
         public RegisterCustomerValidator()
         {
-            RuleFor(x => x.FullName)
-                .NotEmpty().WithMessage("Full name is required")
-                .MaximumLength(100);
+            RuleFor(x => x.FirstName)
+                .NotEmpty().WithMessage("First name is required")
+                .MaximumLength(50);
+
+            RuleFor(x => x.LastName)
+                .NotEmpty().WithMessage("Last name is required")
+                .MaximumLength(50);
 
             RuleFor(x => x.Email)
                 .NotEmpty().WithMessage("Email is required")

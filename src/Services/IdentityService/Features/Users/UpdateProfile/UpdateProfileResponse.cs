@@ -3,7 +3,8 @@ namespace IdentityService.Features.Users.UpdateProfile;
 
 public sealed record UpdateProfileResponse(
     Guid Id,
-    string FullName,
+    string FirstName,
+    string LastName,
     string Email,
     string PhoneNumber,
     GenderEnum Gender,

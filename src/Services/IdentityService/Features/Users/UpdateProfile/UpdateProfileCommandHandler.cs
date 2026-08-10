@@ -39,7 +39,8 @@ public class UpdateProfileCommandHandler(
 
         // Update the user's profile with the new information 
         user.UpdateProfile(
-          request.FullName,
+          request.FirstName,
+          request.LastName,
           request.Email,
           request.PhoneNumber,
           request.Gender,
@@ -61,7 +62,8 @@ public class UpdateProfileCommandHandler(
         return Result<UpdateProfileResponse>
             .Success(new UpdateProfileResponse(
             user.Id,
-            user.FullName,
+            user.FirstName,
+            user.LastName,
             user.Email,
             user.PhoneNumber,
             user.Gender,

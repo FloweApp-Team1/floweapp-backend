@@ -5,7 +5,8 @@ namespace IdentityService.Domain.Entities
 {
     public class User : BaseEntity
     {
-        public string FullName { get; set; } = null!;
+        public string FirstName { get; set; } = null!;
+        public string LastName { get; set; } = null!;
         public string Email { get; set; } = null!;
         public string PhoneNumber { get; set; } = null!;
         public string PasswordHash { get; set; } = null!;
@@ -22,7 +23,8 @@ namespace IdentityService.Domain.Entities
 
 
         public void UpdateProfile(
-         string fullName,
+         string firstName,
+         string lastName,
          string email,
          string phoneNumber,
          GenderEnum gender,
@@ -31,15 +33,16 @@ namespace IdentityService.Domain.Entities
             if (!string.Equals(Email, email, StringComparison.OrdinalIgnoreCase))
             {
                 Email = email;
-                IsEmailConfirmed = false; 
+                IsEmailConfirmed = false;
             }
 
             if (PhoneNumber != phoneNumber)
                 PhoneNumber = phoneNumber;
 
-            FullName = fullName;
+            FirstName = firstName;
+            LastName = lastName;
             Gender = gender;
-            ImageUrl = profilePictureUrl; 
+            ImageUrl = profilePictureUrl;
         }
     }
 }

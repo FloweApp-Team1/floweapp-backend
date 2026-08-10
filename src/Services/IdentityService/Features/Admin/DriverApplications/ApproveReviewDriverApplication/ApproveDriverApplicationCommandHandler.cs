@@ -56,9 +56,11 @@ namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverA
 
             try
             {
+                var nameParts = application.Name.Split(' ', 2);
                 var delivery = new Delivery
                 {
-                    FullName = application.Name,
+                    FirstName = nameParts[0],
+                    LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty,
                     Email = application.Email,
                     Gender = application.Gender,
                     IsActive = true,

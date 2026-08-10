@@ -6,7 +6,8 @@ using MediatR;
 namespace IdentityService.Features.Users.UpdateProfile;
 
 public sealed record UpdateProfileCommand(
-    string FullName,
+    string FirstName,
+    string LastName,
     string Email,
     string PhoneNumber,
     GenderEnum Gender,

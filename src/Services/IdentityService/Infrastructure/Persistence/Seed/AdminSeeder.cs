@@ -48,7 +48,8 @@ namespace IdentityService.Infrastructure.Persistence.Seed
         {
             string? adminEmail = configuration["AdminSeed:Email"];
             string? adminPassword = configuration["AdminSeed:Password"];
-            string fullName = configuration["AdminSeed:FullName"] ?? "System Admin";
+            string firstName = configuration["AdminSeed:FirstName"] ?? "System";
+            string lastName = configuration["AdminSeed:LastName"] ?? "Admin";
             string phoneNumber = configuration["AdminSeed:PhoneNumber"] ?? "";
 
             // Leaving either value unset is the supported way to skip admin seeding.
@@ -69,7 +70,8 @@ namespace IdentityService.Infrastructure.Persistence.Seed
             var adminUser = new User
             {
                 Id = Guid.NewGuid(),
-                FullName = fullName,
+                FirstName = firstName,
+                LastName = lastName,
                 Email = adminEmail,
                 PhoneNumber = phoneNumber,
                 PasswordHash = passwordHasher.Hash(adminPassword),

@@ -37,7 +37,8 @@ namespace IdentityService.Features.Auth.Login
                     u.Id,
                     u.Email,
                     u.PhoneNumber,
-                    u.FullName,
+                    u.FirstName,
+                    u.LastName,
                     u.CreatedAt,
                     u.Gender,
                     u.NotificationStatus,
@@ -66,9 +67,10 @@ namespace IdentityService.Features.Auth.Login
 
             var dummyUserForJwt = new User 
             { 
-                Id = userProjection.Id, 
-                Email = userProjection.Email, 
-                FullName = userProjection.FullName 
+                Id = userProjection.Id,
+                Email = userProjection.Email,
+                FirstName = userProjection.FirstName,
+                LastName = userProjection.LastName
             };
 
             var accessToken = _jwtService.GenerateAccessToken(dummyUserForJwt, userProjection.RoleNames); // Use all roles for JWT claims
@@ -94,7 +96,7 @@ namespace IdentityService.Features.Auth.Login
                 Id: userProjection.Id,
                 Email: userProjection.Email,
                 Phone: userProjection.PhoneNumber,
-                Name: userProjection.FullName,
+                Name: $"{userProjection.FirstName} {userProjection.LastName}",
                 Roles: userProjection.RoleNames,
                 CreatedAt: userProjection.CreatedAt,
                 UpdatedAt: userProjection.CreatedAt, // Binding UpdatedAt to CreatedAt

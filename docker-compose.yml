@@ -61,7 +61,8 @@ services:
 
       AdminSeed__Email: ${AdminSeed__Email}
       AdminSeed__Password: ${AdminSeed__Password}
-      AdminSeed__FullName: ${AdminSeed__FullName}
+      AdminSeed__FirstName: ${AdminSeed__FirstName}
+      AdminSeed__LastName: ${AdminSeed__LastName}
       AdminSeed__PhoneNumber: ${AdminSeed__PhoneNumber}
 
       # NOTE: no RabbitMQ__* variables are passed - the application references
@@ -78,6 +79,33 @@ services:
       redis:
         condition: service_healthy
 
+      sqlserver:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  catalogservice:
+    image: rahmaax/flowerapp-catalog-service:${CATALOG_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/CatalogService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${CATALOG_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__CatalogDatabase: Server=${SQL_SERVER};Database=${CATALOG_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      # Same signing key/issuer/audience as identityservice - Catalog validates
+      # tokens Identity issues, it never issues its own.
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+    depends_on:
       sqlserver:
         condition: service_healthy
 

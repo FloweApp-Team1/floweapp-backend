@@ -44,7 +44,8 @@ namespace IdentityService.Features.Auth.Register
             var customer = new Customer
             {
                 Id = Guid.NewGuid(),
-                FullName = request.FullName,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
                 Email = request.Email,
                 PhoneNumber = request.Phone,
                 Gender = request.Gender,
@@ -82,7 +83,7 @@ namespace IdentityService.Features.Auth.Register
                 User = new UserDto
                 {
                     Id = customer.Id,
-                    Name = customer.FullName,
+                    Name = $"{customer.FirstName} {customer.LastName}",
                     Email = customer.Email,
                     Phone = customer.PhoneNumber,
                     Gender = customer.Gender.ToString(),

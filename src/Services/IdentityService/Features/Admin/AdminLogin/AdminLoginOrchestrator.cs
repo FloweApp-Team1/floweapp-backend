@@ -80,7 +80,8 @@ namespace IdentityService.Features.Admin.AdminLogin
 
             var userProfile = new UserProfileDto(
                 user.Id,
-                user.FullName,
+                user.FirstName,
+                user.LastName,
                 user.Email,
                 roleNames
             );
