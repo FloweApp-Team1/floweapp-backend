@@ -1,6 +1,6 @@
-﻿using IdentityService.Common.Contracts;
-using IdentityService.Common.Extensions;
-using IdentityService.Common.Security;
+﻿using Shared.Contracts;
+using Shared.Extensions;
+using Shared.Security;
 using IdentityService.Features.Admin.AdminLogin.Dtos;
 using MediatR;
 

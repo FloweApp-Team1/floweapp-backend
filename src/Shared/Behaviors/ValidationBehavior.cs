@@ -1,7 +1,7 @@
 using FluentValidation;
 using MediatR;
 
-namespace IdentityService.Common.Behaviors
+namespace Shared.Behaviors
 {
     
     public sealed class ValidationBehavior<TRequest, TResponse>

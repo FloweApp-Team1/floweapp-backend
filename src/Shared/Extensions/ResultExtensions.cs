@@ -1,7 +1,7 @@
-using IdentityService.Common.Responses;
-using IdentityService.Common.Results;
+using Shared.Responses;
+using Shared.Results;
 
-namespace IdentityService.Common.Extensions
+namespace Shared.Extensions
 {
     public static class ResultExtensions
     {

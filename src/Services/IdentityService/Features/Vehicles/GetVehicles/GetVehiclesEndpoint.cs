@@ -1,6 +1,6 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Requests;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Requests;
+using Shared.Responses;
 
 namespace IdentityService.Features.Vehicles.GetVehicles;
 

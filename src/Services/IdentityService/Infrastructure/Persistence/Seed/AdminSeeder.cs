@@ -1,5 +1,5 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Security;
+using Shared.Contracts;
+using Shared.Security;
 using IdentityService.Domain.Entities;
 using IdentityService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;

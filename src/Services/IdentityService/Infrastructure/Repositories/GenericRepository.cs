@@ -1,8 +1,9 @@
-﻿using IdentityService.Common.Interfaces;
+﻿using Shared.Interfaces;
 using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
+using Shared.Domain;
 namespace IdentityService.Infrastructure.Repositories
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity

@@ -1,4 +1,4 @@
-﻿using global::IdentityService.Common.Responses;
+﻿using global::Shared.Responses;
 using MediatR;
 
 namespace IdentityService.Features.Auth.VerifyOtp

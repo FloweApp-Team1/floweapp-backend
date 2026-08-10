@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
-namespace IdentityService.Common.Security
+namespace Shared.Security
 {
     public class DriverApprovedRequirement : IAuthorizationRequirement { }
 }

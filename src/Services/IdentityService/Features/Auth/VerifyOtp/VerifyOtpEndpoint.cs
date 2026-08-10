@@ -1,5 +1,5 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Responses;
 using MediatR;
 
 namespace IdentityService.Features.Auth.VerifyOtp;

@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Common.Interfaces
+﻿namespace Shared.Interfaces
 {
     public interface IImageService
     {

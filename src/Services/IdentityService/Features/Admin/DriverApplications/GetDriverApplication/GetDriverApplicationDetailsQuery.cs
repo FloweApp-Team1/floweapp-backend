@@ -1,5 +1,5 @@
-﻿using IdentityService.Common.Models;
-using IdentityService.Common.Results;
+﻿using Shared.Models;
+using Shared.Results;
 using IdentityService.Features.Admin.DriverApplications.GetDriverApplication.Dtos;
 using MediatR;
 

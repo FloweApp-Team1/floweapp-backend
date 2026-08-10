@@ -1,4 +1,5 @@
 ﻿using IdentityService.Common.Contracts;
+using Shared.Contracts;
 using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 

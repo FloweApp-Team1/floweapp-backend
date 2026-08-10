@@ -1,6 +1,6 @@
-﻿using IdentityService.Common.Interfaces;
-using IdentityService.Common.Models;
-using IdentityService.Common.Results;
+﻿using Shared.Interfaces;
+using Shared.Models;
+using Shared.Results;
 using MediatR;
 using RefreshTokenEntity = IdentityService.Domain.Entities.RefreshToken;
 

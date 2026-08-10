@@ -1,4 +1,4 @@
-﻿using IdentityService.Common.Contracts;
+﻿using Shared.Contracts;
 using StackExchange.Redis;
 using System.Text.Json;
 

@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Common.Security
+﻿namespace Shared.Security
 {
 
         public static class AppPolicies

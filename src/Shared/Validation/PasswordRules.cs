@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace IdentityService.Common.Validation
+namespace Shared.Validation
 {
     public static class PasswordRules
     {

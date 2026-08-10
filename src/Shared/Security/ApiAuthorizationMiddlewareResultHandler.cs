@@ -1,8 +1,8 @@
-using IdentityService.Common.Responses;
+using Shared.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 
-namespace IdentityService.Common.Security
+namespace Shared.Security
 {
     // The single IAuthorizationMiddlewareResultHandler: renders 401/403 in the same
     // ApiResponse envelope as every other failure, and audits the denial.

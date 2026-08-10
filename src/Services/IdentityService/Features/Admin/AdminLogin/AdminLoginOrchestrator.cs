@@ -1,9 +1,10 @@
 using IdentityService.Common;
-using IdentityService.Common.Contracts;
+using Shared.Contracts;
 using IdentityService.Common.Interfaces;
-using IdentityService.Common.Results;
-using IdentityService.Common.Security;
-using IdentityService.Common.Settings;
+using Shared.Interfaces;
+using Shared.Results;
+using Shared.Security;
+using Shared.Settings;
 using IdentityService.Features.Admin.AdminLogin.Commands;
 using IdentityService.Features.Admin.AdminLogin.Dtos;
 using IdentityService.Features.Admin.AdminLogin.Queries;

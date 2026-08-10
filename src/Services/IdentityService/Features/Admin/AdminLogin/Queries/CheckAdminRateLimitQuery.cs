@@ -1,5 +1,5 @@
-using IdentityService.Common.Interfaces;
-using IdentityService.Common.Results;
+using Shared.Interfaces;
+using Shared.Results;
 using IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

@@ -1,4 +1,4 @@
-namespace IdentityService.Common.Responses
+namespace Shared.Responses
 {
     // The "pagination" block returned alongside a paged list. The list items go in
     // "data"; this carries only the paging metadata.

@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Common.Contracts
+﻿namespace Shared.Contracts
 {
     public interface IEndpoint
     {

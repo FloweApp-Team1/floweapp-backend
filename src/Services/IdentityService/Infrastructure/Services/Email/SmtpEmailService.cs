@@ -1,6 +1,6 @@
 ﻿namespace IdentityService.Infrastructure.Services.Email
 {
-    using global::IdentityService.Common.Contracts;
+    using global::Shared.Contracts;
     using MailKit.Net.Smtp;
     using MailKit.Security;
     using Microsoft.Extensions.Options;

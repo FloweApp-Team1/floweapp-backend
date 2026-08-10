@@ -1,4 +1,5 @@
-﻿using global::IdentityService.Common.Contracts;
+﻿using global::Shared.Contracts;
+using global::IdentityService.Common.Contracts;
 using IdentityService.Infrastructure.Services.OTP.Models;
 using System.Security.Cryptography;
 

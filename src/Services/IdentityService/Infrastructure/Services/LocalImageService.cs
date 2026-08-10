@@ -1,4 +1,4 @@
-﻿using IdentityService.Common.Interfaces;
+﻿using Shared.Interfaces;
 
 namespace IdentityService.Infrastructure.Services
 {

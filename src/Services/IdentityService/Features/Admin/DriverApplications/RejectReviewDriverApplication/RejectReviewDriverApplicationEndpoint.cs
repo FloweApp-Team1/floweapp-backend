@@ -1,5 +1,5 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Responses;
 using IdentityService.Features.Admin.DriverApplications.RejectReviewDriverApplication.Dtos_VM;
 using IdentityService.Features.Admin.DriverApplications.ReviewDriverApplication;
 using MediatR;

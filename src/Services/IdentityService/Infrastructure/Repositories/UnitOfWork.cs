@@ -1,7 +1,8 @@
-﻿using IdentityService.Common.Interfaces;
+﻿using Shared.Interfaces;
 using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore.Storage;
 
+using Shared.Domain;
 namespace IdentityService.Infrastructure.Repositories
 {
     public class UnitOfWork : IUnitOfWork

@@ -1,7 +1,7 @@
-using IdentityService.Common.Requests;
+using Shared.Requests;
 using Microsoft.AspNetCore.Http;
 
-namespace IdentityService.Common.Responses
+namespace Shared.Responses
 {
     // Unified envelope every endpoint returns. Shape is stable across success and
     // failure so the frontend can rely on the same five/six fields every time.

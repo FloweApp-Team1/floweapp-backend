@@ -1,7 +1,7 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Security;
-using IdentityService.Common.Requests;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Security;
+using Shared.Requests;
+using Shared.Responses;
 using IdentityService.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

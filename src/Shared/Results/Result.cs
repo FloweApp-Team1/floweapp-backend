@@ -1,4 +1,4 @@
-namespace IdentityService.Common.Results
+namespace Shared.Results
 {
     // The single Result type for the service. It carries a structured Error so
     // ResultExtensions can map a failure onto the right HTTP status code, and it

@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Domain.Entities
+﻿namespace Shared.Domain
 {
     public class BaseEntity
     {

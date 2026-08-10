@@ -1,4 +1,4 @@
-﻿using global::IdentityService.Common.Contracts;
+﻿using global::Shared.Contracts;
 using System.Security.Cryptography;
 
 namespace IdentityService.Infrastructure.Services.OTP

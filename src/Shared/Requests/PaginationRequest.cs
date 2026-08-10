@@ -1,4 +1,4 @@
-namespace IdentityService.Common.Requests
+namespace Shared.Requests
 {
     // Incoming paging query. Bind with [AsParameters] to capture ?page=&pageSize=.
     // Values are clamped so callers can't ask for page 0 or an unbounded page size.

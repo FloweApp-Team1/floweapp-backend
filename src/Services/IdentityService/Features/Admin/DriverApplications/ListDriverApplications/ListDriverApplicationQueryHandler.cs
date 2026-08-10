@@ -1,7 +1,7 @@
-﻿using IdentityService.Common.Interfaces;
-using IdentityService.Common.Models;
-using IdentityService.Common.Results;
-using IdentityService.Common.Responses;
+﻿using Shared.Interfaces;
+using Shared.Models;
+using Shared.Results;
+using Shared.Responses;
 using IdentityService.Domain.Entities;
 using IdentityService.Features.Admin.DriverApplications.ListDriverApplications.Dtos;
 using MediatR;

@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Common.Models
+﻿namespace Shared.Models
 {
     public record SessionDto(
         Guid Id,

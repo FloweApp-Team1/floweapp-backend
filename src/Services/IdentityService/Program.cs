@@ -1,5 +1,5 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Extensions;
+using Shared.Contracts;
+using Shared.Extensions;
 using IdentityService.Infrastructure;
 using IdentityService.Infrastructure.Persistence.Seed;
 using Microsoft.AspNetCore.HttpOverrides;

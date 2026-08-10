@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Common.Settings
+﻿namespace Shared.Settings
 {
 
     public class JwtSettings
