@@ -28,7 +28,6 @@ namespace IdentityService.Features.Auth.Login
         public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
             var email = request.Request.Email;
-            // var expectedRole = MapAppTypeToRole(request.AppType);
 
             var userProjection = await _unitOfWork.Repository<User>().Query()
                 .AsNoTracking()
@@ -60,15 +59,6 @@ namespace IdentityService.Features.Auth.Login
                 return Result<AuthResponse>.Failure("Invalid email or password");
             }
 
-            /*
-            if (!userProjection!.RoleNames.Contains(expectedRole, StringComparer.OrdinalIgnoreCase))
-            {
-                await RecordLoginAttemptAsync(email, false, request.IpAddress, cancellationToken);
-                //403 Forbidden.
-                return Result<AuthResponse>.Failure("RoleAuthorizationFailed: Unauthorized access for this app type");
-            }
-            */
-
 
             await _unitOfWork.Repository<User>().Query()
                 .Where(u => u.Id == userProjection.Id)
@@ -84,10 +74,6 @@ namespace IdentityService.Features.Auth.Login
             var accessToken = _jwtService.GenerateAccessToken(dummyUserForJwt, userProjection.RoleNames); // Use all roles for JWT claims
             var refreshTokenValue = _jwtService.GenerateRefreshTokenValue();
             
-            // Must use the same hashing as IJwtService: /auth/refresh-token looks the
-            // token up by its hex-encoded SHA-256. Hashing it locally to base64 here
-            // produced a value that lookup could never match, so every refresh of a
-            // token issued by /auth/login failed with "Invalid refresh token".
             var hashedToken = _jwtService.HashRefreshTokenValue(refreshTokenValue);
 
             var refreshTokenEntity = new IdentityService.Domain.Entities.RefreshToken
@@ -119,17 +105,6 @@ namespace IdentityService.Features.Auth.Login
             var response = new AuthResponse(userDto, accessToken, refreshTokenValue);
             return Result<AuthResponse>.Success(response);
         }
-
-        /*
-        private string MapAppTypeToRole(string appType)
-        {
-            //mapping
-            if (appType.Equals("Customer", StringComparison.OrdinalIgnoreCase)) return "Customer";
-            if (appType.Equals("Driver", StringComparison.OrdinalIgnoreCase)) return "Driver";
-
-            return appType;
-        }
-        */
 
         private async Task RecordLoginAttemptAsync(string email, bool isSuccess, string? ipAddress, CancellationToken cancellationToken)
         {
