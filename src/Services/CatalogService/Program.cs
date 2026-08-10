@@ -17,6 +17,7 @@ namespace CatalogService
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            builder.Services.AddApplicationServices();
             builder.Services.AddInfrastructureServices(builder.Configuration);
             builder.Services.AddJwtAuthentication(builder.Configuration);
 

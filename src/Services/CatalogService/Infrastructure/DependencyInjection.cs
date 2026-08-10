@@ -1,19 +1,35 @@
 using CatalogService.Infrastructure.Persistence;
 using CatalogService.Infrastructure.Repositories;
 using CatalogService.Infrastructure.Services;
+using Shared.Behaviors;
 using Shared.Interfaces;
 using Shared.Security;
 using Shared.Settings;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Reflection;
 using System.Text;
 
 namespace CatalogService.Infrastructure
 {
     public static class DependencyInjection
     {
+        private static readonly Assembly ApplicationAssembly = typeof(DependencyInjection).Assembly;
+
+        public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+        {
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(ApplicationAssembly));
+
+            services.AddValidatorsFromAssembly(ApplicationAssembly);
+            services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+            return services;
+        }
+
         public static IServiceCollection AddInfrastructureServices(
             this IServiceCollection services,
             IConfiguration configuration)
