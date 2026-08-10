@@ -1,7 +1,8 @@
-using IdentityService.Common.Contracts;
+using Shared.Contracts;
 using IdentityService.Common.Interfaces;
-using IdentityService.Common.Models;
-using IdentityService.Common.Results;
+using Shared.Interfaces;
+using Shared.Models;
+using Shared.Results;
 using IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

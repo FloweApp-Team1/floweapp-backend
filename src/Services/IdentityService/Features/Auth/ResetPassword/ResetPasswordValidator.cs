@@ -1,5 +1,5 @@
 using FluentValidation;
-using IdentityService.Common.Validation;
+using Shared.Validation;
 
 namespace IdentityService.Features.Auth.ResetPassword
 {

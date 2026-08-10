@@ -1,4 +1,4 @@
-using IdentityService.Common.Contracts;
+using Shared.Contracts;
 using MediatR;
 
 namespace IdentityService.Features.Auth.ResetPassword;

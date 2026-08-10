@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace IdentityService.Common.Models
+namespace Shared.Models
 {
 
     public record TokenResponse(

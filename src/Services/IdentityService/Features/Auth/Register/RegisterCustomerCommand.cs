@@ -1,4 +1,4 @@
-﻿using IdentityService.Common.Responses;
+﻿using Shared.Responses;
 using IdentityService.Domain.Enums;
 using MediatR;
 

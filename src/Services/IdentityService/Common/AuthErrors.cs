@@ -1,4 +1,4 @@
-﻿using IdentityService.Common.Results;
+﻿using Shared.Results;
 namespace IdentityService.Common
 {
         public static class AuthErrors

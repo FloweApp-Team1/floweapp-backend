@@ -1,7 +1,7 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Models;
-using IdentityService.Common.Results;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Models;
+using Shared.Results;
+using Shared.Responses;
 using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication;
 using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication.Dtos_VM;
 using IdentityService.Features.Admin.DriverApplications.RejectReviewDriverApplication.Dtos_VM;

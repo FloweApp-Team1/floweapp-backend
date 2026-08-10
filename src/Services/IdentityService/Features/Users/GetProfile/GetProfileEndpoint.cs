@@ -1,5 +1,5 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Responses;
 
 namespace IdentityService.Features.Users.GetProfile;
 

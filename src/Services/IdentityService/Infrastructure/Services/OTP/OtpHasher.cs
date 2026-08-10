@@ -1,4 +1,4 @@
-﻿using IdentityService.Common.Contracts;
+﻿using Shared.Contracts;
 using System.Security.Cryptography;
 using System.Text;
 

@@ -1,6 +1,6 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Extensions;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Extensions;
+using Shared.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

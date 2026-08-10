@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
 
-namespace IdentityService.Common.Security
+namespace Shared.Security
 {
     // Distinguishes "wrong role" from "right role, not approved yet" so the
     // result handler below can return a different message for each (criteria 4).

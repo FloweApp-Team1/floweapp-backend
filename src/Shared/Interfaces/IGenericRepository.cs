@@ -1,7 +1,7 @@
-﻿using IdentityService.Domain.Entities;
+﻿using Shared.Domain;
 using System.Linq.Expressions;
 
-namespace IdentityService.Common.Interfaces
+namespace Shared.Interfaces
 {
     public interface IGenericRepository<T> where T : BaseEntity
     {

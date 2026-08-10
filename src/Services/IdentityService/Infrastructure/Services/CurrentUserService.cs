@@ -1,4 +1,4 @@
-﻿using IdentityService.Common.Interfaces;
+﻿using Shared.Interfaces;
 using System.Net.NetworkInformation;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;

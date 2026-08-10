@@ -1,8 +1,8 @@
 using FluentValidation;
-using IdentityService.Common.Responses;
+using Shared.Responses;
 using Microsoft.AspNetCore.Diagnostics;
 
-namespace IdentityService.Common.Handlers
+namespace Shared.Handlers
 {
     // Catches anything that escapes an endpoint and writes it back as the unified
     // ApiResponse envelope, so clients never see a raw stack trace or ProblemDetails.

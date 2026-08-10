@@ -1,9 +1,9 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Extensions;
-using IdentityService.Common.Interfaces;
-using IdentityService.Common.Models;
-using IdentityService.Common.Results;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Extensions;
+using Shared.Interfaces;
+using Shared.Models;
+using Shared.Results;
+using Shared.Responses;
 using IdentityService.Features.Auth.Sessions.Commends;
 using IdentityService.Features.Auth.Sessions.Queries;
 using MediatR;

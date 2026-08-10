@@ -5,7 +5,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using System;
 using System.ComponentModel;
 
-namespace IdentityService.Common.Swagger
+namespace Shared.Swagger
 {
     public class EnumParameterFilter : IParameterFilter
     {

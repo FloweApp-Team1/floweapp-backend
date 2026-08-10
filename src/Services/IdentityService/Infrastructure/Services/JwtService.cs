@@ -1,6 +1,7 @@
-﻿using IdentityService.Common.Security;
+﻿using Shared.Security;
 using IdentityService.Common.Interfaces;
-using IdentityService.Common.Settings;
+using Shared.Interfaces;
+using Shared.Settings;
 using IdentityService.Domain.Entities;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;

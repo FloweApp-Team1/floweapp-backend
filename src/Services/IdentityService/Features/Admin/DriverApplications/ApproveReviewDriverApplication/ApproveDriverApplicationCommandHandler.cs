@@ -1,6 +1,6 @@
-﻿using IdentityService.Common.Interfaces;
-using IdentityService.Common.Results;
-using IdentityService.Common.Security;
+﻿using Shared.Interfaces;
+using Shared.Results;
+using Shared.Security;
 using IdentityService.Domain.Entities;
 using IdentityService.Domain.Enums;
 using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication.Dtos_VM;

@@ -1,7 +1,7 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Extensions;
-using IdentityService.Common.Interfaces;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Extensions;
+using Shared.Interfaces;
+using Shared.Responses;
 using MediatR;
 
 namespace IdentityService.Features.Users.ChangePassword

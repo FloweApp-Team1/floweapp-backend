@@ -1,5 +1,5 @@
-﻿using IdentityService.Common.Models;
-using IdentityService.Common.Results;
+﻿using Shared.Models;
+using Shared.Results;
 using IdentityService.Domain.Enums;
 using IdentityService.Features.Drivers.Dtos_VM;
 using MediatR;

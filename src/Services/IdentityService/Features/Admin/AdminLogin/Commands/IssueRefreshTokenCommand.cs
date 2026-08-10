@@ -1,6 +1,7 @@
 using IdentityService.Common.Interfaces;
-using IdentityService.Common.Results;
-using IdentityService.Common.Settings;
+using Shared.Interfaces;
+using Shared.Results;
+using Shared.Settings;
 using IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Options;

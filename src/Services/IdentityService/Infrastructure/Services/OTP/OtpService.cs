@@ -1,4 +1,5 @@
 ﻿using IdentityService.Common.Contracts;
+using Shared.Contracts;
 using IdentityService.Infrastructure.Services.OTP.Models;
 
 namespace IdentityService.Infrastructure.Services.OTP

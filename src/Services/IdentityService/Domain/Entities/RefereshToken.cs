@@ -2,6 +2,7 @@
 
 using System.ComponentModel.DataAnnotations.Schema;
 
+using Shared.Domain;
 namespace IdentityService.Domain.Entities
     {
     public class RefreshToken : BaseEntity

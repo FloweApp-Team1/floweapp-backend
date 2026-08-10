@@ -13,6 +13,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/Services/IdentityService/IdentityService.csproj", "src/Services/IdentityService/"]
+COPY ["src/Shared/Shared.csproj", "src/Shared/"]
 RUN dotnet restore "./src/Services/IdentityService/IdentityService.csproj"
 COPY . .
 WORKDIR "/src/src/Services/IdentityService"

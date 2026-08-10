@@ -1,7 +1,7 @@
-﻿using IdentityService.Common.Models;
-using IdentityService.Common.Results;
-using IdentityService.Common.Requests;
-using IdentityService.Common.Responses;
+﻿using Shared.Models;
+using Shared.Results;
+using Shared.Requests;
+using Shared.Responses;
 using IdentityService.Domain.Entities;
 using IdentityService.Domain.Enums;
 using IdentityService.Features.Admin.DriverApplications.ListDriverApplications.Dtos;

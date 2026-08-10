@@ -1,6 +1,6 @@
-﻿using IdentityService.Domain.Entities;
+﻿using Shared.Domain;
 
-namespace IdentityService.Common.Interfaces
+namespace Shared.Interfaces
 {
     public interface IUnitOfWork
     {

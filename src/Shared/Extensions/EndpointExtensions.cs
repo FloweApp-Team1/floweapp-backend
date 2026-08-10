@@ -1,8 +1,8 @@
-﻿using IdentityService.Common.Contracts;
+﻿using Shared.Contracts;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 
-namespace IdentityService.Common.Extensions
+namespace Shared.Extensions
 {
     public static class EndpointExtensions
     {

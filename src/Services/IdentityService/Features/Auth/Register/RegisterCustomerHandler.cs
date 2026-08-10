@@ -1,9 +1,10 @@
 ﻿using FluentValidation;
-using IdentityService.Common.Contracts;
+using Shared.Contracts;
 using IdentityService.Common.Interfaces;
-using IdentityService.Common.Responses;
-using IdentityService.Common.Security;
-using IdentityService.Common.Settings;
+using Shared.Interfaces;
+using Shared.Responses;
+using Shared.Security;
+using Shared.Settings;
 using IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Options;

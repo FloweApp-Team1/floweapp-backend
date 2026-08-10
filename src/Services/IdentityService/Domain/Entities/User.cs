@@ -1,5 +1,6 @@
 using IdentityService.Domain.Enums;
 
+using Shared.Domain;
 namespace IdentityService.Domain.Entities
 {
     public class User : BaseEntity

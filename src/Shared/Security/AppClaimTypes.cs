@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace IdentityService.Common.Security
+namespace Shared.Security
 {
 
     public static class AppClaimTypes

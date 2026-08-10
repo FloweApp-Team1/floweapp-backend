@@ -1,6 +1,6 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Security;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Security;
+using Shared.Responses;
 using IdentityService.Features.Admin.DriverApplications.GetDriverApplication.Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
