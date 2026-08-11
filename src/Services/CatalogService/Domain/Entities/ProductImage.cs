@@ -2,7 +2,7 @@ using Shared.Domain;
 
 namespace CatalogService.Domain.Entities
 {
-    public class ProductImage : BaseEntity
+    public class ProductImage : CatalogBaseEntity
     {
         public string ImageUrl { get; set; } = null!;
         public bool IsPrimary { get; set; }

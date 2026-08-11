@@ -2,13 +2,12 @@ using Shared.Domain;
 
 namespace CatalogService.Domain.Entities
 {
-    public class Product : BaseEntity
+    public class Product : CatalogBaseEntity
     {
         public string Name { get; set; } = null!;
         public string Description { get; set; } = null!;
         public decimal Price { get; set; }
         public int StockQuantity { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public Guid CategoryId { get; set; }
         public Category Category { get; set; } = null!;
