@@ -13,13 +13,13 @@ public class LoginEndpoint : IEndpoint
         app.MapPost("/auth/login", async (
                 [FromBody] LoginRequest request,
                 HttpContext httpContext,
-                IMediator mediator,
+                ISender sender,
                 CancellationToken cancellationToken) =>
             {
 
                 var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
-                var command = new LoginCommand(request, /* appType, */ ipAddress);
-                var result = await mediator.Send(command, cancellationToken);
+                var command = new LoginCommand(request, ipAddress);
+                var result = await sender.Send(command, cancellationToken);
 
                 if (result.IsFailure)
                 {
