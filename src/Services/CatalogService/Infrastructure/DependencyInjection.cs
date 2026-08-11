@@ -2,6 +2,7 @@ using CatalogService.Infrastructure.Persistence;
 using CatalogService.Infrastructure.Repositories;
 using CatalogService.Infrastructure.Services;
 using Shared.Behaviors;
+using Shared.Extensions;
 using Shared.Interfaces;
 using Shared.Security;
 using Shared.Settings;
@@ -26,6 +27,9 @@ namespace CatalogService.Infrastructure
 
             services.AddValidatorsFromAssembly(ApplicationAssembly);
             services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+            // Registers every IEndpoint implementation; MapEndpoints() maps them.
+            services.AddEndpoints(ApplicationAssembly);
 
             return services;
         }

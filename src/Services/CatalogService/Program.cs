@@ -1,4 +1,5 @@
 using CatalogService.Infrastructure;
+using Shared.Extensions;
 
 namespace CatalogService
 {
@@ -37,6 +38,7 @@ namespace CatalogService
 
 
             app.MapControllers();
+            app.MapEndpoints();
 
             app.Run();
         }
