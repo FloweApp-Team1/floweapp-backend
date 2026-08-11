@@ -1,5 +1,4 @@
 using CatalogService.Domain.Entities;
-using CatalogService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -20,15 +19,10 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
             builder.Property(x => x.IconUrl)
                 .HasMaxLength(2048);
 
-            // Default keeps rows created before this column existed visible in the bar.
-            builder.Property(c => c.ActiveStatus)
-                .HasConversion<string>()
-                .HasDefaultValue(ActiveStatus.Active);
-
             builder.HasIndex(x => x.Name);
 
-            // Serves GET /categories: active only, ordered by DisplayOrder.
-            builder.HasIndex(x => new { x.ActiveStatus, x.DisplayOrder });
+            // Serves GET /categories: the !IsDeleted query filter plus the DisplayOrder sort.
+            builder.HasIndex(x => new { x.IsDeleted, x.DisplayOrder });
         }
     }
 }
