@@ -1,11 +1,14 @@
 using CatalogService.Infrastructure;
+using CatalogService.Infrastructure.Persistence;
+using CatalogService.Infrastructure.Persistence.Seed;
+using Microsoft.EntityFrameworkCore;
 using Shared.Extensions;
 
 namespace CatalogService
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             DotNetEnv.Env.TraversePath().Load();
 
@@ -39,6 +42,18 @@ namespace CatalogService
 
             app.MapControllers();
             app.MapEndpoints();
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+
+                await context.Database.MigrateAsync();
+
+                // Sample catalog is development-only - production data comes from
+                // the Admin endpoints.
+                if (app.Environment.IsDevelopment())
+                    await CatalogSeeder.SeedAsync(context);
+            }
 
             app.Run();
         }
