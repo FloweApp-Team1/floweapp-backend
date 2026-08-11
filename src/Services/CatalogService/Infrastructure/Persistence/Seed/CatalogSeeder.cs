@@ -1,5 +1,4 @@
 using CatalogService.Domain.Entities;
-using CatalogService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatalogService.Infrastructure.Persistence.Seed
@@ -21,18 +20,18 @@ namespace CatalogService.Infrastructure.Persistence.Seed
 
         private static readonly CategorySeed[] CategorySeeds =
         [
-            new("11111111-1111-1111-1111-000000000001", "Roses",         1, ActiveStatus.Active),
-            new("11111111-1111-1111-1111-000000000002", "Tulips",        2, ActiveStatus.Active),
-            new("11111111-1111-1111-1111-000000000003", "Lilies",        3, ActiveStatus.Active),
-            new("11111111-1111-1111-1111-000000000004", "Orchids",       4, ActiveStatus.Active),
-            new("11111111-1111-1111-1111-000000000005", "Sunflowers",    5, ActiveStatus.Active),
-            new("11111111-1111-1111-1111-000000000006", "Bouquets",      6, ActiveStatus.Active),
+            new("11111111-1111-1111-1111-000000000001", "Roses",         1, false),
+            new("11111111-1111-1111-1111-000000000002", "Tulips",        2, false),
+            new("11111111-1111-1111-1111-000000000003", "Lilies",        3, false),
+            new("11111111-1111-1111-1111-000000000004", "Orchids",       4, false),
+            new("11111111-1111-1111-1111-000000000005", "Sunflowers",    5, false),
+            new("11111111-1111-1111-1111-000000000006", "Bouquets",      6, false),
             // Intentionally left without products: exercises the "200 + empty array"
             // case for GET /products?categoryId=.
-            new("11111111-1111-1111-1111-000000000007", "Plants",        7, ActiveStatus.Active),
+            new("11111111-1111-1111-1111-000000000007", "Plants",        7, false),
             // Archived: must not appear in GET /categories, but a deep link to this
             // id has to render "no longer available" rather than crash.
-            new("11111111-1111-1111-1111-000000000008", "Dried Flowers", 8, ActiveStatus.Archived),
+            new("11111111-1111-1111-1111-000000000008", "Dried Flowers", 8, true),
         ];
 
         private static async Task<Dictionary<string, Category>> SeedCategoriesAsync(
@@ -54,7 +53,7 @@ namespace CatalogService.Infrastructure.Persistence.Seed
                     Name = seed.Name,
                     IconUrl = Placeholder(seed.Name, 200),
                     DisplayOrder = seed.DisplayOrder,
-                    ActiveStatus = seed.ActiveStatus,
+                    IsDeleted = seed.IsDeleted,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -216,7 +215,7 @@ namespace CatalogService.Infrastructure.Persistence.Seed
         private static string Placeholder(string name, int size) =>
             $"https://picsum.photos/seed/{Uri.EscapeDataString(name.ToLowerInvariant().Replace(' ', '-'))}/{size}/{size}";
 
-        private sealed record CategorySeed(string Id, string Name, int DisplayOrder, ActiveStatus ActiveStatus);
+        private sealed record CategorySeed(string Id, string Name, int DisplayOrder, bool IsDeleted);
 
         private sealed record OccasionSeed(string Id, string Name, int DisplayOrder);
 
