@@ -20,6 +20,9 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
                 .HasMaxLength(2048);
 
             builder.HasIndex(x => x.Name);
+
+            // Serves GET /categories: the !IsDeleted query filter plus the DisplayOrder sort.
+            builder.HasIndex(x => new { x.IsDeleted, x.DisplayOrder });
         }
     }
 }
