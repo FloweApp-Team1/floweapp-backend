@@ -41,7 +41,6 @@ public class UpdateProfileCommandHandler(
         user.UpdateProfile(
           request.FirstName,
           request.LastName,
-          request.Email,
           request.PhoneNumber,
           request.Gender,
           request.ProfilePictureUrl);
@@ -53,10 +52,10 @@ public class UpdateProfileCommandHandler(
 
         }
         catch (DbUpdateException ex) when (
-            ex.InnerException?.Message.Contains("IX_Users_Email") == true || ex.InnerException?.Message.Contains("IX_Users_PhoneNumber") == true)
+            ex.InnerException?.Message.Contains("IX_Users_PhoneNumber") == true)
         {
             return Result<UpdateProfileResponse>
-                .Failure(Error.New("Users.Conflict", "Email or Phone number already exists"));
+                .Failure(Error.New("Users.Conflict", "Phone number already exists"));
         }
 
         return Result<UpdateProfileResponse>
