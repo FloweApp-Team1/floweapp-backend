@@ -1,5 +1,3 @@
-name: floweapp
-
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -99,8 +97,6 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ConnectionStrings__CatalogDatabase: Server=${SQL_SERVER};Database=${CATALOG_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
 
-      # Same signing key/issuer/audience as identityservice - Catalog validates
-      # tokens Identity issues, it never issues its own.
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
