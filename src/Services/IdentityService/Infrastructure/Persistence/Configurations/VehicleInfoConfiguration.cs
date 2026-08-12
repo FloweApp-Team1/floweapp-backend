@@ -11,7 +11,11 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
             builder.ToTable("VehicleInfos");
             builder.Property(e => e.PlateNumber).IsRequired();
             builder.Property(e => e.Capacity).IsRequired();
-            builder.Property(e => e.Type).IsRequired();
+
+            builder.HasOne(v => v.VehicleType)
+            .WithMany(vt => vt.Vehicles)
+            .HasForeignKey(v => v.VehicleTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(e => e.Delivery)
                 .WithOne(d => d.VehicleInfo)

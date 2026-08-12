@@ -48,7 +48,15 @@ namespace IdentityService.Features.Admin.DriverApplications.ReviewDriverApplicat
                     "Reject reason cannot be empty.");
             }
 
-          
+            var IsExists = await _repository.AnyAsync(
+                x => x.Id == request.ApplicationId,
+                cancellationToken);
+            if (!IsExists)
+            {
+                return Result<RejectReviewDriverApplicationDto>.Failure(
+                    "Driver application not found, Invalid id.");
+            }
+
             var reviewedAt=DateTime.UtcNow;
 
             var affectedRows = await _repository

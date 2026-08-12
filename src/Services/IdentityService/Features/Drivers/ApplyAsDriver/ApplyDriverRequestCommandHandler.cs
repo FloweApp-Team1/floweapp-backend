@@ -26,10 +26,16 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
             var _repository = unitOfWork.Repository<DriverApplication>();
             var _userRepository = unitOfWork.Repository<User>();
             var email = request.Email.Trim().ToLower();
-            var IsExistingUser = await _userRepository.ExistsAsync(u => u.Email == email);
-            if (IsExistingUser)
+            var IsExistingUserEmail = await _userRepository.ExistsAsync(u => u.Email == email);
+            if (IsExistingUserEmail)
             {
                 return Result<ApplyDriverResponseDto>.Failure("User with this email already exists.");
+            }
+
+            var IsPhoneNumberExists = await _userRepository.ExistsAsync(d => d.PhoneNumber == request.Phone); 
+            if (IsPhoneNumberExists)
+            {
+                return Result<ApplyDriverResponseDto>.Failure("User with this phone number already exists.");
             }
 
             var userId=Guid.NewGuid();
@@ -41,20 +47,22 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
                 var deliveryApplication = new DriverApplication
                 {
                     Id = userId,
-                    Name = request.Name,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
                     Email = email,
                     Phone = request.Phone,
                     Gender = request.Gender,
                     PasswordHash = hashedPassword,
                     VehiclePlateNumber = request.VehiclePlateNumber,
-                    VehicleType = request.VehicleType,
+                    VehicleTypeId = request.VehicleTypeId,
                     VehicleCapacity = request.VehicleCapacity,
                     LicenceImageUrl = LicenseImg,
                     NationalId = request.Nid,
                     NationalIdImageUrl = NIImg,
                     Status = DeliveryStatusEnum.Pending,
-                    SubmittedAt = DateTime.UtcNow
-                    
+                    SubmittedAt = DateTime.UtcNow,
+                    FcmToken = request.FcmToken,
+
                 };
 
                 await _repository.AddAsync(deliveryApplication, cancellationToken);
@@ -63,7 +71,7 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
                 return Result<ApplyDriverResponseDto>.Success(new ApplyDriverResponseDto
                 {
                     Id = deliveryApplication.Id.ToString(),
-                    Name = deliveryApplication.Name,
+                    Name = $"{deliveryApplication.FirstName} {deliveryApplication.LastName}", 
                     Email = deliveryApplication.Email,
                     Phone = deliveryApplication.Phone,
                     Gender = deliveryApplication.Gender.ToString(),

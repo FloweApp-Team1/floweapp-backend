@@ -5,7 +5,10 @@ namespace IdentityService.Domain.Entities
 {
     public class VehicleInfo:BaseEntity
     {
-        public VehicleTypeEnum Type { get; set; }
+        // Vehicle Type
+        public Guid VehicleTypeId { get; set; }
+        public VehicleType VehicleType { get; set; } = null!;
+
         public string PlateNumber { get; set; } = null!;
         public int Capacity { get; set; } 
 

@@ -27,7 +27,7 @@ namespace IdentityService.Features.Admin.DriverApplications.GetDriverApplication
                 .Select(da => new DriverApplicationDetailsDto
                 {
                     Id = da.Id,
-                    Name = da.Name,
+                    Name = $"{da.FirstName} {da.LastName}",
                     Email = da.Email,
                     Phone = da.Phone,
                     Gender = da.Gender,
@@ -38,7 +38,7 @@ namespace IdentityService.Features.Admin.DriverApplications.GetDriverApplication
                     NidImageUrl= da.NationalIdImageUrl,
                     Status=da.Status,
                     SubmittedAt=da.SubmittedAt,
-                    VehicleType=da.VehicleType,
+                    VehicleType=da.VehicleType.Name,
                     
                 })
                 .FirstOrDefaultAsync(cancellationToken);

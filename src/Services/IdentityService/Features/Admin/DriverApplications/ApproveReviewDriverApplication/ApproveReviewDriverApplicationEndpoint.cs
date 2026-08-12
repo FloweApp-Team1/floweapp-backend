@@ -7,6 +7,7 @@ using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverAppli
 using IdentityService.Features.Admin.DriverApplications.RejectReviewDriverApplication.Dtos_VM;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Shared.Security;
 
 namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication;
 
@@ -33,7 +34,7 @@ public class ApproveReviewDriverApplicationEndpoint : IEndpoint
             return Results.BadRequest(ApiResponse<ApproveDriverApplicationVM>.Fail(result.Error.Message));
         })
             .WithTags("Admin")
-            .WithName("ApproveReviewDriverApplication");
-            //.RequireAuthorization("AdminOnly");
+            .WithName("ApproveReviewDriverApplication")
+            .RequireAuthorization(AppPolicies.AdminOnly);
     }
 }
