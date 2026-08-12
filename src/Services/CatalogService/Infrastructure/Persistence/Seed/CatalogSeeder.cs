@@ -13,6 +13,8 @@ namespace CatalogService.Infrastructure.Persistence.Seed
 
             await SeedProductsAsync(context, categories, occasions, ct);
 
+            await SeedHomeLayoutSectionsAsync(context, ct);
+
             await context.SaveChangesAsync(ct);
         }
 
@@ -226,5 +228,69 @@ namespace CatalogService.Infrastructure.Persistence.Seed
             int StockQuantity,
             string CategoryName,
             string[] OccasionNames);
+
+        // ---------- Home Layout Sections ----------
+
+        private static async Task SeedHomeLayoutSectionsAsync(CatalogDbContext context, CancellationToken ct)
+        {
+            var anyLayouts = await context.HomeLayoutSections.AnyAsync(ct);
+            if (anyLayouts)
+                return;
+
+            var bannerSection = new HomeLayoutSection
+            {
+                Id = Guid.NewGuid(),
+                title = "Spring Sale",
+                type = Domain.Enums.HomeSectionType.Banner,
+                order = 1,
+                isEnabled = true,
+                Payload = new BannerPayload
+                {
+                    ImageUrl = Placeholder("Spring Sale Banner", 1200),
+                    ClickAction = "flowerapp://promotions?id=spring"
+                }
+            };
+
+            var categorySection = new HomeLayoutSection
+            {
+                Id = Guid.NewGuid(),
+                title = "Categories",
+                type = Domain.Enums.HomeSectionType.CategoryRail,
+                order = 2,
+                isEnabled = true,
+                Payload = new CategoryRailPayload
+                {
+                    Count = 5
+                }
+            };
+
+            var bestSellerSection = new HomeLayoutSection
+            {
+                Id = Guid.NewGuid(),
+                title = "Best Sellers",
+                type = Domain.Enums.HomeSectionType.ProductRail,
+                order = 3,
+                isEnabled = true,
+                Payload = new ProductRailPayload
+                {
+                    Count = 5
+                }
+            };
+
+            var occasionSection = new HomeLayoutSection
+            {
+                Id = Guid.NewGuid(),
+                title = "Shop By Occasion",
+                type = Domain.Enums.HomeSectionType.OccasionRail,
+                order = 4,
+                isEnabled = true,
+                Payload = new OccasionRailPayload
+                {
+                    Count = 5
+                }
+            };
+
+            context.HomeLayoutSections.AddRange(bannerSection, categorySection, bestSellerSection, occasionSection);
+        }
     }
 }
