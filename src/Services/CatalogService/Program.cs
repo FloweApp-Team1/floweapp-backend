@@ -34,7 +34,7 @@ namespace CatalogService
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            // app.UseHttpsRedirection(); // Removed to prevent internal docker redirects
 
             app.UseAuthentication();
             app.UseAuthorization();
