@@ -23,7 +23,7 @@ namespace IdentityService.Features.Admin.DriverApplications.ListDriverApplicatio
 
             var query = repository.Query();
 
-            var filteredQuery = repository.Query()
+            var filteredQuery = query
                 .Where(e => e.Status == request.DeliveryStatus);
 
             var totalCount = await filteredQuery.CountAsync(cancellationToken);
@@ -37,10 +37,10 @@ namespace IdentityService.Features.Admin.DriverApplications.ListDriverApplicatio
                 .Select(da => new DriverApplicationResponseDto
                             {
                                 Id = da.Id.ToString(),
-                                Name = da.Name,
+                                Name = $"{da.FirstName} {da.LastName}",
                                 Email = da.Email,
                                 Phone = da.Phone,
-                                VehicleType = da.VehicleType.ToString(),
+                                VehicleType = da.VehicleType.Name,
                                 SubmittedAt = da.SubmittedAt,
                                 Status = da.Status
                             }).ToListAsync(cancellationToken);

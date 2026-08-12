@@ -1,14 +1,16 @@
-﻿using Shared.Interfaces;
-using Shared.Results;
-using Shared.Security;
-using IdentityService.Domain.Entities;
+﻿using IdentityService.Domain.Entities;
 using IdentityService.Domain.Enums;
 using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication.Dtos_VM;
 using IdentityService.Features.Admin.DriverApplications.ReviewDriverApplication.Dtos;
 using IdentityService.Infrastructure.Repositories;
+using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Shared.Events.DriverApprovedEvents;
+using Shared.Interfaces;
+using Shared.Results;
+using Shared.Security;
 using System.Security.Claims;
 
 namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication
@@ -18,11 +20,11 @@ namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverA
         private readonly IUnitOfWork unitOfWork;
         private readonly ICurrentUserService currentUserService;
 
-        public ApproveDriverApplicationCommandHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+        public ApproveDriverApplicationCommandHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUserService )
         {
             this.unitOfWork = unitOfWork;
             this.currentUserService = currentUserService;
-        }
+        }   
         public async Task<Result<ApproveDriverApplicationDto>> Handle(ApproveDriverApplicationCommand request, CancellationToken cancellationToken)
         {
             var _repository = unitOfWork.Repository<DriverApplication>();
@@ -32,11 +34,11 @@ namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverA
             var query = _repository.Query();
 
             var adminId = currentUserService.UserId;
-            //if (adminId is null)
-            //{
-            //    return Result<ApproveDriverApplicationDto>.Failure(
-            //        "Admin user Unauthorized");
-            //}
+            if (adminId is null)
+            {
+                return Result<ApproveDriverApplicationDto>.Failure(
+                    "Admin user Unauthorized");
+            }
             var reviewedAt = DateTime.UtcNow;
 
             var application = await query.FirstOrDefaultAsync(e => e.Id.Equals(request.ApplicationId),cancellationToken);
@@ -56,11 +58,10 @@ namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverA
 
             try
             {
-                var nameParts = application.Name.Split(' ', 2);
                 var delivery = new Delivery
                 {
-                    FirstName = nameParts[0],
-                    LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty,
+                    FirstName = application.FirstName,
+                    LastName = application.LastName,
                     Email = application.Email,
                     Gender = application.Gender,
                     IsActive = true,
@@ -75,11 +76,12 @@ namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverA
                     {
                         Capacity=application.VehicleCapacity,
                         PlateNumber=application.VehiclePlateNumber,
-                        Type=application.VehicleType
+                        VehicleTypeId=application.VehicleTypeId
                     },
                     CreatedAt = DateTime.UtcNow,
-                    
-                    
+                    FcmToken=application.FcmToken
+
+
 
                 };
 
@@ -133,13 +135,14 @@ namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverA
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 await unitOfWork.CommitTransactionAsync(cancellationToken);
 
+                
+
                 var response = new ApproveDriverApplicationDto
                 {
                     ApplicationId = request.ApplicationId,
                     DeliveryId = delivery.Id,
                     ReviewedAt = reviewedAt,
-                    ReviewedBy = "121212121212121",
-                    //ReviewedBy = adminId.ToString(),
+                    ReviewedBy = adminId.ToString(),
                     Status = delivery.Status
                 };
 

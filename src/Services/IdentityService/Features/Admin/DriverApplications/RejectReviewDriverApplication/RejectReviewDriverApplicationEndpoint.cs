@@ -1,9 +1,10 @@
-using Shared.Contracts;
-using Shared.Responses;
 using IdentityService.Features.Admin.DriverApplications.RejectReviewDriverApplication.Dtos_VM;
 using IdentityService.Features.Admin.DriverApplications.ReviewDriverApplication;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Shared.Contracts;
+using Shared.Responses;
+using Shared.Security;
 
 namespace IdentityService.Features.Admin.DriverApplications.RejectReviewDriverApplication;
 
@@ -30,7 +31,7 @@ public class RejectReviewDriverApplicationEndpoint : IEndpoint
             return Results.BadRequest(ApiResponse<RejectReviewDriverApplicationVM>.Fail(result.Error.Message));
         })
             .WithTags("Admin")
-            .WithName("RejectReviewDriverApplication");
-            //.RequireAuthorization("AdminOnly");
+            .WithName("RejectReviewDriverApplication")
+            .RequireAuthorization(AppPolicies.AdminOnly);
     }
 }

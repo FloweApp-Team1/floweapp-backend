@@ -7,9 +7,13 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
     {
         public ApplyDriverRequestCommandValidator()
         {
-            RuleFor(x => x.Name)
+            RuleFor(x => x.FirstName)
            .NotEmpty()
-           .MaximumLength(100);
+           .MaximumLength(25);
+            
+            RuleFor(x => x.LastName)
+           .NotEmpty()
+           .MaximumLength(25);
 
             RuleFor(x => x.Email)
                 .NotEmpty()
@@ -28,8 +32,9 @@ namespace IdentityService.Features.Drivers.ApplyAsDriver
                 .NotEmpty()
                 .MaximumLength(20);
 
-            RuleFor(x => x.VehicleType)
-                .IsInEnum();
+            RuleFor(x => x.VehicleTypeId)
+                .NotEmpty()
+                .WithMessage("Vehicle type is required.");
 
             RuleFor(x => x.VehicleCapacity)
                 .GreaterThan(0)

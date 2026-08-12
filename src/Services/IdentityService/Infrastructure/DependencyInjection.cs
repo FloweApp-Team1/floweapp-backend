@@ -26,6 +26,7 @@ using StackExchange.Redis;
 using System.Reflection;
 using System.Text;
 using System.Threading.RateLimiting;
+using MassTransit;
 
 namespace IdentityService.Infrastructure
 {
@@ -62,6 +63,7 @@ namespace IdentityService.Infrastructure
             services.AddConfigurationOptions(configuration);
 
             var connectionString = Required(configuration, "ConnectionStrings:AuthDatabase");
+
             services.AddDbContext<AuthDbContext>(options => options.UseSqlServer(connectionString));
 
             // Persistence
@@ -267,6 +269,7 @@ namespace IdentityService.Infrastructure
             return services;
         }
 
+
         private static string SwaggerSchemaId(Type type)
         {
             var name = type.Name;
@@ -281,6 +284,8 @@ namespace IdentityService.Infrastructure
 
             return type.DeclaringType is null ? name : SwaggerSchemaId(type.DeclaringType) + name;
         }
+
+
 
         // Configuration comes from environment variables only (.env locally,
         // docker-compose `environment:` in containers) - never from appsettings.json.
