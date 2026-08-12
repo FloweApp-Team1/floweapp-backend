@@ -2,6 +2,7 @@ using CatalogService.Domain.Entities;
 using CatalogService.Features.Home.Dtos;
 using CatalogService.Features.Home.Queries;
 using MediatR;
+using Shared.Contracts;
 using Shared.Results;
 
 namespace CatalogService.Features.Home
@@ -9,14 +10,23 @@ namespace CatalogService.Features.Home
     public sealed class GetHomeLayoutOrchestrator : IRequestHandler<GetHomeLayoutQuery, Result<List<HomeLayoutSectionDto>>>
     {
         private readonly ISender _sender;
+        private readonly IRedisCacheService _cacheService;
+        private const string CacheKey = "catalog:home:layout";
 
-        public GetHomeLayoutOrchestrator(ISender sender)
+        public GetHomeLayoutOrchestrator(ISender sender, IRedisCacheService cacheService)
         {
             _sender = sender;
+            _cacheService = cacheService;
         }
 
         public async Task<Result<List<HomeLayoutSectionDto>>> Handle(GetHomeLayoutQuery request, CancellationToken cancellationToken)
         {
+            var cached = await _cacheService.GetAsync<List<HomeLayoutSectionDto>>(CacheKey);
+            if (cached != null)
+            {
+                return Result.Success(cached);
+            }
+
             var sectionsResult = await _sender.Send(new GetHomeLayoutSectionsQuery(), cancellationToken);
             if (sectionsResult.IsFailure)
             {
@@ -59,6 +69,8 @@ namespace CatalogService.Features.Home
                     Payload = payloadDto
                 });
             }
+
+            await _cacheService.SetAsync(CacheKey, dtos, TimeSpan.FromMinutes(10));
 
             return Result.Success(dtos);
         }

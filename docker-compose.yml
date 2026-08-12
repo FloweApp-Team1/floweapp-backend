@@ -100,9 +100,12 @@ services:
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
+      Redis__ConnectionString: redis:6379
 
     depends_on:
       sqlserver:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
     networks:

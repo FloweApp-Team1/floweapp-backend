@@ -15,14 +15,12 @@ using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using IdentityService.Infrastructure.Services.Email;
 using IdentityService.Infrastructure.Services.OTP;
-using IdentityService.Infrastructure.Services.Redis;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using StackExchange.Redis;
 using System.Reflection;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -78,7 +76,7 @@ namespace IdentityService.Infrastructure
             services.AddScoped<IEmailService, SmtpEmailService>();
             services.AddScoped<IImageService, LocalImageService>();
 
-            services.AddRedis(configuration);
+            services.AddSharedRedis(configuration);
             services.AddOtpServices();
             services.AddFirebase(configuration, environment);
 
@@ -111,18 +109,6 @@ namespace IdentityService.Infrastructure
             return services;
         }
 
-        private static IServiceCollection AddRedis(this IServiceCollection services, IConfiguration configuration)
-        {
-            // Inside Docker this resolves to the compose service name (redis:6379).
-            var redisConnectionString = Required(configuration, "Redis:ConnectionString");
-
-            services.AddSingleton<IConnectionMultiplexer>(
-                _ => ConnectionMultiplexer.Connect(redisConnectionString));
-
-            services.AddSingleton<IRedisCacheService, RedisCacheService>();
-
-            return services;
-        }
 
         private static IServiceCollection AddOtpServices(this IServiceCollection services)
         {
