@@ -1,41 +1,44 @@
+using ApiGateway.Configuration;
 using Shared.Extensions;
-using Microsoft.AspNetCore.RateLimiting;
+using Shared.Responses;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
-using Yarp.ReverseProxy.Configuration;
+
+DotNetEnv.Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. JWT Authentication
-builder.Services.AddSharedJwtAuthentication(builder.Configuration);
+// Every runtime value lives in the Gateway__* environment variables; a missing one
+// throws here instead of the gateway starting with a wrong destination.
+var gateway = GatewaySettings.Bind(builder.Configuration);
 
+// 1. JWT authentication - the same signing key/issuer/audience the services validate with.
+builder.Services.AddSharedJwtAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
 
-// 2. Rate Limiting
-var authLimit = builder.Configuration.GetValue<int>("RateLimiting:AuthLimit", 10);
-var authWindow = builder.Configuration.GetValue<int>("RateLimiting:AuthWindowSeconds", 60);
-
-var defaultLimit = builder.Configuration.GetValue<int>("RateLimiting:DefaultLimit", 100);
-var defaultWindow = builder.Configuration.GetValue<int>("RateLimiting:DefaultWindowSeconds", 60);
-
+// 2. Rate limiting, partitioned per caller so one noisy client cannot exhaust the window
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter("AuthPolicy", opt =>
-    {
-        opt.PermitLimit = authLimit;
-        opt.Window = TimeSpan.FromSeconds(authWindow);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 0;
-    });
+    options.AddPolicy(ProxyConfiguration.AuthPolicy,
+        context => PerClientFixedWindow(context, gateway.RateLimiting.Auth));
 
-    options.AddFixedWindowLimiter("DefaultPolicy", opt =>
+    options.AddPolicy(ProxyConfiguration.DefaultPolicy,
+        context => PerClientFixedWindow(context, gateway.RateLimiting.Default));
+
+    // 429 is returned in the same ApiResponse envelope as every other failure.
+    options.OnRejected = async (context, ct) =>
     {
-        opt.PermitLimit = defaultLimit;
-        opt.Window = TimeSpan.FromSeconds(defaultWindow);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 0;
-    });
-    
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int)retryAfter.TotalSeconds).ToString();
+
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            ApiResponse.Fail("Too many requests. Please try again later.",
+                StatusCodes.Status429TooManyRequests), ct);
+    };
 });
 
 // 3. CORS
@@ -43,86 +46,57 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("GlobalCorsPolicy", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        if (gateway.AllowAnyOrigin)
+            policy.AllowAnyOrigin();
+        else
+            policy.WithOrigins(gateway.Origins).AllowCredentials();
+
+        policy.AllowAnyMethod().AllowAnyHeader();
     });
 });
 
-// 4. YARP Configuration from Env Vars
-var identityUrl = builder.Configuration["IdentityServiceUrl"] ?? "http://identityservice:8080";
-var catalogUrl = builder.Configuration["CatalogServiceUrl"] ?? "http://catalogservice:8080";
-
-var routes = new[]
-{
-    new RouteConfig()
-    {
-        RouteId = "identity-route",
-        ClusterId = "identity-cluster",
-        Match = new RouteMatch { Path = "/api/identity/{**catch-all}" },
-        RateLimiterPolicy = "AuthPolicy",
-        Transforms = new[] { new Dictionary<string, string> { { "PathRemovePrefix", "/api/identity" } } }
-    },
-    new RouteConfig()
-    {
-        RouteId = "catalog-route",
-        ClusterId = "catalog-cluster",
-        Match = new RouteMatch { Path = "/api/catalog/{**catch-all}" },
-        RateLimiterPolicy = "DefaultPolicy",
-        Transforms = new[] { new Dictionary<string, string> { { "PathRemovePrefix", "/api/catalog" } } }
-    },
-    new RouteConfig()
-    {
-        RouteId = "health-route",
-        ClusterId = "health-cluster",
-        Match = new RouteMatch { Path = "/health" }
-    }
-};
-
-var clusters = new[]
-{
-    new ClusterConfig()
-    {
-        ClusterId = "identity-cluster",
-        LoadBalancingPolicy = "RoundRobin",
-        Destinations = new Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "identity-dest", new DestinationConfig() { Address = identityUrl } }
-        }
-    },
-    new ClusterConfig()
-    {
-        ClusterId = "catalog-cluster",
-        LoadBalancingPolicy = "RoundRobin",
-        Destinations = new Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "catalog-dest", new DestinationConfig() { Address = catalogUrl } }
-        }
-    },
-    new ClusterConfig()
-    {
-        ClusterId = "health-cluster",
-        Destinations = new Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "health-dest", new DestinationConfig() { Address = identityUrl } } // simple bypass
-        }
-    }
-};
-
+// 4. Reverse proxy. YARP appends X-Forwarded-* on the way out, which is what lets the
 builder.Services.AddReverseProxy()
-    .LoadFromMemory(routes, clusters);
+    .LoadFromMemory(ProxyConfiguration.BuildRoutes(), ProxyConfiguration.BuildClusters(gateway));
+
+// 5. The gateway's own probe. It reports the gateway only and never fans out to the
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
 app.UseCors("GlobalCorsPolicy");
 
+app.UseAuthentication();
+
 app.UseRateLimiter();
 
-app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapReverseProxy();
 
-app.MapGet("/gateway-health", () => Results.Ok("Gateway is healthy"));
+app.MapSharedHealthChecks();
 
 app.Run();
+
+// Authenticated callers get their own window per user id, so several people behind one
+// office NAT no longer share a budget; anonymous traffic still falls back to the IP.
+static RateLimitPartition<string> PerClientFixedWindow(HttpContext context, RateLimitWindow window) =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: UserId(context) is { } userId
+            ? $"user:{userId}"
+            : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = window.PermitLimit,
+            Window = TimeSpan.FromSeconds(window.WindowSeconds),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        });
+
+// Same claim pair CurrentUserService reads in the services: JwtBearer maps "sub" onto
+// NameIdentifier by default, so both spellings have to be tried.
+static string? UserId(HttpContext context) =>
+    context.User.Identity?.IsAuthenticated == true
+        ? context.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+          ?? context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+        : null;

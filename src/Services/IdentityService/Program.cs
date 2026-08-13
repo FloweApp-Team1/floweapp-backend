@@ -16,6 +16,10 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddAdminLoginRateLimiting();
 builder.Services.AddSwaggerDocumentation();
 
+// Backs GET /health, which docker-compose probes before letting the gateway start.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AuthDbContext>("database");
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -43,6 +47,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapEndpoints();
+app.MapSharedHealthChecks();
 
 using (var scope = app.Services.CreateScope())
 {

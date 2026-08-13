@@ -10,16 +10,9 @@ namespace Shared.Extensions
     {
         public static IServiceCollection AddSharedJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
-            var jwtSecret = configuration["Jwt:SecretKey"] ?? configuration["Jwt__SecretKey"];
-            var jwtIssuer = configuration["Jwt:Issuer"] ?? configuration["Jwt__Issuer"];
-            var jwtAudience = configuration["Jwt:Audience"] ?? configuration["Jwt__Audience"];
-
-            if (string.IsNullOrEmpty(jwtSecret))
-            {
-                // In some environments, this might be intentional (e.g. tests), so we return early
-                // or we could throw an exception if strict checking is needed.
-                return services;
-            }
+            var jwtSecret = Required(configuration, "Jwt:SecretKey");
+            var jwtIssuer = Required(configuration, "Jwt:Issuer");
+            var jwtAudience = Required(configuration, "Jwt:Audience");
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -39,5 +32,11 @@ namespace Shared.Extensions
 
             return services;
         }
+
+        private static string Required(IConfiguration configuration, string key) =>
+            configuration[key] is { Length: > 0 } value
+                ? value
+                : throw new InvalidOperationException(
+                    $"Required configuration '{key}' is not set. Add '{key.Replace(":", "__")}' to your .env file.");
     }
 }
