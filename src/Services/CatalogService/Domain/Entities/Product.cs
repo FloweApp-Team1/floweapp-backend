@@ -14,5 +14,7 @@ namespace CatalogService.Domain.Entities
 
         public ICollection<ProductImage>? ProductImages { get; set; }
         public ICollection<Occasion>? Occasions { get; set; }
+        public ICollection<Discount> Discounts { get; set; } = [];
+
     }
 }

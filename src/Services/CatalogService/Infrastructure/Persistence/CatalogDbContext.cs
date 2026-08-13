@@ -9,6 +9,7 @@ namespace CatalogService.Infrastructure.Persistence
         public DbSet<ProductImage> ProductImages { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Occasion> Occasions { get; set; }
+        public DbSet<Discount>  Discounts { get; set; }
 
         public CatalogDbContext(DbContextOptions<CatalogDbContext> options) : base(options)
         {
