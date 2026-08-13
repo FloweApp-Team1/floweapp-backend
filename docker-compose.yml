@@ -1,0 +1,165 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+
+    ports:
+      - "${MSSQL_PORT}:1433"
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - flowers-network
+    
+  identityservice:
+    image: rahmaax/flowerapp-identity-service:${IDENTITY_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/IdentityService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${IDENTITY_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__AuthDatabase: Server=${SQL_SERVER};Database=${AUTH_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+      Jwt__AccessTokenExpiryMinutes: ${Jwt__AccessTokenExpiryMinutes}
+      Jwt__RefreshTokenExpiryDays: ${Jwt__RefreshTokenExpiryDays}
+
+      Firebase__CredentialsPath: /run/secrets/firebase-service-account.json
+      Redis__ConnectionString: redis:6379
+
+      Email__SmtpHost: ${Email__SmtpHost}
+      Email__SmtpPort: ${Email__SmtpPort}
+      Email__SenderEmail: ${Email__SenderEmail}
+      Email__SenderName: ${Email__SenderName}
+      Email__Username: ${Email__Username}
+      Email__Password: ${Email__Password}
+      Email__EnableSsl: ${Email__EnableSsl}
+
+      Otp__PepperSecret: ${Otp__PepperSecret}
+
+      AdminSeed__Email: ${AdminSeed__Email}
+      AdminSeed__Password: ${AdminSeed__Password}
+      AdminSeed__FirstName: ${AdminSeed__FirstName}
+      AdminSeed__LastName: ${AdminSeed__LastName}
+      AdminSeed__PhoneNumber: ${AdminSeed__PhoneNumber}
+
+      # NOTE: no RabbitMQ__* variables are passed - the application references
+      # MassTransit but does not configure a bus yet, so nothing would read them.
+      # Add them here together with the bus registration.
+
+    volumes:
+      - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+      sqlserver:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  catalogservice:
+    image: rahmaax/flowerapp-catalog-service:${CATALOG_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/CatalogService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${CATALOG_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__CatalogDatabase: Server=${SQL_SERVER};Database=${CATALOG_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+
+    restart: unless-stopped
+
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+    networks:
+      - flowers-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+    command: redis-server --appendonly yes
+
+    ports:
+      - "${REDIS_PORT}:6379"
+
+    volumes:
+      - redis-data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - flowers-network
+
+networks:
+  flowers-network:
+    driver: bridge
+
+volumes:
+  rabbitmq-data:
+  redis-data:
+  sqlserver-data:
+
