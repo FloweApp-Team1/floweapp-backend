@@ -173,7 +173,9 @@ services:
       - flowers-network
 
   apigateway:
-    image: rahmaax/flowerapp-api-gateway:${GATEWAY_IMAGE_TAG:-dev}
+    # Repository comes from CI (${DOCKERHUB_USERNAME}/flowerapp-api-gateway);
+    # locally it stays an unqualified, never-pushed image.
+    image: ${GATEWAY_IMAGE:-flowerapp-api-gateway}:${GATEWAY_IMAGE_TAG:-dev}
     build:
       context: .
       dockerfile: src/ApiGateway/Dockerfile
