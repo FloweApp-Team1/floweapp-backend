@@ -13,7 +13,7 @@ public class ApplyAsDriverEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/drivers/apply",async
-            ([AsParameters] ApplyDriverRequestVM request,
+            ([FromForm] ApplyDriverRequestVM request,
             [FromServices]IMediator mediator,
             CancellationToken cancellationToken) =>
         {
