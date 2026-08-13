@@ -32,10 +32,13 @@ jobs:
       # docker-compose.yml already reads these two for the image tag.
       IDENTITY_IMAGE_TAG: ${{ github.sha }}
       CATALOG_IMAGE_TAG: ${{ github.sha }}
+      GATEWAY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/flowerapp-api-gateway
+      GATEWAY_IMAGE_TAG: ${{ github.sha }}
 
       # Host ports used by the health checks (all free on a GitHub runner).
       IDENTITY_HTTP_PORT: "5001"
       CATALOG_HTTP_PORT: "5002"
+      GATEWAY_HTTP_PORT: "5003"
       MSSQL_PORT: "1433"
       REDIS_PORT: "6379"
       RABBITMQ_PORT: "5672"
@@ -53,6 +56,14 @@ jobs:
       Jwt__Audience: FlowerApp.Clients
       Jwt__AccessTokenExpiryMinutes: "60"
       Jwt__RefreshTokenExpiryDays: "7"
+
+      # Gateway.Bind() fails fast at startup if any of these are missing.
+      Gateway__AllowedOrigins: "*"
+      Gateway__RateLimiting__Auth__PermitLimit: "10"
+      Gateway__RateLimiting__Auth__WindowSeconds: "60"
+      Gateway__RateLimiting__Default__PermitLimit: "100"
+      Gateway__RateLimiting__Default__WindowSeconds: "60"
+
       Email__SmtpHost: smtp.example.test
       Email__SmtpPort: "587"
       Email__SenderEmail: no-reply@example.test
@@ -195,11 +206,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Only the two services that have a build: section. SQL Server, Redis and
+          # Only the three services that have a build: section. SQL Server, Redis and
           # RabbitMQ stay official images and are never built or pushed.
-          docker compose build identityservice catalogservice
+          docker compose build identityservice catalogservice apigateway
           docker images "$IDENTITY_IMAGE"
           docker images "$CATALOG_IMAGE"
+          docker images "$GATEWAY_IMAGE"
 
       # ------------------------------------------------------- Start Containers
       - name: Start containers
@@ -221,7 +233,7 @@ jobs:
             echo "::group::docker compose ps -a"
             docker compose ps -a
             echo "::endgroup::"
-            for svc in sqlserver redis rabbitmq identityservice catalogservice; do
+            for svc in sqlserver redis rabbitmq identityservice catalogservice apigateway; do
               echo "::group::logs: $svc"
               docker compose logs --tail=200 "$svc" || true
               echo "::endgroup::"
@@ -277,6 +289,7 @@ jobs:
           failed=0
           wait_for_service identityservice "$IDENTITY_HTTP_PORT" || failed=1
           wait_for_service catalogservice "$CATALOG_HTTP_PORT" || failed=1
+          wait_for_service apigateway "$GATEWAY_HTTP_PORT" || failed=1
 
           if [ "$failed" -ne 0 ]; then
             echo "::error title=Health check failed::At least one service is unhealthy - container status and logs follow."
@@ -298,7 +311,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for image in "$IDENTITY_IMAGE" "$CATALOG_IMAGE"; do
+          for image in "$IDENTITY_IMAGE" "$CATALOG_IMAGE" "$GATEWAY_IMAGE"; do
             docker tag "$image:$GITHUB_SHA" "$image:latest"
             docker push "$image:$GITHUB_SHA"
             docker push "$image:latest"
@@ -316,6 +329,7 @@ jobs:
             echo "| --- | --- |"
             echo "| \`$IDENTITY_IMAGE\` | \`$GITHUB_SHA\`, \`latest\` |"
             echo "| \`$CATALOG_IMAGE\` | \`$GITHUB_SHA\`, \`latest\` |"
+            echo "| \`$GATEWAY_IMAGE\` | \`$GITHUB_SHA\`, \`latest\` |"
             echo ""
             echo "SQL Server, Redis and RabbitMQ run from their official images and are not pushed."
           } >> "$GITHUB_STEP_SUMMARY"
