@@ -33,14 +33,35 @@ namespace ApiGateway.Configuration
 
         public static ClusterConfig[] BuildClusters(GatewaySettings settings) =>
         [
-            Cluster("identity-cluster", settings.IdentityServiceUrl),
-            Cluster("catalog-cluster", settings.CatalogServiceUrl)
+            Cluster("identity-cluster", settings.IdentityServiceUrl, settings),
+            Cluster("catalog-cluster", settings.CatalogServiceUrl, settings)
         ];
 
-        private static ClusterConfig Cluster(string clusterId, string address) => new()
+        private static ClusterConfig Cluster(string clusterId, string address, GatewaySettings settings) => new()
         {
             ClusterId = clusterId,
             LoadBalancingPolicy = "RoundRobin",
+            HealthCheck = new HealthCheckConfig
+            {
+                Active = new ActiveHealthCheckConfig
+                {
+                    Enabled = true,
+                    Interval = TimeSpan.FromSeconds(settings.HealthCheck.IntervalSeconds),
+                    Timeout = TimeSpan.FromSeconds(settings.HealthCheck.TimeoutSeconds),
+                    Policy = "ConsecutiveFailures",
+                    Path = "/health"
+                },
+                Passive = new PassiveHealthCheckConfig
+                {
+                    Enabled = true,
+                    Policy = "TransportFailureRate",
+                    ReactivationPeriod = TimeSpan.FromSeconds(settings.HealthCheck.IntervalSeconds)
+                }
+            },
+            Metadata = new Dictionary<string, string>
+            {
+                ["ConsecutiveActiveHealthCheckFailuresThreshold"] = "2"
+            },
             Destinations = new Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase)
             {
                 [$"{clusterId}-destination"] = new DestinationConfig { Address = address }

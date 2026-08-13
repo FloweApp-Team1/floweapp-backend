@@ -210,10 +210,10 @@ services:
     # exist, so the gateway never comes up proxying to something still running migrations.
     depends_on:
       identityservice:
-        condition: service_healthy
+        condition: service_started
 
       catalogservice:
-        condition: service_healthy
+        condition: service_started
 
     networks:
       - flowers-network

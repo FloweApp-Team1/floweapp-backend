@@ -15,6 +15,8 @@ namespace ApiGateway.Configuration
 
         public RateLimitingSettings RateLimiting { get; set; } = new();
 
+        public HealthCheckSettings HealthCheck { get; set; } = new();
+
         public bool AllowAnyOrigin => AllowedOrigins.Trim() == "*";
 
         public string[] Origins =>
@@ -32,6 +34,8 @@ namespace ApiGateway.Configuration
 
             settings.RateLimiting.Auth.Validate("Gateway__RateLimiting__Auth");
             settings.RateLimiting.Default.Validate("Gateway__RateLimiting__Default");
+
+            settings.HealthCheck.Validate("Gateway__HealthCheck");
 
             return settings;
         }
@@ -67,6 +71,23 @@ namespace ApiGateway.Configuration
             if (WindowSeconds <= 0)
                 throw new InvalidOperationException(
                     $"Required configuration '{prefix}__WindowSeconds' is not set or is not greater than zero. Add it to your .env file.");
+        }
+    }
+
+    public class HealthCheckSettings
+    {
+        public int IntervalSeconds { get; set; } = 10;
+        public int TimeoutSeconds { get; set; } = 5;
+
+        public void Validate(string prefix)
+        {
+            if (IntervalSeconds <= 0)
+                throw new InvalidOperationException(
+                    $"Required configuration '{prefix}__IntervalSeconds' is not set or is not greater than zero. Add it to your .env file.");
+
+            if (TimeoutSeconds <= 0)
+                throw new InvalidOperationException(
+                    $"Required configuration '{prefix}__TimeoutSeconds' is not set or is not greater than zero. Add it to your .env file.");
         }
     }
 }
