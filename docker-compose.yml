@@ -25,7 +25,9 @@ services:
       - flowers-network
     
   identityservice:
-    image: rahmaax/flowerapp-identity-service:${IDENTITY_IMAGE_TAG:-dev}
+    # Repository comes from CI (${DOCKERHUB_USERNAME}/flowerapp-identity-service);
+    # locally it stays an unqualified, never-pushed image.
+    image: ${IDENTITY_IMAGE:-flowerapp-identity-service}:${IDENTITY_IMAGE_TAG:-dev}
     build:
       context: .
       dockerfile: src/Services/IdentityService/Dockerfile
@@ -84,7 +86,7 @@ services:
       - flowers-network
 
   catalogservice:
-    image: rahmaax/flowerapp-catalog-service:${CATALOG_IMAGE_TAG:-dev}
+    image: ${CATALOG_IMAGE:-flowerapp-catalog-service}:${CATALOG_IMAGE_TAG:-dev}
     build:
       context: .
       dockerfile: src/Services/CatalogService/Dockerfile
