@@ -21,9 +21,16 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
 
             builder.HasIndex(x => x.Name);
 
-            builder.HasMany(x => x.Products)
-                .WithMany(x => x.Occasions)
-                .UsingEntity(j => j.ToTable("ProductOccasions"));
+            // we don't need to configure the many-to-many relationship here because we have a join entity (ProductOccasion) that represents the relationship between Product and Occasion. The join entity will be configured in its own configuration class (ProductOccasionConfiguration).
+
+            //builder.HasMany(x => x.Products)
+            //    .WithMany(x => x.Occasions)
+            //    .UsingEntity(j => j.ToTable("ProductOccasions"));
+
+            builder.HasMany(x => x.ProductOccasions)
+            .WithOne(x => x.Occasion)
+            .HasForeignKey(x => x.OccasionId)
+            .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

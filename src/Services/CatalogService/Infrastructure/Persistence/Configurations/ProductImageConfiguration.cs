@@ -20,6 +20,12 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
                 .WithMany(x => x.ProductImages)
                 .HasForeignKey(x => x.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Property(x => x.IsPrimary)
+                .IsRequired();
+
+            builder.Property(x => x.DisplayOrder)
+                .IsRequired();
         }
     }
 }
