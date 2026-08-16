@@ -12,13 +12,14 @@ namespace CatalogService.Features.Products
         {
             app.MapGet("/products", async (
                     Guid? categoryId,
+                    Guid? occasionId,
                     ProductSortOption? sort,
                     [AsParameters] PaginationRequest pagination,
                     ISender sender,
                     CancellationToken cancellationToken) =>
             {
                 var result = await sender.Send(
-                    new GetProductsQuery(categoryId, sort, pagination), cancellationToken);
+                    new GetProductsQuery(categoryId, occasionId, sort, pagination), cancellationToken);
                 return result.ToHttpResult();
             })
                 .WithTags("Products")

@@ -14,6 +14,7 @@ namespace CatalogService.Features.Products
 {
     public sealed record GetProductsQuery(
        Guid? CategoryId,
+       Guid? OccasionId,
        ProductSortOption? Sort,
        PaginationRequest Pagination) : IRequest<ApiResponse<IReadOnlyList<ProductListItemDto>>>;
 
@@ -27,7 +28,10 @@ namespace CatalogService.Features.Products
 
             if (request.CategoryId.HasValue)
                 query = query.Where(p => p.CategoryId == request.CategoryId.Value);
-
+            
+            if (request.OccasionId.HasValue)
+                query = query.Where(p => p.Occasions!.Any(o => o.Id == request.OccasionId.Value));
+            
             var totalCount = await query.CountAsync(cancellationToken);
 
             var items = await query
