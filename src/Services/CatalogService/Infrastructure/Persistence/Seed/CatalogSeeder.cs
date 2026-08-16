@@ -1,5 +1,6 @@
 using CatalogService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Shared.Constants;
 
 namespace CatalogService.Infrastructure.Persistence.Seed
 {
@@ -260,7 +261,8 @@ namespace CatalogService.Infrastructure.Persistence.Seed
                 IsEnabled = true,
                 Payload = new CategoryRailPayload
                 {
-                    Count = 5
+                    Count = 5,
+                    ViewAllAction = AppDeepLinks.Categories
                 }
             };
 
@@ -273,7 +275,8 @@ namespace CatalogService.Infrastructure.Persistence.Seed
                 IsEnabled = true,
                 Payload = new ProductRailPayload
                 {
-                    Count = 5
+                    Count = 5,
+                    ViewAllAction = AppDeepLinks.BestSellers
                 }
             };
 
@@ -286,7 +289,8 @@ namespace CatalogService.Infrastructure.Persistence.Seed
                 IsEnabled = true,
                 Payload = new OccasionRailPayload
                 {
-                    Count = 5
+                    Count = 5,
+                    ViewAllAction = AppDeepLinks.Occasions
                 }
             };
 

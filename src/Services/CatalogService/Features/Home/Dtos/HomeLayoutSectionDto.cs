@@ -26,6 +26,7 @@ namespace CatalogService.Features.Home.Dtos
     public class ProductRailPayloadDto : BaseSectionPayloadDto
     {
         public List<ProductItemDto> Items { get; set; } = new();
+        public string? ViewAllAction { get; set; }
     }
 
     public class ProductItemDto
@@ -39,6 +40,7 @@ namespace CatalogService.Features.Home.Dtos
     public class OccasionRailPayloadDto : BaseSectionPayloadDto
     {
         public List<OccasionItemDto> Items { get; set; } = new();
+        public string? ViewAllAction { get; set; }
     }
 
     public class OccasionItemDto
@@ -51,6 +53,7 @@ namespace CatalogService.Features.Home.Dtos
     public class CategoryRailPayloadDto : BaseSectionPayloadDto
     {
         public List<CategoryItemDto> Items { get; set; } = new();
+        public string? ViewAllAction { get; set; }
     }
 
     public class CategoryItemDto

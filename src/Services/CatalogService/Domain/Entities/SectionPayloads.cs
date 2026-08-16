@@ -14,16 +14,19 @@ namespace CatalogService.Domain.Entities
     public class ProductRailPayload : BaseSectionPayload
     {
         public int Count { get; set; } = 10;
+        public string? ViewAllAction { get; set; }
     }
 
     public class OccasionRailPayload : BaseSectionPayload
     {
         public int Count { get; set; } = 10;
+        public string? ViewAllAction { get; set; }
     }
 
     public class CategoryRailPayload : BaseSectionPayload
     {
         public int Count { get; set; } = 5;
+        public string? ViewAllAction { get; set; }
     }
 
     public class BannerPayload : BaseSectionPayload

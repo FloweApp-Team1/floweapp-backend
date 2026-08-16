@@ -74,21 +74,33 @@ namespace CatalogService.Features.Home
                     var categoriesResult = await _sender.Send(new GetTopCategoriesQuery(c.Count), cancellationToken);
                     if (categoriesResult.IsFailure)
                         return Result.Failure<HomeLayoutSectionDto>(categoriesResult.Error);
-                    payloadDto = new CategoryRailPayloadDto { Items = categoriesResult.Value };
+                    payloadDto = new CategoryRailPayloadDto 
+                    { 
+                        Items = categoriesResult.Value,
+                        ViewAllAction = c.ViewAllAction
+                    };
                     break;
 
                 case ProductRailPayload p:
                     var productsResult = await _sender.Send(new GetBestSellersQuery(p.Count), cancellationToken);
                     if (productsResult.IsFailure)
                         return Result.Failure<HomeLayoutSectionDto>(productsResult.Error);
-                    payloadDto = new ProductRailPayloadDto { Items = productsResult.Value };
+                    payloadDto = new ProductRailPayloadDto 
+                    { 
+                        Items = productsResult.Value,
+                        ViewAllAction = p.ViewAllAction
+                    };
                     break;
 
                 case OccasionRailPayload o:
                     var occasionsResult = await _sender.Send(new GetTopOccasionsQuery(o.Count), cancellationToken);
                     if (occasionsResult.IsFailure)
                         return Result.Failure<HomeLayoutSectionDto>(occasionsResult.Error);
-                    payloadDto = new OccasionRailPayloadDto { Items = occasionsResult.Value };
+                    payloadDto = new OccasionRailPayloadDto 
+                    { 
+                        Items = occasionsResult.Value,
+                        ViewAllAction = o.ViewAllAction
+                    };
                     break;
 
                 default:
