@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using CatalogService.Domain.Enums;
 
 namespace CatalogService.Features.Home.Dtos
 {
@@ -13,6 +12,8 @@ namespace CatalogService.Features.Home.Dtos
         public BaseSectionPayloadDto Payload { get; set; } = null!;
     }
 
+    // Required for System.Text.Json to serialize the runtime type (BannerPayloadDto, etc.)
+    // rather than the declared type (BaseSectionPayloadDto), which would produce {}.
     [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
     [JsonDerivedType(typeof(ProductRailPayloadDto), "product_rail")]
     [JsonDerivedType(typeof(OccasionRailPayloadDto), "occasion_rail")]

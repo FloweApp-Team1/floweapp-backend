@@ -240,10 +240,10 @@ namespace CatalogService.Infrastructure.Persistence.Seed
             var bannerSection = new HomeLayoutSection
             {
                 Id = Guid.NewGuid(),
-                title = "Spring Sale",
-                type = Domain.Enums.HomeSectionType.Banner,
-                order = 1,
-                isEnabled = true,
+                Title = "Spring Sale",
+                Type = Domain.Enums.HomeSectionType.Banner,
+                Order = 1,
+                IsEnabled = true,
                 Payload = new BannerPayload
                 {
                     ImageUrl = Placeholder("Spring Sale Banner", 1200),
@@ -254,10 +254,10 @@ namespace CatalogService.Infrastructure.Persistence.Seed
             var categorySection = new HomeLayoutSection
             {
                 Id = Guid.NewGuid(),
-                title = "Categories",
-                type = Domain.Enums.HomeSectionType.CategoryRail,
-                order = 2,
-                isEnabled = true,
+                Title = "Categories",
+                Type = Domain.Enums.HomeSectionType.CategoryRail,
+                Order = 2,
+                IsEnabled = true,
                 Payload = new CategoryRailPayload
                 {
                     Count = 5
@@ -267,10 +267,10 @@ namespace CatalogService.Infrastructure.Persistence.Seed
             var bestSellerSection = new HomeLayoutSection
             {
                 Id = Guid.NewGuid(),
-                title = "Best Sellers",
-                type = Domain.Enums.HomeSectionType.ProductRail,
-                order = 3,
-                isEnabled = true,
+                Title = "Best Sellers",
+                Type = Domain.Enums.HomeSectionType.ProductRail,
+                Order = 3,
+                IsEnabled = true,
                 Payload = new ProductRailPayload
                 {
                     Count = 5
@@ -280,10 +280,10 @@ namespace CatalogService.Infrastructure.Persistence.Seed
             var occasionSection = new HomeLayoutSection
             {
                 Id = Guid.NewGuid(),
-                title = "Shop By Occasion",
-                type = Domain.Enums.HomeSectionType.OccasionRail,
-                order = 4,
-                isEnabled = true,
+                Title = "Shop By Occasion",
+                Type = Domain.Enums.HomeSectionType.OccasionRail,
+                Order = 4,
+                IsEnabled = true,
                 Payload = new OccasionRailPayload
                 {
                     Count = 5

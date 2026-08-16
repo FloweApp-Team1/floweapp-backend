@@ -5,10 +5,10 @@ namespace CatalogService.Domain.Entities
 {
     public class HomeLayoutSection : BaseEntity
     {
-        public HomeSectionType type { get; set; }
-        public string? title { get; set; }
-        public short order { get; set; }
-        public bool isEnabled { get; set; }
+        public HomeSectionType Type { get; set; }
+        public string? Title { get; set; }
+        public short Order { get; set; }
+        public bool IsEnabled { get; set; }
         public BaseSectionPayload Payload { get; set; } = null!;
     }
 }

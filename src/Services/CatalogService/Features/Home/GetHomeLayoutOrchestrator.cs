@@ -1,8 +1,11 @@
 using CatalogService.Domain.Entities;
+using CatalogService.Domain.Enums;
 using CatalogService.Features.Home.Dtos;
 using CatalogService.Features.Home.Queries;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Shared.Contracts;
+using Shared.Interfaces;
 using Shared.Results;
 
 namespace CatalogService.Features.Home
@@ -11,12 +14,14 @@ namespace CatalogService.Features.Home
     {
         private readonly ISender _sender;
         private readonly IRedisCacheService _cacheService;
+        private readonly IUnitOfWork _unitOfWork;
         private const string CacheKey = "catalog:home:layout";
 
-        public GetHomeLayoutOrchestrator(ISender sender, IRedisCacheService cacheService)
+        public GetHomeLayoutOrchestrator(ISender sender, IRedisCacheService cacheService, IUnitOfWork unitOfWork)
         {
             _sender = sender;
             _cacheService = cacheService;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Result<List<HomeLayoutSectionDto>>> Handle(GetHomeLayoutQuery request, CancellationToken cancellationToken)
@@ -27,52 +32,87 @@ namespace CatalogService.Features.Home
                 return Result.Success(cached);
             }
 
-            var sectionsResult = await _sender.Send(new GetHomeLayoutSectionsQuery(), cancellationToken);
-            if (sectionsResult.IsFailure)
-            {
-                return Result.Failure<List<HomeLayoutSectionDto>>(sectionsResult.Error);
-            }
+            var sections = await _unitOfWork.Repository<HomeLayoutSection>()
+                .GetAll(x => x.IsEnabled)
+                .OrderBy(x => x.Order)
+                .ToListAsync(cancellationToken);
 
+            // Sub-queries execute sequentially because IUnitOfWork/DbContext is scoped —
+            // a single DbContext instance is not thread-safe and cannot be used concurrently.
             var dtos = new List<HomeLayoutSectionDto>();
-
-            foreach (var section in sectionsResult.Value)
+            foreach (var section in sections)
             {
-                BaseSectionPayloadDto payloadDto = section.Payload switch
-                {
-                    BannerPayload b => new BannerPayloadDto
-                    {
-                        ImageUrl = b.ImageUrl,
-                        ClickAction = b.ClickAction
-                    },
-                    CategoryRailPayload c => new CategoryRailPayloadDto
-                    {
-                        Items = (await _sender.Send(new GetTopCategoriesQuery(c.Count), cancellationToken)).Value
-                    },
-                    ProductRailPayload bs => new ProductRailPayloadDto
-                    {
-                        Items = (await _sender.Send(new GetBestSellersQuery(bs.Count), cancellationToken)).Value
-                    },
-                    OccasionRailPayload oc => new OccasionRailPayloadDto
-                    {
-                        Items = (await _sender.Send(new GetTopOccasionsQuery(oc.Count), cancellationToken)).Value
-                    },
-                    _ => throw new InvalidOperationException($"Unknown payload type: {section.Payload.GetType().Name}")
-                };
+                var sectionResult = await BuildSectionDtoAsync(section, cancellationToken);
+                if (sectionResult.IsFailure)
+                    return Result.Failure<List<HomeLayoutSectionDto>>(sectionResult.Error);
 
-                dtos.Add(new HomeLayoutSectionDto
-                {
-                    Id = section.Id,
-                    Type = section.type.ToString().ToLower(),
-                    Title = section.title,
-                    Order = section.order,
-                    IsEnabled = section.isEnabled,
-                    Payload = payloadDto
-                });
+                dtos.Add(sectionResult.Value);
             }
 
             await _cacheService.SetAsync(CacheKey, dtos, TimeSpan.FromMinutes(10));
 
             return Result.Success(dtos);
         }
+
+        private async Task<Result<HomeLayoutSectionDto>> BuildSectionDtoAsync(
+            HomeLayoutSection section,
+            CancellationToken cancellationToken)
+        {
+            BaseSectionPayloadDto payloadDto;
+
+            switch (section.Payload)
+            {
+                case BannerPayload b:
+                    payloadDto = new BannerPayloadDto
+                    {
+                        ImageUrl = b.ImageUrl,
+                        ClickAction = b.ClickAction
+                    };
+                    break;
+
+                case CategoryRailPayload c:
+                    var categoriesResult = await _sender.Send(new GetTopCategoriesQuery(c.Count), cancellationToken);
+                    if (categoriesResult.IsFailure)
+                        return Result.Failure<HomeLayoutSectionDto>(categoriesResult.Error);
+                    payloadDto = new CategoryRailPayloadDto { Items = categoriesResult.Value };
+                    break;
+
+                case ProductRailPayload p:
+                    var productsResult = await _sender.Send(new GetBestSellersQuery(p.Count), cancellationToken);
+                    if (productsResult.IsFailure)
+                        return Result.Failure<HomeLayoutSectionDto>(productsResult.Error);
+                    payloadDto = new ProductRailPayloadDto { Items = productsResult.Value };
+                    break;
+
+                case OccasionRailPayload o:
+                    var occasionsResult = await _sender.Send(new GetTopOccasionsQuery(o.Count), cancellationToken);
+                    if (occasionsResult.IsFailure)
+                        return Result.Failure<HomeLayoutSectionDto>(occasionsResult.Error);
+                    payloadDto = new OccasionRailPayloadDto { Items = occasionsResult.Value };
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown payload type: {section.Payload.GetType().Name}");
+            }
+
+            return Result.Success(new HomeLayoutSectionDto
+            {
+                Id = section.Id,
+                Type = ToTypeString(section.Type),
+                Title = section.Title,
+                Order = section.Order,
+                IsEnabled = section.IsEnabled,
+                Payload = payloadDto
+            });
+        }
+
+        private static string ToTypeString(HomeSectionType type) => type switch
+        {
+            HomeSectionType.Banner       => "banner",
+            HomeSectionType.ProductRail  => "product_rail",
+            HomeSectionType.OccasionRail => "occasion_rail",
+            HomeSectionType.CategoryRail => "category_rail",
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
     }
 }

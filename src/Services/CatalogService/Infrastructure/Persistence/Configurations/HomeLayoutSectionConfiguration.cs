@@ -11,10 +11,10 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
         {
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.title)
+            builder.Property(x => x.Title)
                 .HasMaxLength(200);
 
-            builder.Property(x => x.type)
+            builder.Property(x => x.Type)
                 .IsRequired();
 
             var jsonOptions = new JsonSerializerOptions
