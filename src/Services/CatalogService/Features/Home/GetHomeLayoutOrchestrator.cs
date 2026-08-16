@@ -34,17 +34,16 @@ namespace CatalogService.Features.Home
 
             var sections = await _unitOfWork.Repository<HomeLayoutSection>()
                 .GetAll(x => x.IsEnabled)
+                .AsNoTracking()
                 .OrderBy(x => x.Order)
                 .ToListAsync(cancellationToken);
 
-            // Sub-queries execute sequentially because IUnitOfWork/DbContext is scoped —
-            // a single DbContext instance is not thread-safe and cannot be used concurrently.
             var dtos = new List<HomeLayoutSectionDto>();
             foreach (var section in sections)
             {
                 var sectionResult = await BuildSectionDtoAsync(section, cancellationToken);
                 if (sectionResult.IsFailure)
-                    return Result.Failure<List<HomeLayoutSectionDto>>(sectionResult.Error);
+                    continue; // Skip failed sections instead of crashing the entire layout
 
                 dtos.Add(sectionResult.Value);
             }
