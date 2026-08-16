@@ -14,7 +14,7 @@ namespace IdentityService.Features.Admin.DriverApplications.GetDriverApplication
 
         // Vehicle
         public string VehiclePlateNumber { get; set; } = default!;
-        public VehicleTypeEnum VehicleType { get; set; } 
+        public string VehicleType { get; set; } = default!;
         public int VehicleCapacity { get; set; }
 
         // Documents

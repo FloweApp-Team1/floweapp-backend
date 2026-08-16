@@ -7,18 +7,20 @@ using MediatR;
 namespace IdentityService.Features.Drivers.ApplyAsDriver
 {
     public record ApplyDriverRequestCommand(
-    string Name,
+    string FirstName,
+    string LastName,
     string Email,
     string Phone,
-    GenderEnum Gender,
+    GenderEnum Gender,  
     string VehiclePlateNumber,
-    VehicleTypeEnum VehicleType,
+    Guid VehicleTypeId,
     int VehicleCapacity,
     IFormFile LicenceImage,
     string Nid,
     IFormFile NidImage,
     string Password,
     string ConfirmPassword,
-    string? FcmToken) : IRequest<Result<ApplyDriverResponseDto>>;
+    string FcmToken 
+    ) : IRequest<Result<ApplyDriverResponseDto>>;
   
 }

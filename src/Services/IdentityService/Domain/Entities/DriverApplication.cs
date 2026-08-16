@@ -6,7 +6,8 @@ namespace IdentityService.Domain.Entities
     public class DriverApplication : BaseEntity
     {
         // Personal Information
-        public string Name { get; set; } = default!;
+        public string FirstName { get; set; } = default!;
+        public string LastName { get; set; } = default!;
         public string Email { get; set; } = default!;
         public string Phone { get; set; } = default!;
         public GenderEnum Gender { get; set; }
@@ -16,7 +17,8 @@ namespace IdentityService.Domain.Entities
 
         // Vehicle Information
         public string VehiclePlateNumber { get; set; } = default!;
-        public VehicleTypeEnum VehicleType { get; set; }
+        public Guid VehicleTypeId { get; set; }
+        public VehicleType VehicleType { get; set; } = null!;
         public int VehicleCapacity { get; set; }
 
         // Documents
@@ -39,5 +41,8 @@ namespace IdentityService.Domain.Entities
 
         // Audit
         public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
+
+        public string? FcmToken { get; set; }
+
     }
 }

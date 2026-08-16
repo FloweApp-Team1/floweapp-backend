@@ -72,17 +72,24 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("FcmToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Gender")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("LicenceImageUrl")
+                    b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("LicenceImageUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -127,10 +134,12 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("VehicleType")
-                        .HasColumnType("int");
+                    b.Property<Guid>("VehicleTypeId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("VehicleTypeId");
 
                     b.ToTable("DriverApplications", "Auth");
                 });
@@ -409,15 +418,41 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
+                    b.Property<Guid>("VehicleTypeId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
                     b.HasIndex("DeliveryId")
                         .IsUnique();
 
+                    b.HasIndex("VehicleTypeId");
+
                     b.ToTable("VehicleInfos", "Auth");
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.VehicleType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("VehicleTypes", "Auth");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.Customer", b =>
@@ -451,6 +486,17 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.ToTable("Deliveries", "Auth");
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.DriverApplication", b =>
+                {
+                    b.HasOne("IdentityService.Domain.Entities.VehicleType", "VehicleType")
+                        .WithMany("DriverApplications")
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("VehicleType");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.RefreshToken", b =>
@@ -491,7 +537,15 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("IdentityService.Domain.Entities.VehicleType", "VehicleType")
+                        .WithMany("Vehicles")
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Delivery");
+
+                    b.Navigation("VehicleType");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.Customer", b =>
@@ -522,6 +576,13 @@ namespace IdentityService.Infrastructure.Persistence.Migrations
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.VehicleType", b =>
+                {
+                    b.Navigation("DriverApplications");
+
+                    b.Navigation("Vehicles");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.Delivery", b =>

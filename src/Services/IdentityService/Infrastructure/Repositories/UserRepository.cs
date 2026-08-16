@@ -1,4 +1,4 @@
-﻿using IdentityService.Common.Contracts;
+using IdentityService.Common.Contracts;
 using Shared.Contracts;
 using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -43,6 +43,7 @@ namespace IdentityService.Infrastructure.Repositories
             string newPasswordHash,
             CancellationToken cancellationToken = default)
         {
+            _db.Users.Attach(user);
             user.PasswordHash = newPasswordHash;
 
             // Invalidate every active session for the account.

@@ -1,3 +1,5 @@
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts;
 using Shared.Requests;
 using Shared.Responses;
@@ -8,8 +10,15 @@ public class GetVehiclesEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/vehicles", ([AsParameters] PaginationRequest request) =>
-                ApiResponse.Paginated<object>([], totalCount: 0, request).ToHttpResult())
+        app.MapGet("/vehicles", async ([AsParameters] PaginationRequest request,CancellationToken cancellationToken,[FromServices]IMediator mediator) =>
+        {
+            var result = await mediator.Send(new GetVehiclesQuery(request), cancellationToken);
+            if (result.IsSuccess)
+            {
+                return Results.Ok(ApiResponse.Paginated(result.Value.Items, result.Value.TotalCount,request));
+            }
+            return Results.NotFound(ApiResponse.Fail(result.Error.Message));
+        })
             .WithTags("Vehicles")
             .WithName("GetVehicles")
             .AllowAnonymous();

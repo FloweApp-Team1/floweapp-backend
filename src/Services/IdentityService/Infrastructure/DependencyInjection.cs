@@ -24,6 +24,7 @@ using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Text;
 using System.Threading.RateLimiting;
+using MassTransit;
 
 namespace IdentityService.Infrastructure
 {
@@ -60,6 +61,7 @@ namespace IdentityService.Infrastructure
             services.AddConfigurationOptions(configuration);
 
             var connectionString = Required(configuration, "ConnectionStrings:AuthDatabase");
+
             services.AddDbContext<AuthDbContext>(options => options.UseSqlServer(connectionString));
 
             // Persistence
@@ -151,33 +153,7 @@ namespace IdentityService.Infrastructure
         public static IServiceCollection AddJwtAuthentication(
             this IServiceCollection services, IConfiguration configuration)
         {
-            var jwtSettings = configuration.GetSection("Jwt").Get<JwtSettings>()
-                ?? throw new InvalidOperationException(
-                    "Jwt settings are missing. Set Jwt__SecretKey, Jwt__Issuer and Jwt__Audience in your .env file.");
-
-            services
-                .AddAuthentication(options =>
-                {
-                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                })
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtSettings.Issuer,
-
-                        ValidateAudience = true,
-                        ValidAudience = jwtSettings.Audience,
-
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-
-                        ValidateLifetime = true,
-                        ClockSkew = TimeSpan.Zero
-                    };
-                });
+            services.AddSharedJwtAuthentication(configuration);
 
             services.AddAuthorization(options =>
             {
@@ -253,6 +229,7 @@ namespace IdentityService.Infrastructure
             return services;
         }
 
+
         private static string SwaggerSchemaId(Type type)
         {
             var name = type.Name;
@@ -267,6 +244,8 @@ namespace IdentityService.Infrastructure
 
             return type.DeclaringType is null ? name : SwaggerSchemaId(type.DeclaringType) + name;
         }
+
+
 
         // Configuration comes from environment variables only (.env locally,
         // docker-compose `environment:` in containers) - never from appsettings.json.
