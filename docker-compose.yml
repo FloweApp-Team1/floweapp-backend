@@ -23,9 +23,14 @@ services:
 
     networks:
       - flowers-network
-
+    
   identityservice:
-    image: rahmaax/flowerapp-identity-service:${IDENTITY_IMAGE_TAG:-latest}
+    # Repository comes from CI (${DOCKERHUB_USERNAME}/flowerapp-identity-service);
+    # locally it stays an unqualified, never-pushed image.
+    image: ${IDENTITY_IMAGE:-flowerapp-identity-service}:${IDENTITY_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/IdentityService/Dockerfile
     restart: unless-stopped
 
     ports:
@@ -33,7 +38,6 @@ services:
 
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-
       ConnectionStrings__AuthDatabase: Server=${SQL_SERVER};Database=${AUTH_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
 
       Jwt__SecretKey: ${Jwt__SecretKey}
@@ -74,8 +78,10 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+
       redis:
         condition: service_healthy
+
       sqlserver:
         condition: service_healthy
 
@@ -83,7 +89,10 @@ services:
       - flowers-network
 
   catalogservice:
-    image: rahmaax/flowerapp-catalog-service:${CATALOG_IMAGE_TAG:-latest}
+    image: ${CATALOG_IMAGE:-flowerapp-catalog-service}:${CATALOG_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/CatalogService/Dockerfile
     restart: unless-stopped
 
     ports:
@@ -91,13 +100,13 @@ services:
 
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-
       ConnectionStrings__CatalogDatabase: Server=${SQL_SERVER};Database=${CATALOG_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
 
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
 
+    # GET /health reports the service plus its CatalogDbContext connection. The long
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
@@ -114,6 +123,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
+
     restart: unless-stopped
 
     ports:
@@ -158,7 +168,12 @@ services:
       - flowers-network
 
   apigateway:
-    image: rahmaax/flowerapp-api-gateway:${GATEWAY_IMAGE_TAG:-latest}
+    # Repository comes from CI (${DOCKERHUB_USERNAME}/flowerapp-api-gateway);
+    # locally it stays an unqualified, never-pushed image.
+    image: ${GATEWAY_IMAGE:-flowerapp-api-gateway}:${GATEWAY_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/ApiGateway/Dockerfile
     restart: unless-stopped
 
     ports:
@@ -191,6 +206,7 @@ services:
     depends_on:
       identityservice:
         condition: service_started
+
       catalogservice:
         condition: service_started
 
