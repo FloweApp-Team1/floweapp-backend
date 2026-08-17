@@ -26,9 +26,14 @@ namespace PaymentService
             // Add health checks for docker-compose and API Gateway
             builder.Services.AddHealthChecks();
 
+            builder.Services.AddExceptionHandler<Shared.Handlers.GlobalExceptionHandler>();
+            builder.Services.AddProblemDetails();
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
+            app.UseExceptionHandler();
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();

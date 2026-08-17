@@ -2,9 +2,8 @@ using PaymentService.Domain.Enums;
 
 namespace PaymentService.Domain.Entities
 {
-    public class PaymentAttempt
+    public class PaymentAttempt : Shared.Domain.BaseEntity
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
         public Guid OrderId { get; set; }
         public string StripeSessionId { get; set; } = string.Empty;
         public string? StripePaymentIntentId { get; set; }

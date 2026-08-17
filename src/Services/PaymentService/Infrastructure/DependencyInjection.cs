@@ -27,9 +27,14 @@ namespace PaymentService.Infrastructure
             this IServiceCollection services,
             IConfiguration configuration)
         {
+            Stripe.StripeConfiguration.ApiKey = Required(configuration, "Stripe:SecretKey");
+
             var connectionString = Required(configuration, "ConnectionStrings:PaymentDatabase");
             services.AddDbContext<PaymentDbContext>(options => options.UseSqlServer(connectionString));
 
+            services.AddScoped<Shared.Interfaces.IUnitOfWork, Repositories.UnitOfWork>();
+            services.AddScoped(typeof(Shared.Interfaces.IGenericRepository<>), typeof(Repositories.GenericRepository<>));
+            
             services.AddHttpContextAccessor();
 
             return services;
