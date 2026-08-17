@@ -151,6 +151,8 @@ services:
     depends_on:
       sqlserver:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
     networks:
       - flowers-network
