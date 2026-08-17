@@ -11,6 +11,13 @@ using Stripe;
 
 namespace PaymentService.Features.Webhook
 {
+    public static class StripeWebhookEventTypes
+    {
+        public const string CheckoutSessionCompleted = "checkout.session.completed";
+        public const string CheckoutSessionExpired = "checkout.session.expired";
+        public const string CheckoutSessionAsyncPaymentFailed = "checkout.session.async_payment_failed";
+    }
+
     public class StripeWebhookCommandHandler : IRequestHandler<StripeWebhookCommand>
     {
         private readonly IUnitOfWork _unitOfWork;
@@ -31,7 +38,7 @@ namespace PaymentService.Features.Webhook
         {
             var stripeEvent = request.StripeEvent;
 
-            // 1. Save WebhookEvent idempotently
+            // Save WebhookEvent idempotently
             var webhookEvent = new WebhookEvent
             {
                 StripeEventId = stripeEvent.Id,
@@ -52,10 +59,10 @@ namespace PaymentService.Features.Webhook
                 return; // Idempotently ignore
             }
 
-            // 2. Process event based on type
-            if (stripeEvent.Type == "checkout.session.completed" || 
-                stripeEvent.Type == "checkout.session.expired" ||
-                stripeEvent.Type == "checkout.session.async_payment_failed")
+            // Process event based on type
+            if (stripeEvent.Type == StripeWebhookEventTypes.CheckoutSessionCompleted || 
+                stripeEvent.Type == StripeWebhookEventTypes.CheckoutSessionExpired ||
+                stripeEvent.Type == StripeWebhookEventTypes.CheckoutSessionAsyncPaymentFailed)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
                 if (session == null)
@@ -74,7 +81,7 @@ namespace PaymentService.Features.Webhook
                     return; // Return 200 OK so Stripe doesn't retry a data mismatch
                 }
 
-                if (stripeEvent.Type == "checkout.session.completed")
+                if (stripeEvent.Type == StripeWebhookEventTypes.CheckoutSessionCompleted)
                 {
                     paymentAttempt.Status = PaymentStatus.Paid;
                     paymentAttempt.CompletedAt = DateTimeOffset.UtcNow;
@@ -85,13 +92,14 @@ namespace PaymentService.Features.Webhook
                         OrderId = paymentAttempt.OrderId,
                         PaymentAttemptId = paymentAttempt.Id,
                         AmountTotal = paymentAttempt.AmountTotal,
-                        Currency = paymentAttempt.Currency
+                        Currency = paymentAttempt.Currency,
+                        CustomerEmail = session.CustomerDetails?.Email
                     }, cancellationToken);
                 }
-                else if (stripeEvent.Type == "checkout.session.expired" || 
-                         stripeEvent.Type == "checkout.session.async_payment_failed")
+                else if (stripeEvent.Type == StripeWebhookEventTypes.CheckoutSessionExpired || 
+                         stripeEvent.Type == StripeWebhookEventTypes.CheckoutSessionAsyncPaymentFailed)
                 {
-                    paymentAttempt.Status = stripeEvent.Type == "checkout.session.expired" 
+                    paymentAttempt.Status = stripeEvent.Type == StripeWebhookEventTypes.CheckoutSessionExpired 
                         ? PaymentStatus.Expired 
                         : PaymentStatus.Failed;
 
@@ -102,7 +110,7 @@ namespace PaymentService.Features.Webhook
                     }, cancellationToken);
                 }
 
-                // 3. Mark processed and atomically save changes
+                // Mark processed and atomically save changes
                 webhookEvent.Processed = true;
                 _unitOfWork.Repository<PaymentAttempt>().Update(paymentAttempt);
                 _unitOfWork.Repository<WebhookEvent>().Update(webhookEvent);

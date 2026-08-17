@@ -22,6 +22,10 @@ namespace PaymentService
 
             builder.Services.AddApplicationServices();
             builder.Services.AddInfrastructureServices(builder.Configuration);
+
+            // Add Shared JWT Authentication
+            builder.Services.AddSharedJwtAuthentication(builder.Configuration);
+            builder.Services.AddAuthorization();
             
             // Add health checks for docker-compose and API Gateway
             builder.Services.AddHealthChecks();

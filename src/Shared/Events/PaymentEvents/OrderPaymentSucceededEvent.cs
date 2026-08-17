@@ -13,5 +13,6 @@ namespace Shared.Events.PaymentEvents
         public Guid PaymentAttemptId { get; init; }
         public long AmountTotal { get; init; }
         public string Currency { get; init; } = string.Empty;
+        public string? CustomerEmail { get; init; }
     }
 }

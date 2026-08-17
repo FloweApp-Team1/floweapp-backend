@@ -22,7 +22,8 @@ namespace PaymentService.Features.Checkout.CreateCheckoutSession
             })
             .WithTags("Checkout")
             .Produces(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status400BadRequest);
+            .Produces(StatusCodes.Status400BadRequest)
+            .RequireAuthorization();
         }
     }
 }
