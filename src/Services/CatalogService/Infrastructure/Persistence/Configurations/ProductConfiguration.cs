@@ -34,6 +34,19 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
                 .WithMany(x => x.Products)
                 .HasForeignKey(x => x.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Property(x => x.DiscountPercentage)
+                .HasColumnType("decimal(5,2)");
+
+            builder.HasMany(x => x.Includes)
+                .WithOne(x => x.Product)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasMany(x => x.ProductOccasions)
+                .WithOne(x => x.Product)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

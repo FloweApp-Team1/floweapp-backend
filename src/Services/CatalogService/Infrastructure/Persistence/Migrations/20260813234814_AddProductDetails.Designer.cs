@@ -4,6 +4,7 @@ using CatalogService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CatalogService.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CatalogDbContext))]
-    partial class CatalogDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260813234814_AddProductDetails")]
+    partial class AddProductDetails
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -60,37 +63,6 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.HasIndex("IsDeleted", "DisplayOrder");
 
                     b.ToTable("Categories", "Catalog");
-                });
-
-            modelBuilder.Entity("CatalogService.Domain.Entities.HomeLayoutSection", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Payload")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("isEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<short>("order")
-                        .HasColumnType("smallint");
-
-                    b.Property<string>("title")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("type")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("HomeLayoutSections", "Catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Domain.Entities.Occasion", b =>
@@ -298,17 +270,6 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.ToTable("OccasionProduct", "Catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Domain.Entities.Discount", b =>
-                {
-                    b.HasOne("CatalogService.Domain.Entities.Product", "Product")
-                        .WithMany("Discounts")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-                });
-
             modelBuilder.Entity("CatalogService.Domain.Entities.Product", b =>
                 {
                     b.HasOne("CatalogService.Domain.Entities.Category", "Category")
@@ -388,7 +349,7 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CatalogService.Domain.Entities.Product", b =>
                 {
-                    b.Navigation("Discounts");
+                    b.Navigation("Includes");
 
                     b.Navigation("ProductImages");
 
