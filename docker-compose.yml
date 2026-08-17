@@ -105,6 +105,7 @@ services:
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
+      Redis__ConnectionString: redis:6379
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
@@ -115,6 +116,8 @@ services:
 
     depends_on:
       sqlserver:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
     networks:

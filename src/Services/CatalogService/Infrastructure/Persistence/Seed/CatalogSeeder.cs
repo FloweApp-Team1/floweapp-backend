@@ -1,5 +1,6 @@
 using CatalogService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Shared.Constants;
 
 namespace CatalogService.Infrastructure.Persistence.Seed
 {
@@ -12,6 +13,8 @@ namespace CatalogService.Infrastructure.Persistence.Seed
             var occasions = await SeedOccasionsAsync(context, ct);
 
             await SeedProductsAsync(context, categories, occasions, ct);
+
+            await SeedHomeLayoutSectionsAsync(context, ct);
 
             await context.SaveChangesAsync(ct);
         }
@@ -226,5 +229,72 @@ namespace CatalogService.Infrastructure.Persistence.Seed
             int StockQuantity,
             string CategoryName,
             string[] OccasionNames);
+
+        // ---------- Home Layout Sections ----------
+
+        private static async Task SeedHomeLayoutSectionsAsync(CatalogDbContext context, CancellationToken ct)
+        {
+            var anyLayouts = await context.HomeLayoutSections.AnyAsync(ct);
+            if (anyLayouts)
+                return;
+
+            var bannerSection = new HomeLayoutSection
+            {
+                Id = Guid.NewGuid(),
+                Title = "Spring Sale",
+                Type = Domain.Enums.HomeSectionType.Banner,
+                Order = 1,
+                IsEnabled = true,
+                Payload = new BannerPayload
+                {
+                    ImageUrl = Placeholder("Spring Sale Banner", 1200),
+                    ClickAction = "flowerapp://promotions?id=spring"
+                }
+            };
+
+            var categorySection = new HomeLayoutSection
+            {
+                Id = Guid.NewGuid(),
+                Title = "Categories",
+                Type = Domain.Enums.HomeSectionType.CategoryRail,
+                Order = 2,
+                IsEnabled = true,
+                Payload = new CategoryRailPayload
+                {
+                    Count = 5,
+                    ViewAllAction = AppDeepLinks.Categories
+                }
+            };
+
+            var bestSellerSection = new HomeLayoutSection
+            {
+                Id = Guid.NewGuid(),
+                Title = "Best Sellers",
+                Type = Domain.Enums.HomeSectionType.ProductRail,
+                Order = 3,
+                IsEnabled = true,
+                Payload = new ProductRailPayload
+                {
+                    Count = 5,
+                    ViewAllAction = AppDeepLinks.BestSellers
+                }
+            };
+
+            var occasionSection = new HomeLayoutSection
+            {
+                Id = Guid.NewGuid(),
+                Title = "Shop By Occasion",
+                Type = Domain.Enums.HomeSectionType.OccasionRail,
+                Order = 4,
+                IsEnabled = true,
+                Payload = new OccasionRailPayload
+                {
+                    Count = 5,
+                    ViewAllAction = AppDeepLinks.Occasions
+                }
+            };
+
+            context.HomeLayoutSections.AddRange(bannerSection, categorySection, bestSellerSection, occasionSection);
+        }
     }
 }

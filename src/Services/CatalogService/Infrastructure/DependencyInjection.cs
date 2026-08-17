@@ -48,6 +48,8 @@ namespace CatalogService.Infrastructure
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+            services.AddSharedRedis(configuration);
+
             return services;
         }
 
