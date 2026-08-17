@@ -120,6 +120,70 @@ services:
     networks:
       - flowers-network
 
+  addresscartservice:
+    image: ${ADDRESSCART_IMAGE:-flowerapp-addresscart-service}:${ADDRESSCART_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/AddressCartService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${ADDRESSCART_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__AddressCartDatabase: Server=${SQL_SERVER};Database=${ADDRESSCART_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  ordersservice:
+    image: ${ORDERS_IMAGE:-flowerapp-orders-service}:${ORDERS_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/OrdersService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${ORDERS_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__OrdersDatabase: Server=${SQL_SERVER};Database=${ORDERS_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
   rabbitmq:
     image: rabbitmq:3-management
 
@@ -183,6 +247,8 @@ services:
 
       Gateway__IdentityServiceUrl: http://identityservice:8080
       Gateway__CatalogServiceUrl: http://catalogservice:8080
+      Gateway__AddressCartServiceUrl: http://addresscartservice:8080
+      Gateway__OrdersServiceUrl: http://ordersservice:8080
 
       Gateway__AllowedOrigins: ${Gateway__AllowedOrigins}
 
@@ -207,6 +273,12 @@ services:
         condition: service_started
 
       catalogservice:
+        condition: service_started
+
+      addresscartservice:
+        condition: service_started
+
+      ordersservice:
         condition: service_started
 
     networks:
