@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MassTransit;
 using PaymentService.Domain.Entities;
 using System.Reflection;
 
@@ -18,6 +19,11 @@ namespace PaymentService.Infrastructure.Persistence
         {
             modelBuilder.HasDefaultSchema("Payment");
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+            
+            modelBuilder.AddInboxStateEntity();
+            modelBuilder.AddOutboxMessageEntity();
+            modelBuilder.AddOutboxStateEntity();
+
             base.OnModelCreating(modelBuilder);
         }
     }

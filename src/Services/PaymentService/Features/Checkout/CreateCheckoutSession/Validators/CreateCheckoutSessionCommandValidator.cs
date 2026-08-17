@@ -1,6 +1,7 @@
 using FluentValidation;
+using PaymentService.Features.Checkout.CreateCheckoutSession.Commands;
 
-namespace PaymentService.Features.Checkout.CreateCheckoutSession
+namespace PaymentService.Features.Checkout.CreateCheckoutSession.Validators
 {
     public class CreateCheckoutSessionCommandValidator : AbstractValidator<CreateCheckoutSessionCommand>
     {

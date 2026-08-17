@@ -4,6 +4,7 @@ using PaymentService.Infrastructure.Persistence;
 using Shared.Behaviors;
 using Shared.Extensions;
 using System.Reflection;
+using MassTransit;
 
 namespace PaymentService.Infrastructure
 {
@@ -34,6 +35,25 @@ namespace PaymentService.Infrastructure
 
             services.AddScoped<Shared.Interfaces.IUnitOfWork, Repositories.UnitOfWork>();
             services.AddScoped(typeof(Shared.Interfaces.IGenericRepository<>), typeof(Repositories.GenericRepository<>));
+
+            services.AddMassTransit(x =>
+            {
+                x.AddEntityFrameworkOutbox<PaymentDbContext>(o =>
+                {
+                    o.UseSqlServer();
+                    o.UseBusOutbox();
+                });
+
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    cfg.Host(configuration["RABBITMQ_HOST"] ?? "localhost", "/", h =>
+                    {
+                        h.Username(configuration["RABBITMQ_USER"] ?? "guest");
+                        h.Password(configuration["RABBITMQ_PASSWORD"] ?? "guest");
+                    });
+                    cfg.ConfigureEndpoints(context);
+                });
+            });
             
             services.AddHttpContextAccessor();
 

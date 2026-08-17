@@ -9,8 +9,9 @@ using Stripe;
 using Stripe.Checkout;
 
 using Shared.Interfaces;
+using PaymentService.Features.Checkout.CreateCheckoutSession.Commands;
 
-namespace PaymentService.Features.Checkout.CreateCheckoutSession
+namespace PaymentService.Features.Checkout.CreateCheckoutSession.Handler
 {
     public class CreateCheckoutSessionHandler : IRequestHandler<CreateCheckoutSessionCommand, Result<CreateCheckoutSessionResponse>>
     {

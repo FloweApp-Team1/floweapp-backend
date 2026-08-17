@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using PaymentService.Features.Checkout.CreateCheckoutSession.Commands;
 using Shared.Contracts;
 
 namespace PaymentService.Features.Checkout.CreateCheckoutSession
