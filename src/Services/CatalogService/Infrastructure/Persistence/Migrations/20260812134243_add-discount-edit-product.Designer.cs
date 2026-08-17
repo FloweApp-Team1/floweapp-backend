@@ -4,6 +4,7 @@ using CatalogService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CatalogService.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CatalogDbContext))]
-    partial class CatalogDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812134243_add-discount-edit-product")]
+    partial class adddiscounteditproduct
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -62,35 +65,41 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.ToTable("Categories", "Catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Domain.Entities.HomeLayoutSection", b =>
+            modelBuilder.Entity("CatalogService.Domain.Entities.Discount", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Payload")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("LastChangedBy")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("isEnabled")
-                        .HasColumnType("bit");
+                    b.Property<decimal>("Percentage")
+                        .HasColumnType("decimal(5,2)");
 
-                    b.Property<short>("order")
-                        .HasColumnType("smallint");
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("title")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
 
-                    b.Property<int>("type")
-                        .HasColumnType("int");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.ToTable("HomeLayoutSections", "Catalog");
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("Discounts", "Catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Domain.Entities.Occasion", b =>
