@@ -57,7 +57,6 @@ namespace CatalogService.Features.Admin.Products.CreateProduct
                 Id = Guid.NewGuid(),
                 Name = request.Name,
                 Description = request.Description,
-                Includes = request.Includes ?? new List<string>(),
                 Price = request.Price,
                 DiscountPercent = request.DiscountPercent,
                 CategoryId = category.Id,
@@ -67,6 +66,16 @@ namespace CatalogService.Features.Admin.Products.CreateProduct
                 UpdatedAt = DateTime.UtcNow,
                 LastChangedBy = currentUserId
             };
+
+            product.Includes = (request.Includes ?? new List<string>())
+                .Select(name => new ProductInclude
+                {
+                    Id = Guid.NewGuid(),
+                    Name = name,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    LastChangedBy = currentUserId
+                }).ToList();
 
             product.ProductImages = new List<ProductImage>();
             for (var i = 0; i < request.Images.Count; i++)

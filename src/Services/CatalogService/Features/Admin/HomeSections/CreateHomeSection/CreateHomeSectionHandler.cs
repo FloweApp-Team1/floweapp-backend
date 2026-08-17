@@ -35,7 +35,7 @@ namespace CatalogService.Features.Admin.HomeSections.CreateHomeSection
             var section = new HomeSection
             {
                 Id = Guid.NewGuid(),
-                Type = Enum.Parse<HomeSectionType>(request.Type, ignoreCase: true),
+                Type = Enum.Parse<HomeSectionKind>(request.Type, ignoreCase: true),
                 Title = request.Title,
                 Order = request.Order,
                 Enabled = request.Enabled,

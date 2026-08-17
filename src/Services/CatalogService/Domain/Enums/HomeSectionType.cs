@@ -1,8 +1,12 @@
-﻿namespace CatalogService.Domain.Enums
+namespace CatalogService.Domain.Enums
 {
+    // Section types for the server-driven home layout (HomeLayoutSection).
+    // Values are persisted by the AddHomeLayoutSections migration - do not renumber.
     public enum HomeSectionType
     {
-        Banner = 1,
-        Rail = 2
+        Banner = 0,
+        ProductRail = 1,
+        OccasionRail = 2,
+        CategoryRail = 3
     }
 }

@@ -4,7 +4,7 @@ namespace CatalogService.Domain.Entities
 {
     public class HomeSection : CatalogBaseEntity
     {
-        public HomeSectionType Type { get; set; }
+        public HomeSectionKind Type { get; set; }
         public string Title { get; set; } = null!;
         public int Order { get; set; }
         public bool Enabled { get; set; } = true;

@@ -17,11 +17,6 @@ namespace CatalogService.Domain.Entities
         public string Name { get; set; } = null!;
         public string Description { get; set; } = null!;
 
-        // Short bullet list shown on the product page, e.g. ["Pink roses: 15", "White wrap"].
-        // Persisted as JSON (see ProductConfiguration) - no separate table needed for a
-        // small, unordered, product-owned list.
-        public List<string> Includes { get; set; } = new();
-
         public decimal Price { get; set; }
         public int? DiscountPercent { get; set; }
 
@@ -32,11 +27,14 @@ namespace CatalogService.Domain.Entities
         public Guid CategoryId { get; set; }
         public Category Category { get; set; } = null!;
 
+        // Short bullet list shown on the product page, e.g. ["Pink roses: 15", "White wrap"].
+        // Persisted as its own table (see ProductInclude / ProductConfiguration).
         public ICollection<ProductInclude>? Includes { get; set; }
         public ICollection<ProductImage>? ProductImages { get; set; }
 
         // we don't need to have a direct collection of Occasions here, because we have a many-to-many relationship through ProductOccasion
         public ICollection<Occasion>? Occasions { get; set; }
+        public ICollection<ProductOccasion>? ProductOccasions { get; set; }
         public ICollection<ProductStoreStock>? StoreStocks { get; set; }
         public ICollection<Discount> Discounts { get; set; } = [];
 

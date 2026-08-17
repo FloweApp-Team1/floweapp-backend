@@ -33,6 +33,9 @@ namespace CatalogService.Infrastructure.Persistence
         public DbSet<ProductStoreStock> ProductStoreStocks { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Occasion> Occasions { get; set; }
+        // Server-driven home layout read model - distinct from the admin-authored
+        // HomeSection below; see HomeSectionType vs HomeSectionKind.
+        public DbSet<HomeLayoutSection> HomeLayoutSections { get; set; }
         public DbSet<HomeSection> HomeSections { get; set; }
         public DbSet<HomeSectionCategory> HomeSectionCategories { get; set; }
         public DbSet<HomeSectionOccasion> HomeSectionOccasions { get; set; }

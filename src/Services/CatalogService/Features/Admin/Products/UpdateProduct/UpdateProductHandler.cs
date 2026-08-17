@@ -39,6 +39,7 @@ namespace CatalogService.Features.Admin.Products.UpdateProduct
                 .Include(p => p.ProductImages)
                 .Include(p => p.Occasions)
                 .Include(p => p.StoreStocks)
+                .Include(p => p.Includes)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (product is null)
@@ -46,7 +47,6 @@ namespace CatalogService.Features.Admin.Products.UpdateProduct
 
             if (request.Name is not null) product.Name = request.Name;
             if (request.Description is not null) product.Description = request.Description;
-            if (request.Includes is not null) product.Includes = request.Includes;
             if (request.Price.HasValue) product.Price = request.Price.Value;
             if (request.DiscountPercent.HasValue) product.DiscountPercent = request.DiscountPercent.Value;
 
@@ -72,6 +72,25 @@ namespace CatalogService.Features.Admin.Products.UpdateProduct
             }
 
             var currentUserId = _currentUser.UserId ?? Guid.Empty;
+
+            if (request.Includes is not null)
+            {
+                // Full replacement: orphaned rows are removed by the cascade delete
+                // configured on ProductInclude.ProductId.
+                product.Includes ??= new List<ProductInclude>();
+                product.Includes.Clear();
+                foreach (var name in request.Includes)
+                {
+                    product.Includes.Add(new ProductInclude
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = name,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        LastChangedBy = currentUserId
+                    });
+                }
+            }
 
             if (request.Images is { Count: > 0 })
             {

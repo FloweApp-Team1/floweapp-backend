@@ -25,7 +25,7 @@ namespace CatalogService.Features.Admin.Products.Common
                     .Select(i => i.ImageUrl)
                     .ToList() ?? new List<string>(),
                 Description: product.Description,
-                Includes: product.Includes ?? new List<string>(),
+                Includes: product.Includes?.Select(i => i.Name).ToList() ?? new List<string>(),
                 AvailabilityStatus: availableStock > 0 ? "IN_STOCK" : "OUT_OF_STOCK",
                 AvailableStock: availableStock,
                 CategoryIds: new List<Guid> { product.CategoryId },

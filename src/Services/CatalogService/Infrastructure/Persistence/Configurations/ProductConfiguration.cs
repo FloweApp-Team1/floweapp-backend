@@ -1,8 +1,6 @@
 using CatalogService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Text.Json;
 
 namespace CatalogService.Infrastructure.Persistence.Configurations
 {
@@ -53,20 +51,6 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
             builder.Property(x => x.DiscountPercent);
             builder.Property(x => x.StockQuantity)
                 .IsRequired();
-
-            // Small product-owned string list, stored as JSON rather than a join table.
-            var includesComparer = new ValueComparer<List<string>>(
-                (a, b) => (a ?? new()).SequenceEqual(b ?? new()),
-                v => v == null ? 0 : v.Aggregate(0, (h, s) => HashCode.Combine(h, s.GetHashCode())),
-                v => v.ToList());
-
-            builder.Property(x => x.Includes)
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v ?? new List<string>(), (JsonSerializerOptions?)null),
-                    v => string.IsNullOrWhiteSpace(v)
-                        ? new List<string>()
-                        : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null)!)
-                .Metadata.SetValueComparer(includesComparer);
 
             builder.HasIndex(x => x.Name);
             builder.HasIndex(x => x.CategoryId);
