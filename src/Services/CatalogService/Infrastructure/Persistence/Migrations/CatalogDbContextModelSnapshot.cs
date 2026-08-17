@@ -62,41 +62,35 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.ToTable("Categories", "Catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Domain.Entities.Discount", b =>
+            modelBuilder.Entity("CatalogService.Domain.Entities.HomeLayoutSection", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid>("LastChangedBy")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("Percentage")
-                        .HasColumnType("decimal(5,2)");
+                    b.Property<bool>("isEnabled")
+                        .HasColumnType("bit");
 
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<short>("order")
+                        .HasColumnType("smallint");
 
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("title")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<int>("type")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("Discounts", "Catalog");
+                    b.ToTable("HomeLayoutSections", "Catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Domain.Entities.Occasion", b =>

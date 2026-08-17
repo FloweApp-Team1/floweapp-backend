@@ -21,8 +21,8 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
 
             builder.HasIndex(x => x.Name);
 
-            // Serves GET /categories: the !IsDeleted query filter plus the DisplayOrder sort.
-            builder.HasIndex(x => new { x.IsDeleted, x.DisplayOrder });
+            builder.HasIndex(x => new { x.IsDeleted, x.DisplayOrder }); 
+
         }
     }
 }
