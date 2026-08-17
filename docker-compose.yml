@@ -65,14 +65,9 @@ services:
       AdminSeed__LastName: ${AdminSeed__LastName}
       AdminSeed__PhoneNumber: ${AdminSeed__PhoneNumber}
 
-      # NOTE: no RabbitMQ__* variables are passed - the application references
-      # MassTransit but does not configure a bus yet, so nothing would read them.
-      # Add them here together with the bus registration.
-
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
 
-    # GET /health reports the service plus its AuthDbContext connection. The long
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
@@ -112,7 +107,6 @@ services:
       Jwt__Audience: ${Jwt__Audience}
       Redis__ConnectionString: redis:6379
 
-    # GET /health reports the service plus its CatalogDbContext connection. The long
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
@@ -190,8 +184,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
 
-      # Overrides the localhost values in .env: inside the network the gateway reaches the
-      # services by compose service name, not by their published host ports.
       Gateway__IdentityServiceUrl: http://identityservice:8080
       Gateway__CatalogServiceUrl: http://catalogservice:8080
 
@@ -213,8 +205,6 @@ services:
       retries: 5
       start_period: 20s
 
-    # Waits for the services to answer /health rather than merely for their containers to
-    # exist, so the gateway never comes up proxying to something still running migrations.
     depends_on:
       identityservice:
         condition: service_started
@@ -233,4 +223,3 @@ volumes:
   rabbitmq-data:
   redis-data:
   sqlserver-data:
-

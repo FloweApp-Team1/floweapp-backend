@@ -1,8 +1,9 @@
-using CatalogService.Infrastructure.Persistence;
-using CatalogService.Infrastructure.Repositories;
-using CatalogService.Infrastructure.Services;
+using OrdersService.Infrastructure.Persistence;
+using OrdersService.Infrastructure.Repositories;
+using OrdersService.Infrastructure.Services;
 using Shared.Behaviors;
 using Shared.Extensions;
+using Shared.Handlers;
 using Shared.Interfaces;
 using Shared.Security;
 using Shared.Settings;
@@ -10,10 +11,11 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Text;
 
-namespace CatalogService.Infrastructure
+namespace OrdersService.Infrastructure
 {
     public static class DependencyInjection
     {
@@ -29,6 +31,11 @@ namespace CatalogService.Infrastructure
             // Registers every IEndpoint implementation; MapEndpoints() maps them.
             services.AddEndpoints(ApplicationAssembly);
 
+            services.AddExceptionHandler<GlobalExceptionHandler>();
+            services.AddProblemDetails();
+
+            services.AddHttpContextAccessor();
+
             return services;
         }
 
@@ -38,17 +45,14 @@ namespace CatalogService.Infrastructure
         {
             AddConfigurationOptions(services, configuration);
 
-            var connectionString = Required(configuration, "ConnectionStrings:CatalogDatabase");
-            services.AddDbContext<CatalogDbContext>(options => options.UseSqlServer(connectionString));
+            var connectionString = Required(configuration, "ConnectionStrings:OrdersDatabase");
+            services.AddDbContext<OrdersDbContext>(options => options.UseSqlServer(connectionString));
 
             // Persistence
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-            services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
-
-            services.AddSharedRedis(configuration);
 
             return services;
         }
@@ -64,8 +68,8 @@ namespace CatalogService.Infrastructure
                 .ValidateOnStart();
         }
 
-        // Validates tokens issued by IdentityService - Catalog never issues its own,
-        // so this must share the same signing key/issuer/audience as IdentityService's Jwt__* config.
+        // Validates tokens issued by IdentityService - this service never issues its own,
+        // so it must share the same signing key/issuer/audience as IdentityService's Jwt__* config.
         public static IServiceCollection AddJwtAuthentication(
             this IServiceCollection services, IConfiguration configuration)
         {
@@ -76,14 +80,46 @@ namespace CatalogService.Infrastructure
                 options.AddPolicy(AppPolicies.AdminOnly, p => p.RequireRole(AppRoles.Admin));
                 options.AddPolicy(AppPolicies.CustomerOnly, p => p.RequireRole(AppRoles.Customer));
                 options.AddPolicy(AppPolicies.DriverOnly, p => p.RequireRole(AppRoles.Driver));
+                options.AddPolicy(AppPolicies.DriverApproved, p => p.Requirements.Add(new DriverApprovedRequirement()));
 
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
                     .RequireAuthenticatedUser()
                     .Build();
             });
 
+            // Same claims-only requirement IdentityService evaluates at login - no DB call,
+            // so it's safe to reuse here against the JWT's own applicationStatus claim.
+            services.AddScoped<IAuthorizationHandler, DriverApprovedHandler>();
+
             // Renders 401/403 in the same ApiResponse shape as every other failure.
             services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddSwaggerDocumentation(this IServiceCollection services)
+        {
+            services.AddEndpointsApiExplorer();
+            services.AddSwaggerGen(options =>
+            {
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Paste the access token only - Swagger adds the \"Bearer \" prefix."
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                    }] = Array.Empty<string>()
+                });
+            });
 
             return services;
         }
@@ -94,6 +130,6 @@ namespace CatalogService.Infrastructure
             configuration[key] is { Length: > 0 } value
                 ? value
                 : throw new InvalidOperationException(
-                    $"Required configuration '{key}' is not set. Add '{key.Replace(':', '_').Replace("_", "__")}' to your .env file.");
+                    $"Required configuration '{key}' is not set. Add '{key.Replace(":", "__")}' to your .env file.");
     }
 }

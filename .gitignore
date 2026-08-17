@@ -370,3 +370,5 @@ secrets/
 # Firebase
 firebase-service-account.json
 .agents/
+
+.claude/

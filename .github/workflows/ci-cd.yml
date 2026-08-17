@@ -49,16 +49,16 @@ jobs:
       MSSQL_PID: Developer
       SQL_SERVER: sqlserver
       SQL_USER: sa
-      AUTH_DATABASE_NAME: FlowersAppAuth
-      CATALOG_DATABASE_NAME: FlowersAppCatalog
+      AUTH_DATABASE_NAME: FloweAppAuthDb
+      CATALOG_DATABASE_NAME: FloweAppCatalogDb
       RABBITMQ_USER: flowerapp
-      Jwt__Issuer: FlowerApp.IdentityService
-      Jwt__Audience: FlowerApp.Clients
-      Jwt__AccessTokenExpiryMinutes: "60"
-      Jwt__RefreshTokenExpiryDays: "7"
+      Jwt__Issuer: FlowersApp.IdentityService
+      Jwt__Audience: FlowersApp.Clients
+      Jwt__AccessTokenExpiryMinutes: "15"
+      Jwt__RefreshTokenExpiryDays: "30"
 
       # Gateway.Bind() fails fast at startup if any of these are missing.
-      Gateway__AllowedOrigins: "*"
+      Gateway__AllowedOrigins: "http://localhost:3000,http://localhost:5173,http://localhost:4200"
       Gateway__RateLimiting__Auth__PermitLimit: "10"
       Gateway__RateLimiting__Auth__WindowSeconds: "60"
       Gateway__RateLimiting__Default__PermitLimit: "100"
