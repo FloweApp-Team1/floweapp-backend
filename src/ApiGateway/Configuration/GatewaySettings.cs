@@ -9,6 +9,7 @@ namespace ApiGateway.Configuration
 
         public string IdentityServiceUrl { get; set; } = null!;
         public string CatalogServiceUrl { get; set; } = null!;
+        public string PaymentServiceUrl { get; set; } = null!;
 
         // Comma-separated list of browser origins, or "*" for any origin.
         public string AllowedOrigins { get; set; } = null!;
@@ -30,6 +31,7 @@ namespace ApiGateway.Configuration
 
             Required(settings.IdentityServiceUrl, "Gateway__IdentityServiceUrl");
             Required(settings.CatalogServiceUrl, "Gateway__CatalogServiceUrl");
+            Required(settings.PaymentServiceUrl, "Gateway__PaymentServiceUrl");
             Required(settings.AllowedOrigins, "Gateway__AllowedOrigins");
 
             settings.RateLimiting.Auth.Validate("Gateway__RateLimiting__Auth");

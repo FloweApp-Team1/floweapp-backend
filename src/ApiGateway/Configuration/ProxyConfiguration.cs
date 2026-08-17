@@ -28,13 +28,22 @@ namespace ApiGateway.Configuration
                 Match = new RouteMatch { Path = "/api/catalog/{**catch-all}" },
                 RateLimiterPolicy = DefaultPolicy,
                 Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/catalog" }]
+            },
+            new RouteConfig
+            {
+                RouteId = "payment-route",
+                ClusterId = "payment-cluster",
+                Match = new RouteMatch { Path = "/api/payment/{**catch-all}" },
+                RateLimiterPolicy = DefaultPolicy,
+                Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/payment" }]
             }
         ];
 
         public static ClusterConfig[] BuildClusters(GatewaySettings settings) =>
         [
             Cluster("identity-cluster", settings.IdentityServiceUrl, settings),
-            Cluster("catalog-cluster", settings.CatalogServiceUrl, settings)
+            Cluster("catalog-cluster", settings.CatalogServiceUrl, settings),
+            Cluster("payment-cluster", settings.PaymentServiceUrl, settings)
         ];
 
         private static ClusterConfig Cluster(string clusterId, string address, GatewaySettings settings) => new()

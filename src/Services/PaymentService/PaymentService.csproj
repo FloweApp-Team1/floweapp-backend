@@ -24,7 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Domain\" />
     <Folder Include="Features\Checkout\" />
     <Folder Include="Infrastructure\Persistence\Configurations\" />
     <Folder Include="Infrastructure\Persistence\Migrations\" />
