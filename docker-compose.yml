@@ -65,14 +65,9 @@ services:
       AdminSeed__LastName: ${AdminSeed__LastName}
       AdminSeed__PhoneNumber: ${AdminSeed__PhoneNumber}
 
-      # NOTE: no RabbitMQ__* variables are passed - the application references
-      # MassTransit but does not configure a bus yet, so nothing would read them.
-      # Add them here together with the bus registration.
-
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
 
-    # GET /health reports the service plus its AuthDbContext connection. The long
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
@@ -110,8 +105,74 @@ services:
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
+      Redis__ConnectionString: redis:6379
 
-    # GET /health reports the service plus its CatalogDbContext connection. The long
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  addresscartservice:
+    image: ${ADDRESSCART_IMAGE:-flowerapp-addresscart-service}:${ADDRESSCART_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/AddressCartService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${ADDRESSCART_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__AddressCartDatabase: Server=${SQL_SERVER};Database=${ADDRESSCART_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  ordersservice:
+    image: ${ORDERS_IMAGE:-flowerapp-orders-service}:${ORDERS_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/OrdersService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${ORDERS_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__OrdersDatabase: Server=${SQL_SERVER};Database=${ORDERS_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
@@ -187,10 +248,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
 
-      # Overrides the localhost values in .env: inside the network the gateway reaches the
-      # services by compose service name, not by their published host ports.
       Gateway__IdentityServiceUrl: http://identityservice:8080
       Gateway__CatalogServiceUrl: http://catalogservice:8080
+      Gateway__AddressCartServiceUrl: http://addresscartservice:8080
+      Gateway__OrdersServiceUrl: http://ordersservice:8080
 
       Gateway__AllowedOrigins: ${Gateway__AllowedOrigins}
 
@@ -210,13 +271,17 @@ services:
       retries: 5
       start_period: 20s
 
-    # Waits for the services to answer /health rather than merely for their containers to
-    # exist, so the gateway never comes up proxying to something still running migrations.
     depends_on:
       identityservice:
         condition: service_started
 
       catalogservice:
+        condition: service_started
+
+      addresscartservice:
+        condition: service_started
+
+      ordersservice:
         condition: service_started
 
     networks:
@@ -230,4 +295,3 @@ volumes:
   rabbitmq-data:
   redis-data:
   sqlserver-data:
-

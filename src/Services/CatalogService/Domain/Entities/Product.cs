@@ -28,12 +28,17 @@ namespace CatalogService.Domain.Entities
         // Legacy aggregate stock (kept for backward compatibility with existing reads);
         // per-store levels live in ProductStoreStock.
         public int StockQuantity { get; set; }
-
+        public decimal? DiscountPercentage { get; set; }
         public Guid CategoryId { get; set; }
         public Category Category { get; set; } = null!;
 
+        public ICollection<ProductInclude>? Includes { get; set; }
         public ICollection<ProductImage>? ProductImages { get; set; }
+
+        // we don't need to have a direct collection of Occasions here, because we have a many-to-many relationship through ProductOccasion
         public ICollection<Occasion>? Occasions { get; set; }
         public ICollection<ProductStoreStock>? StoreStocks { get; set; }
+        public ICollection<Discount> Discounts { get; set; } = [];
+
     }
 }
