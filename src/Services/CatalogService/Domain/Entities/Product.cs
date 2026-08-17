@@ -17,6 +17,7 @@ namespace CatalogService.Domain.Entities
 
         // we don't need to have a direct collection of Occasions here, because we have a many-to-many relationship through ProductOccasion
         public ICollection<Occasion>? Occasions { get; set; }
-        public ICollection<ProductOccasion>? ProductOccasions { get; set; }
+        public ICollection<Discount> Discounts { get; set; } = [];
+
     }
 }

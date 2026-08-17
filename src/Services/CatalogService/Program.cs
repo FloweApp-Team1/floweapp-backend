@@ -25,6 +25,10 @@ namespace CatalogService
             builder.Services.AddInfrastructureServices(builder.Configuration);
             builder.Services.AddJwtAuthentication(builder.Configuration);
 
+            // Backs GET /health, which docker-compose probes before letting the gateway start.
+            builder.Services.AddHealthChecks()
+                .AddDbContextCheck<CatalogDbContext>("database");
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -34,7 +38,7 @@ namespace CatalogService
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            // app.UseHttpsRedirection(); // Removed to prevent internal docker redirects
 
             app.UseAuthentication();
             app.UseAuthorization();
@@ -42,6 +46,7 @@ namespace CatalogService
 
             app.MapControllers();
             app.MapEndpoints();
+            app.MapSharedHealthChecks();
 
             using (var scope = app.Services.CreateScope())
             {

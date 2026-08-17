@@ -25,7 +25,9 @@ services:
       - flowers-network
     
   identityservice:
-    image: rahmaax/flowerapp-identity-service:${IDENTITY_IMAGE_TAG:-dev}
+    # Repository comes from CI (${DOCKERHUB_USERNAME}/flowerapp-identity-service);
+    # locally it stays an unqualified, never-pushed image.
+    image: ${IDENTITY_IMAGE:-flowerapp-identity-service}:${IDENTITY_IMAGE_TAG:-dev}
     build:
       context: .
       dockerfile: src/Services/IdentityService/Dockerfile
@@ -63,12 +65,15 @@ services:
       AdminSeed__LastName: ${AdminSeed__LastName}
       AdminSeed__PhoneNumber: ${AdminSeed__PhoneNumber}
 
-      # NOTE: no RabbitMQ__* variables are passed - the application references
-      # MassTransit but does not configure a bus yet, so nothing would read them.
-      # Add them here together with the bus registration.
-
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
     depends_on:
       rabbitmq:
@@ -84,7 +89,7 @@ services:
       - flowers-network
 
   catalogservice:
-    image: rahmaax/flowerapp-catalog-service:${CATALOG_IMAGE_TAG:-dev}
+    image: ${CATALOG_IMAGE:-flowerapp-catalog-service}:${CATALOG_IMAGE_TAG:-dev}
     build:
       context: .
       dockerfile: src/Services/CatalogService/Dockerfile
@@ -100,9 +105,19 @@ services:
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
+      Redis__ConnectionString: redis:6379
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
     depends_on:
       sqlserver:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
     networks:
@@ -154,6 +169,52 @@ services:
     networks:
       - flowers-network
 
+  apigateway:
+    # Repository comes from CI (${DOCKERHUB_USERNAME}/flowerapp-api-gateway);
+    # locally it stays an unqualified, never-pushed image.
+    image: ${GATEWAY_IMAGE:-flowerapp-api-gateway}:${GATEWAY_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/ApiGateway/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${GATEWAY_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+
+      Gateway__IdentityServiceUrl: http://identityservice:8080
+      Gateway__CatalogServiceUrl: http://catalogservice:8080
+
+      Gateway__AllowedOrigins: ${Gateway__AllowedOrigins}
+
+      Gateway__RateLimiting__Auth__PermitLimit: ${Gateway__RateLimiting__Auth__PermitLimit}
+      Gateway__RateLimiting__Auth__WindowSeconds: ${Gateway__RateLimiting__Auth__WindowSeconds}
+      Gateway__RateLimiting__Default__PermitLimit: ${Gateway__RateLimiting__Default__PermitLimit}
+      Gateway__RateLimiting__Default__WindowSeconds: ${Gateway__RateLimiting__Default__WindowSeconds}
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    depends_on:
+      identityservice:
+        condition: service_started
+
+      catalogservice:
+        condition: service_started
+
+    networks:
+      - flowers-network
+
 networks:
   flowers-network:
     driver: bridge
@@ -162,4 +223,3 @@ volumes:
   rabbitmq-data:
   redis-data:
   sqlserver-data:
-

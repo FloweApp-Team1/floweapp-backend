@@ -62,6 +62,37 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.ToTable("Categories", "Catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Domain.Entities.HomeLayoutSection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("isEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<short>("order")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("title")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("HomeLayoutSections", "Catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Domain.Entities.Occasion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -267,6 +298,17 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.ToTable("OccasionProduct", "Catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Domain.Entities.Discount", b =>
+                {
+                    b.HasOne("CatalogService.Domain.Entities.Product", "Product")
+                        .WithMany("Discounts")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("CatalogService.Domain.Entities.Product", b =>
                 {
                     b.HasOne("CatalogService.Domain.Entities.Category", "Category")
@@ -346,7 +388,7 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CatalogService.Domain.Entities.Product", b =>
                 {
-                    b.Navigation("Includes");
+                    b.Navigation("Discounts");
 
                     b.Navigation("ProductImages");
 

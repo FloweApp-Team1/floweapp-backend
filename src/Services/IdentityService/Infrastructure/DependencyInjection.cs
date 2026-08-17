@@ -15,14 +15,12 @@ using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using IdentityService.Infrastructure.Services.Email;
 using IdentityService.Infrastructure.Services.OTP;
-using IdentityService.Infrastructure.Services.Redis;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using StackExchange.Redis;
 using System.Reflection;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -80,7 +78,7 @@ namespace IdentityService.Infrastructure
             services.AddScoped<IEmailService, SmtpEmailService>();
             services.AddScoped<IImageService, LocalImageService>();
 
-            services.AddRedis(configuration);
+            services.AddSharedRedis(configuration);
             services.AddOtpServices();
             services.AddFirebase(configuration, environment);
 
@@ -113,18 +111,6 @@ namespace IdentityService.Infrastructure
             return services;
         }
 
-        private static IServiceCollection AddRedis(this IServiceCollection services, IConfiguration configuration)
-        {
-            // Inside Docker this resolves to the compose service name (redis:6379).
-            var redisConnectionString = Required(configuration, "Redis:ConnectionString");
-
-            services.AddSingleton<IConnectionMultiplexer>(
-                _ => ConnectionMultiplexer.Connect(redisConnectionString));
-
-            services.AddSingleton<IRedisCacheService, RedisCacheService>();
-
-            return services;
-        }
 
         private static IServiceCollection AddOtpServices(this IServiceCollection services)
         {
@@ -167,33 +153,7 @@ namespace IdentityService.Infrastructure
         public static IServiceCollection AddJwtAuthentication(
             this IServiceCollection services, IConfiguration configuration)
         {
-            var jwtSettings = configuration.GetSection("Jwt").Get<JwtSettings>()
-                ?? throw new InvalidOperationException(
-                    "Jwt settings are missing. Set Jwt__SecretKey, Jwt__Issuer and Jwt__Audience in your .env file.");
-
-            services
-                .AddAuthentication(options =>
-                {
-                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                })
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtSettings.Issuer,
-
-                        ValidateAudience = true,
-                        ValidAudience = jwtSettings.Audience,
-
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-
-                        ValidateLifetime = true,
-                        ClockSkew = TimeSpan.Zero
-                    };
-                });
+            services.AddSharedJwtAuthentication(configuration);
 
             services.AddAuthorization(options =>
             {
