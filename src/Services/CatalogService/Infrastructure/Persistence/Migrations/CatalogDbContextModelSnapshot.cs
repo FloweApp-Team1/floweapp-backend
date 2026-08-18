@@ -62,6 +62,37 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.ToTable("Categories", "Catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Domain.Entities.HomeLayoutSection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("isEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<short>("order")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("title")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("HomeLayoutSections", "Catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Domain.Entities.Occasion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -115,6 +146,9 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<decimal?>("DiscountPercentage")
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -190,6 +224,71 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.ToTable("ProductImages", "Catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Domain.Entities.ProductInclude", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("LastChangedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductInclude", "Catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Domain.Entities.ProductOccasion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("LastChangedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OccasionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccasionId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductOccasion", "Catalog");
+                });
+
             modelBuilder.Entity("OccasionProduct", b =>
                 {
                     b.Property<Guid>("OccasionsId")
@@ -202,7 +301,18 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ProductsId");
 
-                    b.ToTable("ProductOccasions", "Catalog");
+                    b.ToTable("OccasionProduct", "Catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Domain.Entities.Discount", b =>
+                {
+                    b.HasOne("CatalogService.Domain.Entities.Product", "Product")
+                        .WithMany("Discounts")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("CatalogService.Domain.Entities.Product", b =>
@@ -227,6 +337,36 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("CatalogService.Domain.Entities.ProductInclude", b =>
+                {
+                    b.HasOne("CatalogService.Domain.Entities.Product", "Product")
+                        .WithMany("Includes")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("CatalogService.Domain.Entities.ProductOccasion", b =>
+                {
+                    b.HasOne("CatalogService.Domain.Entities.Occasion", "Occasion")
+                        .WithMany("ProductOccasions")
+                        .HasForeignKey("OccasionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CatalogService.Domain.Entities.Product", "Product")
+                        .WithMany("ProductOccasions")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Occasion");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("OccasionProduct", b =>
                 {
                     b.HasOne("CatalogService.Domain.Entities.Occasion", null)
@@ -247,9 +387,18 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.Navigation("Products");
                 });
 
+            modelBuilder.Entity("CatalogService.Domain.Entities.Occasion", b =>
+                {
+                    b.Navigation("ProductOccasions");
+                });
+
             modelBuilder.Entity("CatalogService.Domain.Entities.Product", b =>
                 {
+                    b.Navigation("Discounts");
+
                     b.Navigation("ProductImages");
+
+                    b.Navigation("ProductOccasions");
                 });
 #pragma warning restore 612, 618
         }
