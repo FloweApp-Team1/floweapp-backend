@@ -1,4 +1,4 @@
-using Shared.Interfaces;
+﻿using Shared.Interfaces;
 using Shared.Results;
 using IdentityService.Common.Interfaces;
 using IdentityService.Features.Auth.Login.Commands;
@@ -61,15 +61,25 @@ namespace IdentityService.Features.Auth.Login
 
             var roleNames = user.RoleNames;
 
-            var dummyUserForJwt = new User 
-            { 
+            // Phone and image are carried here, not just in the response body: a driver's
+            // token is what OrdersService snapshots onto an order they claim, so anything
+            // dropped here leaves the customer's driver card incomplete.
+            var userForJwt = new User
+            {
                 Id = user.Id,
                 Email = user.Email,
                 FirstName = user.FirstName,
-                LastName = user.LastName
+                LastName = user.LastName,
+                PhoneNumber = user.PhoneNumber,
+                ImageUrl = user.ImageUrl
             };
 
-            var accessToken = jwtService.GenerateAccessToken(dummyUserForJwt, roleNames);
+            // Without this a driver's login token has no applicationStatus claim, so the
+            // DriverApproved policy rejects them until they happen to refresh - refresh
+            // being the only other path that mints a token, and the only one that passed it.
+            var driverStatus = user.DriverStatus?.ToString().ToUpperInvariant();
+
+            var accessToken = jwtService.GenerateAccessToken(userForJwt, roleNames, driverStatus);
 
             var userDto = new UserDto(
                 Id: user.Id,

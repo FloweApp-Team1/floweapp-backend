@@ -4,8 +4,10 @@
     <Project Path="src/Shared/Shared.csproj" />
   </Folder>
   <Folder Name="/src/Services/">
+    <Project Path="src/Services/AddressCartService/AddressCartService.csproj" />
     <Project Path="src/Services/CatalogService/CatalogService.csproj" Id="382852be-fb07-4926-8fc7-f4452699701d" />
     <Project Path="src/Services/IdentityService/IdentityService.csproj" Id="719e8fa9-5511-459a-9044-4f20f41c2654" />
+    <Project Path="src/Services/OrdersService/OrdersService.csproj" />
     <Project Path="src/Services/PaymentService/PaymentService.csproj" Id="083bdb35-01d2-4a3a-9f2f-f4aa919568f6" />
   </Folder>
   <Project Path="docker-compose.dcproj">

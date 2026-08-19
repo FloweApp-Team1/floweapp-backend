@@ -18,7 +18,7 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("Catalog")
-                .HasAnnotation("ProductVersion", "8.0.26")
+                .HasAnnotation("ProductVersion", "8.0.30")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -141,6 +141,12 @@ namespace CatalogService.Infrastructure.Persistence.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("Name");
+
+                    b.HasIndex("CreatedAt", "Id")
+                        .HasDatabaseName("ix_products_createdat_id");
+
+                    b.HasIndex("Price", "Id")
+                        .HasDatabaseName("ix_products_price_id");
 
                     b.ToTable("Products", "Catalog");
                 });

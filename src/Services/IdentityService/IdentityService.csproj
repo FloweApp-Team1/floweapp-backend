@@ -19,8 +19,7 @@
     <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Mapster" Version="10.0.11" />
     <PackageReference Include="Mapster.DependencyInjection" Version="10.0.11" />
-    <PackageReference Include="MassTransit" Version="9.2.0" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="9.2.0" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.4" />
     <!-- MediatR 12+ includes its own DI extensions; the separate
          MediatR.Extensions.Microsoft.DependencyInjection package targets MediatR 10
          internals and fails with TypeLoadException at startup against v14. -->
