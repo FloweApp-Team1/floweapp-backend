@@ -27,10 +27,17 @@ namespace CatalogService.Features.Admin.HomeSections.Common
 
         private static ProductSummaryDto ToProductSummary(Product product)
         {
-            var discountPercent = product.DiscountPercent is > 0 ? product.DiscountPercent : null;
-            var discountedPrice = discountPercent is null
-                ? product.Price
-                : Math.Round(product.Price * (1 - discountPercent.Value / 100m), 2);
+            var activeDiscount = product.Discounts?
+                .Where(d => d.StartDate <= DateTime.UtcNow && d.EndDate >= DateTime.UtcNow && !d.IsDeleted)
+                .OrderByDescending(d => d.StartDate)
+                .FirstOrDefault();
+
+            var discountPercent = activeDiscount?.Percentage;
+
+            var discountedPrice = discountPercent.HasValue
+                 ? Math.Round(product.Price * (1 - discountPercent.Value / 100m), 2)
+                 : product.Price;
+
             var stock = product.StoreStocks?.Sum(s => s.Quantity) ?? product.StockQuantity;
 
             return new ProductSummaryDto(
@@ -38,7 +45,7 @@ namespace CatalogService.Features.Admin.HomeSections.Common
                 product.Name,
                 product.Price,
                 discountedPrice,
-                discountPercent,
+                (int?)discountPercent,
                 stock > 0,
                 product.ProductImages?.OrderByDescending(i => i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault());
         }

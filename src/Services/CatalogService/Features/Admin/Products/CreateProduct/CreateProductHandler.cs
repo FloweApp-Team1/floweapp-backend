@@ -58,7 +58,7 @@ namespace CatalogService.Features.Admin.Products.CreateProduct
                 Name = request.Name,
                 Description = request.Description,
                 Price = request.Price,
-                DiscountPercent = request.DiscountPercent,
+               
                 CategoryId = category.Id,
                 Occasions = occasions,
                 StockQuantity = request.StoreStock.Sum(s => s.Quantity),
@@ -66,6 +66,24 @@ namespace CatalogService.Features.Admin.Products.CreateProduct
                 UpdatedAt = DateTime.UtcNow,
                 LastChangedBy = currentUserId
             };
+
+            if (request.DiscountPercent is > 0)
+            {
+                product.Discounts = new List<Discount>
+                {
+                    new Discount
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = product.Id,
+                        Percentage = request.DiscountPercent.Value,
+                        StartDate = DateTime.UtcNow,
+                        EndDate = DateTime.UtcNow.AddYears(1),
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        LastChangedBy = currentUserId
+                    }
+                };
+            }
 
             product.Includes = (request.Includes ?? new List<string>())
                 .Select(name => new ProductInclude

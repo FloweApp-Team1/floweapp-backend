@@ -7,17 +7,24 @@ namespace CatalogService.Features.Admin.Products.Common
         public static ProductDto ToDto(Product product)
         {
             var availableStock = product.StoreStocks?.Sum(s => s.Quantity) ?? product.StockQuantity;
-            var discountPercent = product.DiscountPercent is > 0 ? product.DiscountPercent : null;
-            var discountedPrice = discountPercent is null
-                ? product.Price
-                : Math.Round(product.Price * (1 - discountPercent.Value / 100m), 2);
 
+            var discountedPrice = product.Discounts?
+               .Where(d => d.StartDate <= DateTime.UtcNow && d.EndDate >= DateTime.UtcNow && !d.IsDeleted)
+               .OrderByDescending(d => d.StartDate)
+               .Select(d => (decimal?)(product.Price - (product.Price * d.Percentage / 100)))
+               .FirstOrDefault();
+
+            var discountPercent = product.Discounts?
+                .Where(d => d.StartDate <= DateTime.UtcNow && d.EndDate >= DateTime.UtcNow && !d.IsDeleted)
+                .OrderByDescending(d => d.StartDate)
+                .Select(d => (decimal?)d.Percentage)
+                .FirstOrDefault();
             return new ProductDto(
                 Id: product.Id,
                 Name: product.Name,
                 Price: product.Price,
-                DiscountedPrice: discountedPrice,
-                DiscountPercent: discountPercent,
+                DiscountedPrice: discountedPrice ?? product.Price,
+                DiscountPercent: (int?)discountPercent,
                 InStock: availableStock > 0,
                 Images: product.ProductImages?
                     .OrderByDescending(i => i.IsPrimary)

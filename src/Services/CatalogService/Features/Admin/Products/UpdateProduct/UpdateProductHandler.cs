@@ -40,16 +40,54 @@ namespace CatalogService.Features.Admin.Products.UpdateProduct
                 .Include(p => p.Occasions)
                 .Include(p => p.StoreStocks)
                 .Include(p => p.Includes)
+                .Include(p => p.Discounts)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (product is null)
                 return Result.Failure<ProductDto>(Error.New("Product.NotFound", "Product was not found."));
+            var currentUserId = _currentUser.UserId ?? Guid.Empty;
+
 
             if (request.Name is not null) product.Name = request.Name;
             if (request.Description is not null) product.Description = request.Description;
             if (request.Price.HasValue) product.Price = request.Price.Value;
-            if (request.DiscountPercent.HasValue) product.DiscountPercent = request.DiscountPercent.Value;
+            if (request.DiscountPercent.HasValue)
+            {
+                product.Discounts ??= new List<Discount>();
+                var activeDiscount = product.Discounts
+                    .FirstOrDefault(d => d.StartDate <= DateTime.UtcNow && d.EndDate >= DateTime.UtcNow && !d.IsDeleted);
 
+                if (request.DiscountPercent.Value > 0)
+                {
+                    if (activeDiscount is not null)
+                    {
+                        activeDiscount.Percentage = request.DiscountPercent.Value;
+                        activeDiscount.UpdatedAt = DateTime.UtcNow;
+                        activeDiscount.LastChangedBy = currentUserId;
+                    }
+                    else
+                    {
+                        product.Discounts.Add(new Discount
+                        {
+                            Id = Guid.NewGuid(),
+                            ProductId = product.Id,
+                            Percentage = request.DiscountPercent.Value,
+                            StartDate = DateTime.UtcNow,
+                            EndDate = DateTime.UtcNow.AddYears(1),
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow,
+                            LastChangedBy = currentUserId
+                        });
+                    }
+                }
+                else if (activeDiscount is not null)
+                {
+                   
+                    activeDiscount.IsDeleted = true;
+                    activeDiscount.UpdatedAt = DateTime.UtcNow;
+                    activeDiscount.LastChangedBy = currentUserId;
+                }
+            }
             if (request.CategoryIds is { Count: > 0 })
             {
                 var category = await _unitOfWork.Repository<Category>().GetByIdAsync(request.CategoryIds[0], cancellationToken);
@@ -71,8 +109,7 @@ namespace CatalogService.Features.Admin.Products.UpdateProduct
                 product.Occasions = occasions;
             }
 
-            var currentUserId = _currentUser.UserId ?? Guid.Empty;
-
+        
             if (request.Includes is not null)
             {
                 // Full replacement: orphaned rows are removed by the cascade delete
