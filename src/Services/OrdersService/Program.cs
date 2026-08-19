@@ -1,5 +1,6 @@
 using OrdersService.Infrastructure;
 using OrdersService.Infrastructure.Persistence;
+using OrdersService.Infrastructure.Persistence.Seed;
 using Shared.Extensions;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -56,6 +57,10 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
 
     await context.Database.MigrateAsync();
+
+    // Sample orders are development-only - production data comes from checkout.
+    if (app.Environment.IsDevelopment())
+        await OrdersSeeder.SeedAsync(context, builder.Configuration);
 }
 
 app.Run();
