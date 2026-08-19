@@ -175,15 +175,6 @@ services:
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
 
-      # Fronts the driver-location read path behind GET /orders/{id}/tracking.
-      Redis__ConnectionString: redis:6379
-
-      # Carries DriverLocationUpdatedEvent to NotificationService, which turns it into the
-      # silent push that moves the customer's map marker.
-      RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RABBITMQ_USER}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD}
-
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
@@ -193,12 +184,6 @@ services:
 
     depends_on:
       sqlserver:
-        condition: service_healthy
-
-      redis:
-        condition: service_healthy
-
-      rabbitmq:
         condition: service_healthy
 
     networks:

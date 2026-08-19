@@ -23,10 +23,6 @@ namespace OrdersService.Infrastructure.Persistence.Configurations
             builder.Property(x => x.DeliveryFee).HasColumnType("decimal(10,2)").IsRequired();
             builder.Property(x => x.Total).HasColumnType("decimal(10,2)").IsRequired();
 
-            builder.Property(x => x.DriverName).HasMaxLength(150);
-            builder.Property(x => x.DriverPhone).HasMaxLength(20);
-            builder.Property(x => x.DriverImageUrl).HasMaxLength(500);
-
             builder.Property(x => x.GiftRecipientName).HasMaxLength(150);
             builder.Property(x => x.GiftRecipientPhone).HasMaxLength(20);
             builder.Property(x => x.GiftRecipientAddress).HasMaxLength(500);

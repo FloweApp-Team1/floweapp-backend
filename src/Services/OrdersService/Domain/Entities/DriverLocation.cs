@@ -11,11 +11,5 @@ namespace OrdersService.Domain.Entities
         public double Lat { get; set; }
         public double Lng { get; set; }
         public DateTime RecordedAt { get; set; }
-
-        // When this position was last broadcast as a DriverLocationUpdatedEvent. Pings
-        // arrive far more often than the customer needs a push, so this is what the
-        // "meaningful update" throttle in UpdateDriverLocationHandler measures its interval
-        // against - RecordedAt cannot serve that role because every ping overwrites it.
-        public DateTime? LastBroadcastAt { get; set; }
     }
 }

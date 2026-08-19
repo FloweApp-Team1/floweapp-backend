@@ -1,4 +1,4 @@
-﻿using Shared.Interfaces;
+using Shared.Interfaces;
 using Shared.Results;
 using IdentityService.Domain.Entities;
 using MediatR;
@@ -18,10 +18,6 @@ namespace IdentityService.Features.Auth.Login.Queries
         NotificationStatusEnum NotificationStatus,
         string PasswordHash,
         bool IsActive,
-        string? ImageUrl,
-        // Null for anyone who is not a driver. The access token has to carry the driver's
-        // approval status, so the login query is the only place it can come from.
-        DeliveryStatusEnum? DriverStatus,
         List<string> RoleNames
     );
 
@@ -46,8 +42,6 @@ namespace IdentityService.Features.Auth.Login.Queries
                     u.NotificationStatus,
                     u.PasswordHash,
                     u.IsActive,
-                    u.ImageUrl,
-                    u is Delivery ? ((Delivery)u).Status : (DeliveryStatusEnum?)null,
                     u.UserRoles != null ? u.UserRoles.Select(ur => ur.Role.Name).ToList() : new List<string>()
                 ))
                 .FirstOrDefaultAsync(ct);
