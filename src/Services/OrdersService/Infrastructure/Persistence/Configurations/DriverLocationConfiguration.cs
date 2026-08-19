@@ -18,6 +18,10 @@ namespace OrdersService.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.RecordedAt).IsRequired();
 
+            // Lets the tracking endpoint answer "is this position stale?" straight from the
+            // index, and keeps the broadcast throttle a single-row read.
+            builder.HasIndex(x => x.RecordedAt);
+
             builder.HasOne(x => x.Order)
                 .WithMany()
                 .HasForeignKey(x => x.OrderId)

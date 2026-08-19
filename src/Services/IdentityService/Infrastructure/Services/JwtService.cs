@@ -39,10 +39,19 @@ public class JwtService : IJwtService
 
         // Only Driver tokens carry this — lets the DriverApproved policy check
         // status from the token itself, no DB hit needed on every request.
-        if (roleList.Contains(AppRoles.Driver, StringComparer.OrdinalIgnoreCase)
-            && driverApplicationStatus is not null)
+        if (roleList.Contains(AppRoles.Driver, StringComparer.OrdinalIgnoreCase))
         {
-            claims.Add(new Claim(AppClaimTypes.ApplicationStatus, driverApplicationStatus));
+            if (driverApplicationStatus is not null)
+                claims.Add(new Claim(AppClaimTypes.ApplicationStatus, driverApplicationStatus));
+
+            // Driver-only, because only the driver card needs them: OrdersService copies
+            // these onto an order when the driver claims it, which is what gives the
+            // customer a name to read and a number to call without any service having to
+            // ask IdentityService for a profile it already described in this token.
+            claims.Add(new Claim(AppClaimTypes.PhoneNumber, user.PhoneNumber));
+
+            if (!string.IsNullOrWhiteSpace(user.ImageUrl))
+                claims.Add(new Claim(AppClaimTypes.ImageUrl, user.ImageUrl));
         }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
