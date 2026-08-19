@@ -31,6 +31,14 @@ namespace ApiGateway.Configuration
             },
             new RouteConfig
             {
+                RouteId = "payment-route",
+                ClusterId = "payment-cluster",
+                Match = new RouteMatch { Path = "/api/payment/{**catch-all}" },
+                RateLimiterPolicy = DefaultPolicy,
+                Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/payment" }]
+            },
+            new RouteConfig
+            {
                 RouteId = "address-cart-route",
                 ClusterId = "address-cart-cluster",
                 Match = new RouteMatch { Path = "/api/address-cart/{**catch-all}" },
@@ -51,6 +59,7 @@ namespace ApiGateway.Configuration
         [
             Cluster("identity-cluster", settings.IdentityServiceUrl, settings),
             Cluster("catalog-cluster", settings.CatalogServiceUrl, settings),
+            Cluster("payment-cluster", settings.PaymentServiceUrl, settings),
             Cluster("address-cart-cluster", settings.AddressCartServiceUrl, settings),
             Cluster("orders-cluster", settings.OrdersServiceUrl, settings)
         ];
