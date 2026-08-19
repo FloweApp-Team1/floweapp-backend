@@ -1,6 +1,8 @@
+﻿using OrdersService.Infrastructure.Messaging;
 using OrdersService.Infrastructure.Persistence;
 using OrdersService.Infrastructure.Repositories;
 using OrdersService.Infrastructure.Services;
+using OrdersService.Infrastructure.Settings;
 using Shared.Behaviors;
 using Shared.Extensions;
 using Shared.Handlers;
@@ -8,6 +10,7 @@ using Shared.Interfaces;
 using Shared.Security;
 using Shared.Settings;
 using FluentValidation;
+using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -54,11 +57,69 @@ namespace OrdersService.Infrastructure
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+            services.AddScoped<IOrderStatusHistoryWriter, OrderStatusHistoryWriter>();
+            services.AddScoped<IDriverSnapshotService, DriverSnapshotService>();
+
+            AddDriverLocationCache(services, configuration);
+            AddIntegrationEventPublisher(services, configuration);
+
             return services;
+        }
+
+        private static void AddDriverLocationCache(IServiceCollection services, IConfiguration configuration)
+        {
+            if (string.IsNullOrWhiteSpace(configuration["Redis:ConnectionString"]))
+            {
+                services.AddSingleton<IDriverLocationCache, NullDriverLocationCache>();
+                return;
+            }
+
+            services.AddSharedRedis(configuration);
+            services.AddScoped<IDriverLocationCache, DriverLocationCache>();
+        }
+
+        // Same reasoning for RabbitMQ: a missing broker costs the customer the silent push
+        // that moves the map marker, and polling still carries the tracking screen.
+        private static void AddIntegrationEventPublisher(IServiceCollection services, IConfiguration configuration)
+        {
+            var rabbitMq = configuration.GetSection(RabbitMqSettings.SectionName).Get<RabbitMqSettings>();
+
+            if (rabbitMq is null || string.IsNullOrWhiteSpace(rabbitMq.Host))
+            {
+                services.AddSingleton<IIntegrationEventPublisher, LoggingEventPublisher>();
+                return;
+            }
+
+            services.AddMassTransit(bus =>
+            {
+                bus.SetKebabCaseEndpointNameFormatter();
+
+                bus.UsingRabbitMq((context, configurator) =>
+                {
+                    configurator.Host(rabbitMq.Host, host =>
+                    {
+                        host.Username(rabbitMq.Username);
+                        host.Password(rabbitMq.Password);
+                    });
+
+                    configurator.ConfigureEndpoints(context);
+                });
+            });
+
+            services.AddScoped<IIntegrationEventPublisher, MassTransitEventPublisher>();
         }
 
         private static void AddConfigurationOptions(IServiceCollection services, IConfiguration configuration)
         {
+            services.AddOptions<DeliveryTrackingSettings>()
+                .Bind(configuration.GetSection(DeliveryTrackingSettings.SectionName))
+                .Validate(s => s.StalenessThresholdSeconds > 0, "DeliveryTracking__StalenessThresholdSeconds must be greater than zero.")
+                .Validate(s => s.CacheTtlMinutes > 0, "DeliveryTracking__CacheTtlMinutes must be greater than zero.")
+                .Validate(s => s.MinimumBroadcastDistanceMeters >= 0, "DeliveryTracking__MinimumBroadcastDistanceMeters cannot be negative.")
+                .Validate(s => s.MinimumBroadcastIntervalSeconds >= 0, "DeliveryTracking__MinimumBroadcastIntervalSeconds cannot be negative.")
+                .Validate(s => s.MaximumPingAgeMinutes > 0, "DeliveryTracking__MaximumPingAgeMinutes must be greater than zero.")
+                .ValidateOnStart();
+
             services.AddOptions<JwtSettings>()
                 .Bind(configuration.GetSection("Jwt"))
                 .Validate(s => !string.IsNullOrWhiteSpace(s.SecretKey), "Jwt__SecretKey is not set.")
