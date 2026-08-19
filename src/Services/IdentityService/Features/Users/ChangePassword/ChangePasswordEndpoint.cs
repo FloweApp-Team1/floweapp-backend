@@ -1,16 +1,46 @@
-using IdentityService.Common.Contracts;
-using IdentityService.Common.Responses;
+using Shared.Contracts;
+using Shared.Extensions;
+using Shared.Interfaces;
+using Shared.Responses;
+using MediatR;
 
-namespace IdentityService.Features.Users.ChangePassword;
-
-public class ChangePasswordEndpoint : IEndpoint
+namespace IdentityService.Features.Users.ChangePassword
 {
-    public void MapEndpoint(IEndpointRouteBuilder app)
+    public sealed class ChangePasswordEndpoint : IEndpoint
     {
-        app.MapPost("/users/change-password", () =>
-                ApiResponse.Success(new { }, "Password changed").ToHttpResult())
+        public sealed record ChangePasswordRequest(
+            string CurrentPassword,
+            string NewPassword,
+            string ConfirmNewPassword);
+
+        public void MapEndpoint(IEndpointRouteBuilder app)
+        {
+            app.MapPost("/users/change-password", async (
+                ChangePasswordRequest request,
+                ICurrentUserService currentUser,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                if (currentUser.UserId is null)
+                    return ApiResponse.Fail(
+                        "Authentication required", StatusCodes.Status401Unauthorized).ToHttpResult();
+
+                var command = new ChangePasswordCommand(
+                    currentUser.UserId.Value,
+                    request.CurrentPassword,
+                    request.NewPassword,
+                    request.ConfirmNewPassword);
+
+                var result = await sender.Send(command, cancellationToken);
+
+                return result.ToMinimalApiResult(
+                    "Password changed successfully. Please log in again.");
+            })
             .WithTags("Users")
             .WithName("ChangePassword")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .Produces<ApiResponse<object>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
+        }
     }
 }

@@ -3,7 +3,7 @@
     public class Customer:User
     {
 
-        public string Address { get; set; } = null!;
+        public string? Address { get; set; } 
 
 
     }

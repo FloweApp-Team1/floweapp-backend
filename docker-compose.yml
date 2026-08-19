@@ -1,9 +1,33 @@
-name: floweapp
-
 services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
 
+    ports:
+      - "${MSSQL_PORT}:1433"
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - flowers-network
+    
   identityservice:
-    image: rahmaax/flowerapp-identity-service:${IDENTITY_IMAGE_TAG:-dev}
+    # Repository comes from CI (${DOCKERHUB_USERNAME}/flowerapp-identity-service);
+    # locally it stays an unqualified, never-pushed image.
+    image: ${IDENTITY_IMAGE:-flowerapp-identity-service}:${IDENTITY_IMAGE_TAG:-dev}
     build:
       context: .
       dockerfile: src/Services/IdentityService/Dockerfile
@@ -14,22 +38,42 @@ services:
 
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ConnectionStrings__DefaultConnection: Server=${SQL_SERVER};Database=${DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      ConnectionStrings__AuthDatabase: Server=${SQL_SERVER};Database=${AUTH_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
 
-      # Container path where the secret is mounted (see volumes below).
-      # Hardcoded here so it overrides the host path in .env, exactly like the
-      # connection string overrides localhost with the sqlserver service name.
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+      Jwt__AccessTokenExpiryMinutes: ${Jwt__AccessTokenExpiryMinutes}
+      Jwt__RefreshTokenExpiryDays: ${Jwt__RefreshTokenExpiryDays}
+
       Firebase__CredentialsPath: /run/secrets/firebase-service-account.json
+      Redis__ConnectionString: redis:6379
 
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: ${RABBITMQ_PORT}
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD}
+      Email__SmtpHost: ${Email__SmtpHost}
+      Email__SmtpPort: ${Email__SmtpPort}
+      Email__SenderEmail: ${Email__SenderEmail}
+      Email__SenderName: ${Email__SenderName}
+      Email__Username: ${Email__Username}
+      Email__Password: ${Email__Password}
+      Email__EnableSsl: ${Email__EnableSsl}
 
-      Redis__ConnectionString: redis:${REDIS_PORT}
+      Otp__PepperSecret: ${Otp__PepperSecret}
+
+      AdminSeed__Email: ${AdminSeed__Email}
+      AdminSeed__Password: ${AdminSeed__Password}
+      AdminSeed__FirstName: ${AdminSeed__FirstName}
+      AdminSeed__LastName: ${AdminSeed__LastName}
+      AdminSeed__PhoneNumber: ${AdminSeed__PhoneNumber}
 
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
     depends_on:
       rabbitmq:
@@ -39,6 +83,122 @@ services:
         condition: service_healthy
 
       sqlserver:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  catalogservice:
+    image: ${CATALOG_IMAGE:-flowerapp-catalog-service}:${CATALOG_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/CatalogService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${CATALOG_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__CatalogDatabase: Server=${SQL_SERVER};Database=${CATALOG_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+      Redis__ConnectionString: redis:6379
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  addresscartservice:
+    image: ${ADDRESSCART_IMAGE:-flowerapp-addresscart-service}:${ADDRESSCART_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/AddressCartService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${ADDRESSCART_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__AddressCartDatabase: Server=${SQL_SERVER};Database=${ADDRESSCART_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  ordersservice:
+    image: ${ORDERS_IMAGE:-flowerapp-orders-service}:${ORDERS_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/OrdersService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${ORDERS_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__OrdersDatabase: Server=${SQL_SERVER};Database=${ORDERS_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+      # Fronts the driver-location read path behind GET /orders/{id}/tracking.
+      Redis__ConnectionString: redis:6379
+
+      # Carries DriverLocationUpdatedEvent to NotificationService, which turns it into the
+      # silent push that moves the customer's map marker.
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+      rabbitmq:
         condition: service_healthy
 
     networks:
@@ -60,7 +220,8 @@ services:
       test: rabbitmq-diagnostics -q ping
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 30s
 
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
@@ -89,27 +250,56 @@ services:
     networks:
       - flowers-network
 
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  apigateway:
+    # Repository comes from CI (${DOCKERHUB_USERNAME}/flowerapp-api-gateway);
+    # locally it stays an unqualified, never-pushed image.
+    image: ${GATEWAY_IMAGE:-flowerapp-api-gateway}:${GATEWAY_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/ApiGateway/Dockerfile
     restart: unless-stopped
 
     ports:
-      - "${MSSQL_PORT}:1433"
+      - "${GATEWAY_HTTP_PORT}:8080"
 
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_PID: ${MSSQL_PID:-Developer}
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
 
-    volumes:
-      - sqlserver-data:/var/opt/mssql
+      Gateway__IdentityServiceUrl: http://identityservice:8080
+      Gateway__CatalogServiceUrl: http://catalogservice:8080
+      Gateway__AddressCartServiceUrl: http://addresscartservice:8080
+      Gateway__OrdersServiceUrl: http://ordersservice:8080
+
+      Gateway__AllowedOrigins: ${Gateway__AllowedOrigins}
+
+      Gateway__RateLimiting__Auth__PermitLimit: ${Gateway__RateLimiting__Auth__PermitLimit}
+      Gateway__RateLimiting__Auth__WindowSeconds: ${Gateway__RateLimiting__Auth__WindowSeconds}
+      Gateway__RateLimiting__Default__PermitLimit: ${Gateway__RateLimiting__Default__PermitLimit}
+      Gateway__RateLimiting__Default__WindowSeconds: ${Gateway__RateLimiting__Default__WindowSeconds}
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
 
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
       start_period: 20s
+
+    depends_on:
+      identityservice:
+        condition: service_started
+
+      catalogservice:
+        condition: service_started
+
+      addresscartservice:
+        condition: service_started
+
+      ordersservice:
+        condition: service_started
 
     networks:
       - flowers-network

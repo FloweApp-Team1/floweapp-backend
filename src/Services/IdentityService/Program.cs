@@ -1,78 +1,63 @@
-﻿using FirebaseAdmin;
-using Google.Apis.Auth.OAuth2;
-using IdentityService.Common.Extensions;
-using IdentityService.Common.Handlers;
+using Shared.Contracts;
+using Shared.Extensions;
 using IdentityService.Infrastructure;
+using IdentityService.Infrastructure.Persistence.Seed;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
 
 
 DotNetEnv.Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddApplicationServices();
+builder.Services.AddInfrastructureServices(builder.Configuration, builder.Environment);
+builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddAdminLoginRateLimiting();
+builder.Services.AddSwaggerDocumentation();
 
-static string GetRequiredEnv(string key) =>
-    Environment.GetEnvironmentVariable(key)
-        ?? throw new InvalidOperationException(
-            $"Required environment variable '{key}' is not set. Add it to your .env file.");
+// Backs GET /health, which docker-compose probes before letting the gateway start.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AuthDbContext>("database");
 
-var connectionString = GetRequiredEnv("ConnectionStrings__DefaultConnection");
-
-
-builder.Services.AddDbContext<AuthDbContext>(options =>
-               options.UseSqlServer(connectionString));
-
-// Registers every IEndpoint implementation found in this assembly
-builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
-
-// Turns unhandled exceptions (and FluentValidation failures) into the unified ApiResponse shape
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddProblemDetails();
-
-// Needed because some stubs already call RequireAuthorization("AdminOnly")
-builder.Services.AddAuthentication(); // configure JWT bearer later
-builder.Services.AddAuthorization(options =>
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
 });
-
-#region Firebase Admin SDK Configuration
-var credentialsPath = GetRequiredEnv("Firebase__CredentialsPath");
-
-var fullPath = Path.IsPathRooted(credentialsPath)
-    ? credentialsPath
-    : Path.Combine(builder.Environment.ContentRootPath, credentialsPath);
-
-if (!File.Exists(fullPath))
-    throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
-#endregion
-
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-builder.Services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
-{
-    Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
-}));
 
 var app = builder.Build();
 
-// Must be first so it can catch exceptions thrown anywhere downstream.
+app.UseForwardedHeaders();
+
 app.UseExceptionHandler();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Removed to prevent internal docker redirects
 
-// Maps every IEndpoint feature (Auth, Users, Drivers, Vehicles, Admin, ...)
+app.UseRateLimiter();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapEndpoints();
+app.MapSharedHealthChecks();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+    await context.Database.MigrateAsync();
+
+    await AdminSeeder.SeedAsync(context, configuration, passwordHasher);
+}
 
 app.Run();

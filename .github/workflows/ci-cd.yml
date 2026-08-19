@@ -1,0 +1,366 @@
+name: CI/CD
+
+# Git push to master -> Restore -> Build -> Test -> Docker Build -> Start Containers
+# -> Health Check -> Docker Hub Login -> Push Images
+on:
+  push:
+    branches:
+      - master
+  # Lets you run the exact same pipeline by hand from the Actions tab.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci-cd:
+    name: Build, test, containerise and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      SOLUTION: FlowersApp.slnx
+
+      # Only the base compose file. docker-compose.override.yml is Visual Studio's
+      # local overlay (HTTPS dev certs + %APPDATA% mounts) and cannot work on a Linux runner.
+      COMPOSE_FILE: docker-compose.yml
+      COMPOSE_PROJECT_NAME: flowerapp-ci
+
+      # Docker Hub repositories, taken from the existing compose image names.
+      IDENTITY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/flowerapp-identity-service
+      CATALOG_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/flowerapp-catalog-service
+      ADDRESSCART_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/flowerapp-addresscart-service
+      ORDERS_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/flowerapp-orders-service
+      # docker-compose.yml already reads these for the image tag.
+      IDENTITY_IMAGE_TAG: ${{ github.sha }}
+      CATALOG_IMAGE_TAG: ${{ github.sha }}
+      ADDRESSCART_IMAGE_TAG: ${{ github.sha }}
+      ORDERS_IMAGE_TAG: ${{ github.sha }}
+      GATEWAY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/flowerapp-api-gateway
+      GATEWAY_IMAGE_TAG: ${{ github.sha }}
+
+      # Host ports used by the health checks (all free on a GitHub runner).
+      IDENTITY_HTTP_PORT: "5001"
+      CATALOG_HTTP_PORT: "5002"
+      GATEWAY_HTTP_PORT: "5003"
+      ADDRESSCART_HTTP_PORT: "5004"
+      ORDERS_HTTP_PORT: "5005"
+      MSSQL_PORT: "1433"
+      REDIS_PORT: "6379"
+      RABBITMQ_PORT: "5672"
+      HEALTH_TIMEOUT_SECONDS: "240"
+
+      # Non-secret application configuration for the throwaway CI stack.
+      ASPNETCORE_ENVIRONMENT: Development
+      MSSQL_PID: Developer
+      SQL_SERVER: sqlserver
+      SQL_USER: sa
+      AUTH_DATABASE_NAME: FloweAppAuthDb
+      CATALOG_DATABASE_NAME: FloweAppCatalogDb
+      ADDRESSCART_DATABASE_NAME: FloweAppAddressCartDb
+      ORDERS_DATABASE_NAME: FloweAppOrdersDb
+      RABBITMQ_USER: flowerapp
+      Jwt__Issuer: FlowersApp.IdentityService
+      Jwt__Audience: FlowersApp.Clients
+      Jwt__AccessTokenExpiryMinutes: "15"
+      Jwt__RefreshTokenExpiryDays: "30"
+
+      # Gateway.Bind() fails fast at startup if any of these are missing.
+      Gateway__AllowedOrigins: "http://localhost:3000,http://localhost:5173,http://localhost:4200"
+      Gateway__RateLimiting__Auth__PermitLimit: "10"
+      Gateway__RateLimiting__Auth__WindowSeconds: "60"
+      Gateway__RateLimiting__Default__PermitLimit: "100"
+      Gateway__RateLimiting__Default__WindowSeconds: "60"
+
+      Email__SmtpHost: smtp.example.test
+      Email__SmtpPort: "587"
+      Email__SenderEmail: no-reply@example.test
+      Email__SenderName: FlowerApp CI
+      Email__Username: no-reply@example.test
+      Email__EnableSsl: "true"
+      AdminSeed__Email: admin@example.test
+      AdminSeed__FirstName: System
+      AdminSeed__LastName: Admin
+      AdminSeed__PhoneNumber: "0000000000"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify Docker Hub secrets are configured
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          missing=0
+          if [ -z "${DOCKERHUB_USERNAME}" ]; then
+            echo "::error title=Missing secret::DOCKERHUB_USERNAME is not set in this repository's Actions secrets."
+            missing=1
+          fi
+          if [ -z "${DOCKERHUB_TOKEN}" ]; then
+            echo "::error title=Missing secret::DOCKERHUB_TOKEN is not set in this repository's Actions secrets."
+            missing=1
+          fi
+          # Checked up front: the image names are built from the username, so an empty
+          # value would only surface much later as a confusing invalid-tag error.
+          exit "$missing"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          # The projects target net8.0; the 9.x SDK is what can read the .slnx solution format.
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      # ---------------------------------------------------------------- Restore
+      - name: Restore
+        shell: bash
+        run: dotnet restore "$SOLUTION"
+
+      # ------------------------------------------------------------------ Build
+      - name: Build
+        shell: bash
+        run: dotnet build "$SOLUTION" -c Release --no-restore
+
+      # ------------------------------------------------------------------- Test
+      - name: Test
+        shell: bash
+        run: |
+          set -uo pipefail
+          # The solution currently contains no test project. Discover them instead of
+          # hardcoding paths, so tests start running automatically once they are added.
+          test_projects="$(
+            find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' -print0 \
+              | xargs -0 grep -l -E 'Microsoft\.NET\.Test\.Sdk|<IsTestProject>\s*true' || true
+          )"
+
+          if [ -z "$test_projects" ]; then
+            echo "::warning title=No tests executed::No test projects found in the repository - skipping the test run."
+            exit 0
+          fi
+
+          status=0
+          while IFS= read -r proj; do
+            echo "::group::dotnet test $proj"
+            dotnet test "$proj" -c Release \
+              --logger "trx;LogFileName=$(basename "$proj" .csproj).trx" \
+              --results-directory ./TestResults || status=1
+            echo "::endgroup::"
+          done <<< "$test_projects"
+          exit "$status"
+
+      - name: Upload test results
+        if: always() && hashFiles('TestResults/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
+          if-no-files-found: ignore
+
+      # ------------------------------------------- Throwaway runtime configuration
+      - name: Generate CI environment file
+        env:
+          # Optional: set this secret to a real service-account JSON if you ever need
+          # the Firebase calls themselves to work in CI. Boot only needs a parsable file.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # .env and secrets/ are git-ignored, so CI has to create its own throwaway
+          # copies. Every value here is generated per run and thrown away with the runner.
+          umask 077
+
+          {
+            echo "MSSQL_SA_PASSWORD=$(openssl rand -hex 16)Aa1!"
+            echo "RABBITMQ_PASSWORD=$(openssl rand -hex 16)"
+            echo "Jwt__SecretKey=$(openssl rand -hex 32)"
+            echo "Otp__PepperSecret=$(openssl rand -hex 32)"
+            echo "Email__Password=$(openssl rand -hex 16)"
+            echo "AdminSeed__Password=$(openssl rand -hex 12)Aa1!"
+          } > .env
+          echo "Wrote .env with $(wc -l < .env) generated values (contents never logged)."
+
+          mkdir -p secrets
+          if [ -n "${FIREBASE_SERVICE_ACCOUNT:-}" ]; then
+            printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > secrets/firebase-service-account.json
+            echo "Using the FIREBASE_SERVICE_ACCOUNT secret for secrets/firebase-service-account.json."
+          else
+            # IdentityService refuses to start without a parsable service-account file
+            # (Infrastructure/DependencyInjection.cs -> AddFirebase). A locally generated
+            # PKCS#8 key satisfies the parser; it can authenticate with nothing.
+            openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out ci-firebase-key.pem
+            jq -n --rawfile private_key ci-firebase-key.pem '{
+              type: "service_account",
+              project_id: "flowerapp-ci",
+              private_key_id: "ci-placeholder",
+              private_key: $private_key,
+              client_email: "ci-placeholder@flowerapp-ci.iam.gserviceaccount.com",
+              client_id: "000000000000000000000",
+              auth_uri: "https://accounts.google.com/o/oauth2/auth",
+              token_uri: "https://oauth2.googleapis.com/token",
+              auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+              client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/ci-placeholder"
+            }' > secrets/firebase-service-account.json
+            rm -f ci-firebase-key.pem
+            echo "Generated a placeholder secrets/firebase-service-account.json for this run."
+          fi
+          chmod 644 secrets/firebase-service-account.json
+
+      # ---------------------------------------------------------- Docker Build
+      - name: Docker build application images
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only the services that have a build: section. SQL Server, Redis and
+          # RabbitMQ stay official images and are never built or pushed.
+          docker compose build identityservice catalogservice addresscartservice ordersservice apigateway
+          docker images "$IDENTITY_IMAGE"
+          docker images "$CATALOG_IMAGE"
+          docker images "$ADDRESSCART_IMAGE"
+          docker images "$ORDERS_IMAGE"
+          docker images "$GATEWAY_IMAGE"
+
+      # ------------------------------------------------------- Start Containers
+      - name: Start containers
+        shell: bash
+        run: |
+          set -euo pipefail
+          # depends_on/service_healthy in docker-compose.yml makes compose wait for
+          # SQL Server, Redis and RabbitMQ before the application containers start.
+          docker compose up -d --no-build
+          docker compose ps -a
+
+      # ----------------------------------------------------------- Health Check
+      - name: Health check
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          dump_diagnostics() {
+            echo "::group::docker compose ps -a"
+            docker compose ps -a
+            echo "::endgroup::"
+            for svc in sqlserver redis rabbitmq identityservice catalogservice addresscartservice ordersservice apigateway; do
+              echo "::group::logs: $svc"
+              docker compose logs --tail=200 "$svc" || true
+              echo "::endgroup::"
+            done
+          }
+
+          wait_for_service() {
+            svc="$1"
+            port="$2"
+            deadline=$(( SECONDS + HEALTH_TIMEOUT_SECONDS ))
+            echo "Waiting for $svc on http://localhost:$port (timeout ${HEALTH_TIMEOUT_SECONDS}s)"
+
+            while [ "$SECONDS" -lt "$deadline" ]; do
+              cid="$(docker compose ps -q "$svc")"
+              if [ -z "$cid" ]; then
+                echo "  no container found for $svc"
+                return 1
+              fi
+
+              state="$(docker inspect -f '{{.State.Status}}' "$cid")"
+              if [ "$state" = "exited" ] || [ "$state" = "dead" ]; then
+                echo "  $svc is '$state' with exit code $(docker inspect -f '{{.State.ExitCode}}' "$cid")"
+                return 1
+              fi
+
+              # restart: unless-stopped hides a crash loop behind a 'running' state,
+              # so treat repeated restarts as a failure instead of waiting out the timeout.
+              restarts="$(docker inspect -f '{{.RestartCount}}' "$cid")"
+              if [ "$restarts" -gt 2 ]; then
+                echo "  $svc has restarted $restarts times - treating as unhealthy"
+                return 1
+              fi
+
+              for path in /swagger/index.html /; do
+                code="$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://localhost:${port}${path}" || echo 000)"
+                # Neither service exposes a /health endpoint, so any HTTP answer below 500
+                # is the liveness signal: Kestrel is listening and the pipeline responds
+                # (which also means migrations and startup validation already succeeded).
+                if [ "$code" != "000" ] && [ "$code" -lt 500 ]; then
+                  echo "  $svc is healthy - GET $path returned HTTP $code (state: $state)"
+                  return 0
+                fi
+              done
+
+              echo "  $svc not ready yet (state: $state, last HTTP code: $code)"
+              sleep 5
+            done
+
+            echo "  timed out waiting for $svc"
+            return 1
+          }
+
+          failed=0
+          wait_for_service identityservice "$IDENTITY_HTTP_PORT" || failed=1
+          wait_for_service catalogservice "$CATALOG_HTTP_PORT" || failed=1
+          wait_for_service addresscartservice "$ADDRESSCART_HTTP_PORT" || failed=1
+          wait_for_service ordersservice "$ORDERS_HTTP_PORT" || failed=1
+          wait_for_service apigateway "$GATEWAY_HTTP_PORT" || failed=1
+
+          if [ "$failed" -ne 0 ]; then
+            echo "::error title=Health check failed::At least one service is unhealthy - container status and logs follow."
+            dump_diagnostics
+            exit 1
+          fi
+
+          echo "All application services are healthy."
+
+      # ------------------------------------------------------ Docker Hub Login
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ---------------------------------------------------------- Push Images
+      - name: Tag and push images
+        shell: bash
+        run: |
+          set -euo pipefail
+          for image in "$IDENTITY_IMAGE" "$CATALOG_IMAGE" "$ADDRESSCART_IMAGE" "$ORDERS_IMAGE" "$GATEWAY_IMAGE"; do
+            docker tag "$image:$GITHUB_SHA" "$image:latest"
+            docker push "$image:$GITHUB_SHA"
+            docker push "$image:latest"
+          done
+
+      - name: Summarise the deployment
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### Pushed to Docker Hub"
+            echo ""
+            echo "| Image | Tags |"
+            echo "| --- | --- |"
+            echo "| \`$IDENTITY_IMAGE\` | \`$GITHUB_SHA\`, \`latest\` |"
+            echo "| \`$CATALOG_IMAGE\` | \`$GITHUB_SHA\`, \`latest\` |"
+            echo "| \`$ADDRESSCART_IMAGE\` | \`$GITHUB_SHA\`, \`latest\` |"
+            echo "| \`$ORDERS_IMAGE\` | \`$GITHUB_SHA\`, \`latest\` |"
+            echo "| \`$GATEWAY_IMAGE\` | \`$GITHUB_SHA\`, \`latest\` |"
+            echo ""
+            echo "SQL Server, Redis and RabbitMQ run from their official images and are not pushed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Covers failures outside the health-check step (e.g. compose up itself failing).
+      - name: Container status and logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          set -uo pipefail
+          docker compose ps -a || true
+          docker compose logs --tail=200 || true
+
+      - name: Tear down
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          docker compose down -v --remove-orphans || true
+          rm -f .env secrets/firebase-service-account.json
