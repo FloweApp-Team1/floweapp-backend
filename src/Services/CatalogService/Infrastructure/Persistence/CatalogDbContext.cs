@@ -42,6 +42,8 @@ namespace CatalogService.Infrastructure.Persistence
         public DbSet<HomeSectionProduct> HomeSectionProducts { get; set; }
         public DbSet<ContentChangeLog> ContentChangeLogs { get; set; }
 
+        public DbSet<Discount> Discounts { get; set; }
+
         public CatalogDbContext(DbContextOptions<CatalogDbContext> options) : base(options)
         {
         }

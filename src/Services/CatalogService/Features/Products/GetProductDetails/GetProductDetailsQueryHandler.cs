@@ -15,19 +15,24 @@ public sealed class GetProductDetailsQueryHandler(
         CancellationToken cancellationToken)
     {
         var product = await repository.Query()
-     .AsNoTracking()
-            .Where(x => x.Id == request.ProductId && !x.IsDeleted)
+            .AsNoTracking()
+            .Where(x => x.Id == request.ProductId )
             .Select(x => new GetProductDetailsResponse(
                 x.Id,
                 x.Name,
                 x.Price,
 
-                x.DiscountPercentage.HasValue
-                    ? x.Price - (x.Price * x.DiscountPercentage.Value / 100)
-                    : x.Price,
-
-                x.DiscountPercentage,
-
+             x.Discounts
+                    .Where(d => d.StartDate <= DateTime.UtcNow && d.EndDate >= DateTime.UtcNow)
+                    .OrderByDescending(d => d.StartDate)
+                    .Select(d => (decimal?)(x.Price - (x.Price * d.Percentage / 100)))
+                    .FirstOrDefault(),
+ 
+                x.Discounts
+                    .Where(d => d.StartDate <= DateTime.UtcNow && d.EndDate >= DateTime.UtcNow)
+                    .OrderByDescending(d => d.StartDate)
+                    .Select(d => (decimal?)d.Percentage)
+                    .FirstOrDefault(),
                 x.StockQuantity > 0,
 
                 x.ProductImages!

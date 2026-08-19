@@ -24,20 +24,16 @@ namespace CatalogService.Features.Products
         public async Task<ApiResponse<IReadOnlyList<ProductListItemDto>>> Handle(
          GetProductsQuery request, CancellationToken cancellationToken)
         {
-            var query = productRepository.Query().AsNoTracking();
+            var query = productRepository.Query().AsNoTracking().ApplyFilters(request.CategoryId, request.OccasionId);
 
-            if (request.CategoryId.HasValue)
-                query = query.Where(p => p.CategoryId == request.CategoryId.Value);
-            
-            if (request.OccasionId.HasValue)
-                query = query.Where(p => p.Occasions!.Any(o => o.Id == request.OccasionId.Value));
-            
+           
             var totalCount = await query.CountAsync(cancellationToken);
+
+          
 
             var items = await query
                 .ApplySort(request.Sort)
-                .Skip(request.Pagination.Skip)
-                .Take(request.Pagination.PageSize)
+                .ApplyPagination(request.Pagination)
                 .Select(ProductMappingExtensions.ToListItemDto)
                 .ToListAsync(cancellationToken);
 

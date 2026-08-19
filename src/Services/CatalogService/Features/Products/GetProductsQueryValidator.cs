@@ -11,6 +11,8 @@ namespace CatalogService.Features.Products
                 .IsInEnum()
                 .When(x => x.Sort.HasValue)
                 .WithMessage("Unrecognized sort option.");
+
+          
         }
     }
 }

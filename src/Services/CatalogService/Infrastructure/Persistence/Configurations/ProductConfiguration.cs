@@ -48,7 +48,7 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
             builder.Property(x => x.Price)
                 .HasColumnType("decimal(10,2)")
                 .IsRequired();
-            builder.Property(x => x.DiscountPercent);
+     
             builder.Property(x => x.StockQuantity)
                 .IsRequired();
 
@@ -68,8 +68,7 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
                 .HasForeignKey(x => x.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Property(x => x.DiscountPercentage)
-                .HasColumnType("decimal(5,2)");
+          
 
             builder.HasMany(x => x.Includes)
                 .WithOne(x => x.Product)

@@ -3,9 +3,7 @@ using CatalogService.Common.Sorting;
 using CatalogService.Domain.Entities;
 using MediatR;
 using Shared.Interfaces;
-using Shared.Models;
 using Shared.Requests;
-using Shared.Results;
 using Shared.Responses;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,22 +22,22 @@ namespace CatalogService.Features.Products.SearchProducts
         {
             var term = request.Q.Trim().ToLower();
             var query = productRepository.Query()
+                .AsNoTracking()
                 .Where(p => p.Name.ToLower().Contains(term));
 
             var totalCount = await query.CountAsync(cancellationToken);
 
             var ordered = request.Sort.HasValue
-               
+
                 ? query.ApplySort(request.Sort)
-               
+
                 : query
-                     .OrderBy(p => EF.Functions.Like(p.Name, $"{term}%") ? 0 : 1)
+                    .OrderBy(p => EF.Functions.Like(p.Name, $"{term}%") ? 0 : 1)
                     .ThenBy(p => p.Name)
                     .ThenBy(p => p.Id);
 
             var items = await ordered
-                .Skip(request.Pagination.Skip)
-                .Take(request.Pagination.PageSize)
+                .ApplyPagination(request.Pagination)
                 .Select(ProductMappingExtensions.ToListItemDto)
                 .ToListAsync(cancellationToken);
 
@@ -51,3 +49,4 @@ namespace CatalogService.Features.Products.SearchProducts
         }
     }
 }
+

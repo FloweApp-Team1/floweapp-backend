@@ -8,6 +8,7 @@ namespace CatalogService.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<Discount> builder)
         {
+            builder.ToTable("Discounts");
             builder.HasKey(d => d.Id);
 
             builder.Property(d => d.Percentage)

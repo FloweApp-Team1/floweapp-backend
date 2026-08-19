@@ -18,12 +18,12 @@ namespace CatalogService.Domain.Entities
         public string Description { get; set; } = null!;
 
         public decimal Price { get; set; }
-        public int? DiscountPercent { get; set; }
+        
 
         // Legacy aggregate stock (kept for backward compatibility with existing reads);
         // per-store levels live in ProductStoreStock.
         public int StockQuantity { get; set; }
-        public decimal? DiscountPercentage { get; set; }
+      
         public Guid CategoryId { get; set; }
         public Category Category { get; set; } = null!;
 

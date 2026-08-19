@@ -1,4 +1,6 @@
 ﻿using CatalogService.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Shared.Requests;
 
 namespace CatalogService.Common.Sorting
 {
@@ -16,5 +18,31 @@ namespace CatalogService.Common.Sorting
                 _ => query.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Id)
             };
         }
+        public static IQueryable<Product> ApplyFilters(
+           this IQueryable<Product> query,
+           Guid? categoryId,
+           Guid? occasionId)
+        {
+            if (categoryId.HasValue)
+                query = query.Where(p => p.CategoryId == categoryId.Value);
+
+            if (occasionId.HasValue)
+            {
+                query = query.Where(p => p.Occasions.Any(o => o.Id == occasionId.Value));
+            }
+
+            return query;
+        }
+
+        public static IQueryable<Product> ApplyPagination(
+           this IQueryable<Product> query,
+           PaginationRequest pagination)
+        {
+            return query
+                .Skip(pagination.Skip)
+                .Take(pagination.PageSize);
+        }
+
+        
     }
 }
