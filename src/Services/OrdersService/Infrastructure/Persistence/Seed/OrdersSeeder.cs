@@ -389,12 +389,10 @@ namespace OrdersService.Infrastructure.Persistence.Seed
             return (order, driverLocation);
         }
 
-        // Derives a stable child id from its order's id, so a re-seed against a wiped
-        // database reproduces exactly the same rows.
         private static Guid ChildId(Guid orderId, int discriminator)
         {
             var bytes = orderId.ToByteArray();
-            bytes[^1] = (byte)discriminator;
+            bytes[^2] = (byte)discriminator;
             return new Guid(bytes);
         }
 

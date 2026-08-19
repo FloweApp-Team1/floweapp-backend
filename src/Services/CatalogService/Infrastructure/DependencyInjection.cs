@@ -1,7 +1,9 @@
+using CatalogService.Infrastructure.Messaging;
 using CatalogService.Infrastructure.Persistence;
 using CatalogService.Infrastructure.Repositories;
 using CatalogService.Infrastructure.Services;
 using FluentValidation;
+using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -134,7 +136,44 @@ namespace CatalogService.Infrastructure
             services.AddScoped<IFileStorageService, FileStorageService>();
             services.AddScoped<IContentChangeLogger, ContentChangeLogger>();
 
+            // Backs the home layout cache (GetHomeLayoutOrchestrator) - always required, unlike
+            // OrdersService's driver-location cache which has a null-object fallback.
+            services.AddSharedRedis(configuration);
+
+            AddIntegrationEventPublisher(services, configuration);
+
             return services;
+        }
+
+        // Same reasoning as OrdersService: a missing broker shouldn't stop the API from running
+        // end to end on a developer machine, so it falls back to logging instead of publishing.
+        private static void AddIntegrationEventPublisher(IServiceCollection services, IConfiguration configuration)
+        {
+            var rabbitMq = configuration.GetSection(RabbitMqSettings.SectionName).Get<RabbitMqSettings>();
+
+            if (rabbitMq is null || string.IsNullOrWhiteSpace(rabbitMq.Host))
+            {
+                services.AddSingleton<IIntegrationEventPublisher, LoggingEventPublisher>();
+                return;
+            }
+
+            services.AddMassTransit(bus =>
+            {
+                bus.SetKebabCaseEndpointNameFormatter();
+
+                bus.UsingRabbitMq((context, configurator) =>
+                {
+                    configurator.Host(rabbitMq.Host, host =>
+                    {
+                        host.Username(rabbitMq.Username);
+                        host.Password(rabbitMq.Password);
+                    });
+
+                    configurator.ConfigureEndpoints(context);
+                });
+            });
+
+            services.AddScoped<IIntegrationEventPublisher, MassTransitEventPublisher>();
         }
 
         private static void AddConfigurationOptions(IServiceCollection services, IConfiguration configuration)
