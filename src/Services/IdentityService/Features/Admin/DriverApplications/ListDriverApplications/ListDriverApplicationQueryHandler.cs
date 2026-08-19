@@ -1,4 +1,4 @@
-﻿using Shared.Interfaces;
+using Shared.Interfaces;
 using Shared.Models;
 using Shared.Results;
 using Shared.Responses;
@@ -23,27 +23,27 @@ namespace IdentityService.Features.Admin.DriverApplications.ListDriverApplicatio
 
             var query = repository.Query();
 
-            var filteredQuery = query
-                .Where(e => e.Status == request.DeliveryStatus);
+            if (request.DeliveryStatus.HasValue)
+            {
+                query = query.Where(e => e.Status == request.DeliveryStatus.Value);
+            }
 
-            var totalCount = await filteredQuery.CountAsync(cancellationToken);
+            var totalCount = await query.CountAsync(cancellationToken);
 
-
-            var driverApplications =await query
-                .Where(e=>e.Status.Equals(request.DeliveryStatus))
+            var driverApplications = await query
                 .OrderByDescending(da => da.SubmittedAt)
                 .Skip((request.Pagination.Page - 1) * request.Pagination.PageSize)
                 .Take(request.Pagination.PageSize)
                 .Select(da => new DriverApplicationResponseDto
-                            {
-                                Id = da.Id.ToString(),
-                                Name = $"{da.FirstName} {da.LastName}",
-                                Email = da.Email,
-                                Phone = da.Phone,
-                                VehicleType = da.VehicleType.Name,
-                                SubmittedAt = da.SubmittedAt,
-                                Status = da.Status
-                            }).ToListAsync(cancellationToken);
+                {
+                    Id = da.Id.ToString(),
+                    Name = $"{da.FirstName} {da.LastName}",
+                    Email = da.Email,
+                    Phone = da.Phone,
+                    VehicleType = da.VehicleType.Name,
+                    SubmittedAt = da.SubmittedAt,
+                    Status = da.Status
+                }).ToListAsync(cancellationToken);
 
             var pagedResult = new PagedResult<DriverApplicationResponseDto>(driverApplications, totalCount);
 

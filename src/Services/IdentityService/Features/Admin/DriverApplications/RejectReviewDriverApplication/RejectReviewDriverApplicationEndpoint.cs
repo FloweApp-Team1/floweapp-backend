@@ -12,10 +12,10 @@ public class RejectReviewDriverApplicationEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPatch("/admin/drivers/applications/reject", async (Guid ApplicationId, [FromBody] string Reason, CancellationToken cancelationToken,
+        app.MapPatch("/admin/drivers/applications/reject", async ([FromBody] RejectReviewDriverApplicationRequest request, CancellationToken cancelationToken,
             [FromServices] IMediator mediator) =>
         {
-            var result = await mediator.Send(new RejectReviewDriverApplicationCommand(ApplicationId, Reason), cancelationToken);
+            var result = await mediator.Send(new RejectReviewDriverApplicationCommand(request.ApplicationId, request.Reason), cancelationToken);
             if (result.IsSuccess)
             {
                 var RejectVM = new RejectReviewDriverApplicationVM
@@ -35,3 +35,5 @@ public class RejectReviewDriverApplicationEndpoint : IEndpoint
             .RequireAuthorization(AppPolicies.AdminOnly);
     }
 }
+
+public record RejectReviewDriverApplicationRequest(Guid ApplicationId, string Reason);
