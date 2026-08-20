@@ -141,6 +141,10 @@ services:
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
 
+      Geocoding__ApiKey: ${Geocoding__ApiKey}
+      Geocoding__BaseUrl: ${Geocoding__BaseUrl}
+      Geocoding__UseMockProvider: ${Geocoding__UseMockProvider}
+
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
