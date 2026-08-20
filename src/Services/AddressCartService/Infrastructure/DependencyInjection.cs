@@ -67,9 +67,6 @@ namespace AddressCartService.Infrastructure
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Audience), "Jwt__Audience is not set.")
                 .ValidateOnStart();
         }
-
-        // Validates tokens issued by IdentityService - this service never issues its own,
-        // so it must share the same signing key/issuer/audience as IdentityService's Jwt__* config.
         public static IServiceCollection AddJwtAuthentication(
             this IServiceCollection services, IConfiguration configuration)
         {
@@ -85,8 +82,6 @@ namespace AddressCartService.Infrastructure
                     .RequireAuthenticatedUser()
                     .Build();
             });
-
-            // Renders 401/403 in the same ApiResponse shape as every other failure.
             services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
 
             return services;
@@ -118,9 +113,6 @@ namespace AddressCartService.Infrastructure
 
             return services;
         }
-
-        // Configuration comes from environment variables only (.env locally,
-        // docker-compose `environment:` in containers) - never from appsettings.json.
         private static string Required(IConfiguration configuration, string key) =>
             configuration[key] is { Length: > 0 } value
                 ? value
