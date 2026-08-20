@@ -1,4 +1,4 @@
-﻿using Shared.Models;
+using Shared.Models;
 using Shared.Results;
 using Shared.Requests;
 using Shared.Responses;
@@ -9,8 +9,8 @@ using MediatR;
 
 namespace IdentityService.Features.Admin.DriverApplications.ListDriverApplications
 {
-    public record ListDriverApplicationQuery(PaginationRequest  Pagination,DeliveryStatusEnum DeliveryStatus) 
-        :IRequest<Result<PagedResult<DriverApplicationResponseDto>>>;
+    public record ListDriverApplicationQuery(PaginationRequest Pagination, DeliveryStatusEnum? DeliveryStatus = null) 
+        : IRequest<Result<PagedResult<DriverApplicationResponseDto>>>;
 
 
     

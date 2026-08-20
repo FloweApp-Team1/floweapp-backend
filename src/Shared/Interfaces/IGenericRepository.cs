@@ -12,6 +12,7 @@ namespace Shared.Interfaces
         IQueryable<T> Query();
         Task AddAsync(T entity, CancellationToken cancellationToken = default);
         void Update(T entity);
+        void SaveInclude(T entity, params string[] includedProperties);
         void Remove(T entity);
         public Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate);
     }

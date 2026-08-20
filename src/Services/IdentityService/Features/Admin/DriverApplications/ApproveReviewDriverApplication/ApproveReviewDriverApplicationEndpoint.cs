@@ -15,10 +15,10 @@ public class ApproveReviewDriverApplicationEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPatch("/admin/drivers/applications/approve", async (Guid ApplicationId, CancellationToken cancelationToken,
+        app.MapPatch("/admin/drivers/applications/approve", async ([FromBody] ApproveDriverApplicationRequest request, CancellationToken cancelationToken,
             [FromServices] IMediator mediator) =>
         {
-            var result = await mediator.Send(new ApproveDriverApplicationCommand(ApplicationId), cancelationToken);
+            var result = await mediator.Send(new ApproveDriverApplicationCommand(request.ApplicationId), cancelationToken);
             if (result.IsSuccess)
             {
                 var ApproveVM = new ApproveDriverApplicationVM
@@ -29,7 +29,7 @@ public class ApproveReviewDriverApplicationEndpoint : IEndpoint
                     ReviewedBy = result.Value.ReviewedBy,
                     Status = result.Value.Status.ToString()
                 };
-                return Results.Created($"/admin/drivers/applications/{ApplicationId.ToString()}", ApiResponse<ApproveDriverApplicationVM>.Success(ApproveVM));
+                return Results.Created($"/admin/drivers/applications/{request.ApplicationId}", ApiResponse<ApproveDriverApplicationVM>.Success(ApproveVM));
             }
             return Results.BadRequest(ApiResponse<ApproveDriverApplicationVM>.Fail(result.Error.Message));
         })
@@ -38,3 +38,5 @@ public class ApproveReviewDriverApplicationEndpoint : IEndpoint
             .RequireAuthorization(AppPolicies.AdminOnly);
     }
 }
+
+public record ApproveDriverApplicationRequest(Guid ApplicationId);

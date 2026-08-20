@@ -21,11 +21,19 @@ namespace AddressCartService.Infrastructure.Persistence.Configurations
 
             builder.HasIndex(x => new { x.UserId, x.IsDefault });
 
+            builder.HasIndex(x => x.UserId)
+                .HasFilter("[IsDefault] = 1 AND [IsDeleted] = 0")
+                .IsUnique()
+                .HasDatabaseName("IX_Addresses_UserId_IsDefault_Unique");
+
+
             // Local FK: Store is owned by this same service, unlike UserId above.
             builder.HasOne(x => x.Store)
                 .WithMany(x => x.Addresses)
                 .HasForeignKey(x => x.StoreId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            
         }
     }
 }
