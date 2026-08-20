@@ -1,7 +1,8 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using OrdersService.Infrastructure.Persistence;
 using Shared.Domain;
 using Shared.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
 namespace OrdersService.Infrastructure.Repositories
@@ -37,6 +38,32 @@ namespace OrdersService.Infrastructure.Repositories
 
         public void Update(T entity) => _dbSet.Update(entity);
 
+        public void SaveInclude(T entity, params string[] includedProperties)
+        {
+
+            var localEntity = _dbSet.Local.FirstOrDefault(e => EqualityComparer<Guid>.Default.Equals(e.Id, entity.Id));
+
+            EntityEntry<T> entry;
+
+            if (localEntity == null)
+            {
+                _dbSet.Attach(entity);
+                entry = _context.Entry(entity);
+            }
+            else
+            {
+                entry = _context.Entry(localEntity);
+                entry.CurrentValues.SetValues(entity);
+            }
+
+            foreach (var property in entry.Properties)
+            {
+                if (property.Metadata.IsPrimaryKey())
+                    continue;
+
+                property.IsModified = includedProperties.Contains(property.Metadata.Name);
+            }
+        }
         public void Remove(T entity)
         {
             entity.IsDeleted = true;
