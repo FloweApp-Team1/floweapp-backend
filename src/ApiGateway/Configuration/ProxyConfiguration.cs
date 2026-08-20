@@ -28,13 +28,40 @@ namespace ApiGateway.Configuration
                 Match = new RouteMatch { Path = "/api/catalog/{**catch-all}" },
                 RateLimiterPolicy = DefaultPolicy,
                 Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/catalog" }]
+            },
+            new RouteConfig
+            {
+                RouteId = "payment-route",
+                ClusterId = "payment-cluster",
+                Match = new RouteMatch { Path = "/api/payment/{**catch-all}" },
+                RateLimiterPolicy = DefaultPolicy,
+                Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/payment" }]
+            },
+            new RouteConfig
+            {
+                RouteId = "address-cart-route",
+                ClusterId = "address-cart-cluster",
+                Match = new RouteMatch { Path = "/api/address-cart/{**catch-all}" },
+                RateLimiterPolicy = DefaultPolicy,
+                Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/address-cart" }]
+            },
+            new RouteConfig
+            {
+                RouteId = "orders-route",
+                ClusterId = "orders-cluster",
+                Match = new RouteMatch { Path = "/api/orders/{**catch-all}" },
+                RateLimiterPolicy = DefaultPolicy,
+                Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/orders" }]
             }
         ];
 
         public static ClusterConfig[] BuildClusters(GatewaySettings settings) =>
         [
             Cluster("identity-cluster", settings.IdentityServiceUrl, settings),
-            Cluster("catalog-cluster", settings.CatalogServiceUrl, settings)
+            Cluster("catalog-cluster", settings.CatalogServiceUrl, settings),
+            Cluster("payment-cluster", settings.PaymentServiceUrl, settings),
+            Cluster("address-cart-cluster", settings.AddressCartServiceUrl, settings),
+            Cluster("orders-cluster", settings.OrdersServiceUrl, settings)
         ];
 
         private static ClusterConfig Cluster(string clusterId, string address, GatewaySettings settings) => new()

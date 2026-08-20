@@ -4,22 +4,22 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${MSSQL_PORT}:1433"
+      - "${MSSQL_PORT:-1433}:1433"
 
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_PID: ${MSSQL_PID:-Developer}
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-FlowerApp_Password123!}
 
     volumes:
       - sqlserver-data:/var/opt/mssql
 
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD:-FlowerApp_Password123!}\" -C -Q 'SELECT 1' -b -o /dev/null || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD:-FlowerApp_Password123!}\" -Q 'SELECT 1' -b -o /dev/null"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 20s
+      retries: 15
+      start_period: 30s
 
     networks:
       - flowers-network
@@ -38,7 +38,7 @@ services:
 
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ConnectionStrings__AuthDatabase: Server=${SQL_SERVER};Database=${AUTH_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      ConnectionStrings__AuthDatabase: Server=${SQL_SERVER:-sqlserver};Database=${AUTH_DATABASE_NAME:-AuthDb};User Id=${SQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-FlowerApp_Password123!};TrustServerCertificate=True;
 
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
@@ -100,11 +100,130 @@ services:
 
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ConnectionStrings__CatalogDatabase: Server=${SQL_SERVER};Database=${CATALOG_DATABASE_NAME};User Id=${SQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      ConnectionStrings__CatalogDatabase: Server=${SQL_SERVER:-sqlserver};Database=${CATALOG_DATABASE_NAME:-CatalogDb};User Id=${SQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-FlowerApp_Password123!};TrustServerCertificate=True;
 
       Jwt__SecretKey: ${Jwt__SecretKey}
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
+      Redis__ConnectionString: redis:6379
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  addresscartservice:
+    image: ${ADDRESSCART_IMAGE:-flowerapp-addresscart-service}:${ADDRESSCART_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/AddressCartService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${ADDRESSCART_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__AddressCartDatabase: Server=${SQL_SERVER:-sqlserver};Database=${ADDRESSCART_DATABASE_NAME:-AddressCartDb};User Id=${SQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-FlowerApp_Password123!};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  ordersservice:
+    image: ${ORDERS_IMAGE:-flowerapp-orders-service}:${ORDERS_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/OrdersService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${ORDERS_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__OrdersDatabase: Server=${SQL_SERVER:-sqlserver};Database=${ORDERS_DATABASE_NAME:-OrdersDb};User Id=${SQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-FlowerApp_Password123!};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+      # Fronts the driver-location read path behind GET /orders/{id}/tracking.
+      Redis__ConnectionString: redis:6379
+
+      # Carries DriverLocationUpdatedEvent to NotificationService, which turns it into the
+      # silent push that moves the customer's map marker.
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+    networks:
+      - flowers-network
+
+  paymentservice:
+    image: ${PAYMENT_IMAGE:-flowerapp-payment-service}:${PAYMENT_IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: src/Services/PaymentService/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "${PAYMENT_HTTP_PORT}:8080"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__PaymentDatabase: Server=${SQL_SERVER:-sqlserver};Database=${PAYMENT_DATABASE_NAME:-PaymentDb};User Id=${SQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-FlowerApp_Password123!};TrustServerCertificate=True;
+
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+
+      Stripe__SecretKey: ${Stripe__SecretKey}
+      Stripe__WebhookSecret: ${Stripe__WebhookSecret}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
@@ -183,6 +302,9 @@ services:
 
       Gateway__IdentityServiceUrl: http://identityservice:8080
       Gateway__CatalogServiceUrl: http://catalogservice:8080
+      Gateway__PaymentServiceUrl: http://paymentservice:8080
+      Gateway__AddressCartServiceUrl: http://addresscartservice:8080
+      Gateway__OrdersServiceUrl: http://ordersservice:8080
 
       Gateway__AllowedOrigins: ${Gateway__AllowedOrigins}
 
@@ -207,6 +329,15 @@ services:
         condition: service_started
 
       catalogservice:
+        condition: service_started
+
+      paymentservice:
+        condition: service_started
+
+      addresscartservice:
+        condition: service_started
+
+      ordersservice:
         condition: service_started
 
     networks:

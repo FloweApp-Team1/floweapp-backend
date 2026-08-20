@@ -13,8 +13,8 @@ public class ListDriverApplicationsEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/admin/drivers/applications", async ([AsParameters] PaginationRequest request,
-            [FromQuery] DeliveryStatusEnum deliveryStatus
-            , CancellationToken cancelationToken,
+            [FromQuery] DeliveryStatusEnum? deliveryStatus,
+            CancellationToken cancelationToken,
             [FromServices] IMediator mediator) =>
         {
             var result = await mediator.Send(new ListDriverApplicationQuery(request, deliveryStatus), cancelationToken);

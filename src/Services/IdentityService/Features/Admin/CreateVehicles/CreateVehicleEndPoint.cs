@@ -1,4 +1,4 @@
-﻿using IdentityService.Features.Admin.CreateVehicles.Dtos;
+using IdentityService.Features.Admin.CreateVehicles.Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts;
@@ -11,10 +11,9 @@ namespace IdentityService.Features.Admin.CreateVehicles
     {
         public void MapEndpoint(IEndpointRouteBuilder app)
         {
-            app.MapPost("/admin/vehicles/Create", async (string Name,CancellationToken cancellationToken,[FromServices]IMediator mediator ) =>
+            app.MapPost("/admin/vehicles/Create", async (CreateVehicleRequest request, CancellationToken cancellationToken, [FromServices] IMediator mediator) =>
             {
-
-                var result = await mediator.Send(new CreateVehiclesCommand(Name), cancellationToken);
+                var result = await mediator.Send(new CreateVehiclesCommand(request.Name), cancellationToken);
                 if (result.IsSuccess)
                 {
                     var responseVM = new CreateVehicleResponseVM
@@ -36,4 +35,6 @@ namespace IdentityService.Features.Admin.CreateVehicles
             .RequireAuthorization(AppPolicies.AdminOnly);
         }
     }
+
+    public record CreateVehicleRequest(string Name);
 }
