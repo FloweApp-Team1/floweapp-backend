@@ -1,9 +1,9 @@
-﻿using Shared.Interfaces;
-using IdentityService.Domain.Entities;
+﻿using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
-
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Shared.Domain;
+using Shared.Interfaces;
+using System.Linq.Expressions;
 namespace IdentityService.Infrastructure.Repositories
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
@@ -37,7 +37,32 @@ namespace IdentityService.Infrastructure.Repositories
             => await _dbSet.AddAsync(entity, cancellationToken);
 
         public void Update(T entity) => _dbSet.Update(entity);
+        public void SaveInclude(T entity, params string[] includedProperties)
+        {
 
+            var localEntity = _dbSet.Local.FirstOrDefault(e => EqualityComparer<Guid>.Default.Equals(e.Id, entity.Id));
+
+            EntityEntry<T> entry;
+
+            if (localEntity == null)
+            {
+                _dbSet.Attach(entity);
+                entry = _context.Entry(entity);
+            }
+            else
+            {
+                entry = _context.Entry(localEntity);
+                entry.CurrentValues.SetValues(entity);
+            }
+
+            foreach (var property in entry.Properties)
+            {
+                if (property.Metadata.IsPrimaryKey())
+                    continue;
+
+                property.IsModified = includedProperties.Contains(property.Metadata.Name);
+            }
+        }
         public void Remove(T entity)
         {
         
