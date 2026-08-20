@@ -54,20 +54,23 @@ namespace AddressCartService.Features.Addresses.SetDefaultAddress
                 cancellationToken);
 
             var now = DateTime.UtcNow;
-
-            if (previousDefault is not null)
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+            try
             {
-                previousDefault.IsDefault = false;
-                previousDefault.UpdatedAt = now;
-                previousDefault.LastChangedBy = userId.Value;
+                if (previousDefault is not null)
+                {
+                    previousDefault.IsDefault = false;
+                    previousDefault.UpdatedAt = now;
+                    previousDefault.LastChangedBy = userId.Value;
 
-                _addressRepository.SaveInclude(
-                    previousDefault,
-                    nameof(Address.IsDefault),
-                    nameof(Address.UpdatedAt),
-                    nameof(Address.LastChangedBy));
-            }
-
+                    _addressRepository.SaveInclude(
+                        previousDefault,
+                        nameof(Address.IsDefault),
+                        nameof(Address.UpdatedAt),
+                        nameof(Address.LastChangedBy));
+                
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                }
 
             targetAddress.IsDefault = true;
             targetAddress.UpdatedAt = now;
@@ -80,9 +83,17 @@ namespace AddressCartService.Features.Addresses.SetDefaultAddress
                 nameof(Address.LastChangedBy));
 
            
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                return Result.Success(new SetDefaultAddressResponse(targetAddress.Id, true, now));
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                throw;
+            }
 
-            return Result.Success(new SetDefaultAddressResponse(targetAddress.Id, true, now));
+           
         }
     }
 }
