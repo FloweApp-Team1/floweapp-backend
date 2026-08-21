@@ -1,6 +1,6 @@
+using MediatR;
 using Shared.Contracts;
-using Shared.Responses;
-using Shared.Security;
+using Shared.Extensions;
 
 namespace AddressCartService.Features.Addresses.DeleteAddress;
 
@@ -8,10 +8,17 @@ public class DeleteAddressEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapDelete("/addresses/{addressId:guid}", (Guid addressId) =>
-                ApiResponse.Success(new { }, "Address deleted").ToHttpResult())
-            .WithTags("Addresses")
+        app.MapDelete("/users/me/addresses/{id:guid}", async (
+                Guid id,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(new DeleteAddressCommand(id), cancellationToken);
+            return result.ToMinimalApiResult("Address deleted successfully.");
+        })
+            .RequireAuthorization()
             .WithName("DeleteAddress")
-            .RequireAuthorization(AppPolicies.CustomerOnly);
+            .WithTags("Addresses")
+            .WithSummary("Deletes an address; auto-reassigns the default if the deleted address was the default.");
     }
 }
