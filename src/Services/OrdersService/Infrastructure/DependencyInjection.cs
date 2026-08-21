@@ -62,6 +62,8 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IOrderStatusHistoryWriter, OrderStatusHistoryWriter>();
             services.AddScoped<IDriverSnapshotService, DriverSnapshotService>();
 
+            services.AddScoped<global::Shared.Contracts.IEmailService, OrdersService.Infrastructure.Services.Email.SmtpEmailService>();
+
             AddDriverLocationCache(services, configuration);
             AddIntegrationEventPublisher(services, configuration);
             AddHttpClients(services, configuration);
@@ -165,6 +167,12 @@ namespace OrdersService.Infrastructure
                 .Validate(s => Encoding.UTF8.GetByteCount(s.SecretKey ?? "") >= 32, "Jwt__SecretKey must be at least 32 characters.")
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Issuer), "Jwt__Issuer is not set.")
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Audience), "Jwt__Audience is not set.")
+                .ValidateOnStart();
+
+            services.AddOptions<OrdersService.Infrastructure.Services.Email.EmailSettings>()
+                .Bind(configuration.GetSection("Email"))
+                .Validate(s => !string.IsNullOrWhiteSpace(s.SmtpHost), "Email__SmtpHost is not set.")
+                .Validate(s => s.SmtpPort > 0, "Email__SmtpPort must be greater than zero.")
                 .ValidateOnStart();
         }
 

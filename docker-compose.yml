@@ -187,6 +187,14 @@ services:
       RabbitMq__Username: ${RABBITMQ_USER}
       RabbitMq__Password: ${RABBITMQ_PASSWORD}
 
+      Email__SmtpHost: ${Email__SmtpHost}
+      Email__SmtpPort: ${Email__SmtpPort}
+      Email__SenderEmail: ${Email__SenderEmail}
+      Email__SenderName: ${Email__SenderName}
+      Email__Username: ${Email__Username}
+      Email__Password: ${Email__Password}
+      Email__EnableSsl: ${Email__EnableSsl}
+
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
