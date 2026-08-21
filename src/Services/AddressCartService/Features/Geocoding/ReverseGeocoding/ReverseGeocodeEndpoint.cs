@@ -20,7 +20,7 @@ public class ReverseGeocodeEndpoint : IEndpoint
                 return result.ToMinimalApiResult("Coordinates resolved");
             })
             .WithTags("Geocoding")
-            .WithName("ReverseGeocode").AllowAnonymous();
-            //.RequireAuthorization(AppPolicies.CustomerOnly);
+            .WithName("ReverseGeocode")
+            .RequireAuthorization(AppPolicies.CustomerOnly);
     }
 }

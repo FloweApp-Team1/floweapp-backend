@@ -2,6 +2,7 @@ using AddressCartService.Infrastructure.Persistence;
 using AddressCartService.Infrastructure.Repositories;
 using AddressCartService.Infrastructure.Services;
 using AddressCartService.Infrastructure.Services.Geocoding;
+using AddressCartService.Infrastructure.Services.StoreCoverage;
 using AddressCartService.Infrastructure.Settings;
 using Shared.Behaviors;
 using Shared.Extensions;
@@ -56,6 +57,7 @@ namespace AddressCartService.Infrastructure
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+            services.AddScoped<IStoreResolutionService, StoreResolutionService>();
 
             // Geocoding__UseMockProvider swaps in a canned, no-network implementation for
             // local/manual testing - read directly since the provider choice is made at
