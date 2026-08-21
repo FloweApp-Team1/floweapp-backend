@@ -7,6 +7,7 @@ using MediatR;
 using System.Text.Json;
 using System.Net.Http.Json;
 using MassTransit;
+using Microsoft.AspNetCore.Http;
 
 namespace OrdersService.Features.Payments.RetryPayment
 {
@@ -16,17 +17,20 @@ namespace OrdersService.Features.Payments.RetryPayment
         private readonly ICurrentUserService _currentUserService;
         private readonly HttpClient _paymentServiceClient;
         private readonly ILogger<RetryPaymentCommandHandler> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public RetryPaymentCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
             IHttpClientFactory httpClientFactory,
-            ILogger<RetryPaymentCommandHandler> logger)
+            ILogger<RetryPaymentCommandHandler> logger,
+            IHttpContextAccessor httpContextAccessor)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
             _paymentServiceClient = httpClientFactory.CreateClient("PaymentServiceClient");
             _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<Result<RetryPaymentResponse>> Handle(RetryPaymentCommand request, CancellationToken cancellationToken)
@@ -59,12 +63,23 @@ namespace OrdersService.Features.Payments.RetryPayment
 
             try
             {
-                var response = await _paymentServiceClient.PostAsJsonAsync("/api/payments/checkout", checkoutRequest, cancellationToken);
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/checkout");
+                
+                var authHeader = _httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var token = authHeader["Bearer ".Length..].Trim();
+                    requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                }
+                
+                requestMessage.Content = JsonContent.Create(checkoutRequest);
+                var response = await _paymentServiceClient.SendAsync(requestMessage, cancellationToken);
+
                 response.EnsureSuccessStatusCode();
 
                 var responseString = await response.Content.ReadAsStringAsync(cancellationToken);
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var result = JsonSerializer.Deserialize<Result<RetryPaymentResponse>>(responseString, options);
+                var result = JsonSerializer.Deserialize<PaymentResultDto<RetryPaymentResponse>>(responseString, options);
 
                 if (result != null && result.IsSuccess && result.Value != null)
                 {
@@ -85,6 +100,12 @@ namespace OrdersService.Features.Payments.RetryPayment
                 _logger.LogError(ex, "Failed to call PaymentService for RetryPayment on order {OrderId}", order.Id);
                 return Result<RetryPaymentResponse>.Failure(Error.New("PaymentServiceError", "Payment service is currently unavailable."));
             }
+        }
+
+        private class PaymentResultDto<T>
+        {
+            public bool IsSuccess { get; set; }
+            public T? Value { get; set; }
         }
     }
 }

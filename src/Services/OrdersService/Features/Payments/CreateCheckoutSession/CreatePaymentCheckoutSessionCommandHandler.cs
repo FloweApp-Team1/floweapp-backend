@@ -51,8 +51,6 @@ namespace OrdersService.Features.Payments.CreateCheckoutSession
             var userId = _currentUserService.UserId ?? Guid.Empty;
             var orderRepo = _unitOfWork.Repository<Order>();
 
-            // Double submission guard: Only block if the user is currently in an active Stripe (Card) checkout flow.
-            // COD orders stay 'Pending' until delivery, so they should not block future purchases.
             var existingPendingOrder = await orderRepo.FirstOrDefaultAsync(o => 
                 o.UserId == userId && 
                 o.PaymentStatus == PaymentStatusEnum.Pending &&
@@ -86,7 +84,6 @@ namespace OrdersService.Features.Payments.CreateCheckoutSession
                 if (catalogProduct == null)
                     return Result<CreatePaymentCheckoutSessionResponse>.Failure(Error.New("NotFound", $"Product with ID {item.ProductId} not found."));
 
-                // Note: Real inventory check logic can go here. For now, trusting catalog product exists.
                 
                 var orderItem = new OrderItem
                 {
@@ -94,7 +91,7 @@ namespace OrdersService.Features.Payments.CreateCheckoutSession
                     ProductId = item.ProductId,
                     ProductName = catalogProduct.Name,
                     ProductImageUrl = catalogProduct.ImageUrl,
-                    UnitPrice = catalogProduct.Price, // Securely taken from CatalogService
+                    UnitPrice = catalogProduct.Price, // from CatalogService
                     Quantity = item.Quantity,
                     OrderId = order.Id
                 };
@@ -104,7 +101,7 @@ namespace OrdersService.Features.Payments.CreateCheckoutSession
             }
 
             order.Subtotal = calculatedSubtotal;
-            order.DeliveryFee = 5.0m; // Example fixed fee, could come from DeliveryService
+            order.DeliveryFee = 5.0m; // Example fixed fee "for now"
             order.Total = order.Subtotal + order.DeliveryFee;
 
             // Convert to cents for PaymentService (Stripe)
@@ -157,7 +154,6 @@ namespace OrdersService.Features.Payments.CreateCheckoutSession
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to create checkout session with PaymentService.");
-                // Order is saved without LastPaymentAttemptId, user can trigger a retry later.
             }
 
             await orderRepo.AddAsync(order);

@@ -29,7 +29,6 @@ namespace OrdersService.Features.Payments.PaymentWebhook.Consumers
                 return;
             }
 
-            // Concurrency Check: Only process if the webhook attempt matches the LastPaymentAttemptId
             if (order.LastPaymentAttemptId != message.PaymentAttemptId)
             {
                 _logger.LogInformation(
