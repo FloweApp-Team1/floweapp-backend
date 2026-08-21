@@ -15,6 +15,7 @@ namespace CatalogService.Features.Products
     public sealed record GetProductsQuery(
        Guid? CategoryId,
        Guid? OccasionId,
+       Guid? StoreId,
        ProductSortOption? Sort,
        PaginationRequest Pagination) : IRequest<ApiResponse<IReadOnlyList<ProductListItemDto>>>;
 
@@ -26,15 +27,15 @@ namespace CatalogService.Features.Products
         {
             var query = productRepository.Query().AsNoTracking().ApplyFilters(request.CategoryId, request.OccasionId);
 
-           
+
             var totalCount = await query.CountAsync(cancellationToken);
 
-          
+
 
             var items = await query
                 .ApplySort(request.Sort)
                 .ApplyPagination(request.Pagination)
-                .Select(ProductMappingExtensions.ToListItemDto)
+                .Select(ProductMappingExtensions.ToListItemDto(request.StoreId))
                 .ToListAsync(cancellationToken);
 
             return ApiResponse.Paginated(

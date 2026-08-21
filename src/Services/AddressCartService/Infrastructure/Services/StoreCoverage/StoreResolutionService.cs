@@ -29,6 +29,7 @@ namespace AddressCartService.Infrastructure.Services.StoreCoverage
         {
             var activeStores = await _unitOfWork.Repository<Store>()
                 .Query()
+                .AsNoTracking()
                 .Where(s => s.Status == StoreStatusEnum.Active)
                 .ToListAsync(cancellationToken);
 

@@ -6,8 +6,11 @@ namespace CatalogService.Common
 {
     public static class ProductMappingExtensions
     {
-        
-        public static readonly Expression<Func<Product, ProductListItemDto>> ToListItemDto = p => new ProductListItemDto(
+        // storeId == null -> legacy aggregate stock (Product.StockQuantity), preserving
+        // today's behavior for guests/no resolved store. storeId given -> availability comes
+        // from that store's ProductStoreStock row (0/missing counts as unavailable, not
+        // filtered out - the product still appears in the list, just marked out of stock).
+        public static Expression<Func<Product, ProductListItemDto>> ToListItemDto(Guid? storeId) => p => new ProductListItemDto(
         p.Id,
         p.Name,
         p.Price,
@@ -22,10 +25,12 @@ namespace CatalogService.Common
                 .Select(d => (decimal?)(p.Price - (p.Price * d.Percentage / 100)))
                 .FirstOrDefault(),
 
-        p.StockQuantity > 0,
+        storeId == null
+            ? p.StockQuantity > 0
+            : p.StoreStocks!.Any(s => s.StoreId == storeId && s.Quantity > 0),
         p.CategoryId,
         p.Category != null ? p.Category.Name : null,
-   
+
         p.ProductImages != null && p.ProductImages.Any()
             ? (p.ProductImages.FirstOrDefault(i => i.IsPrimary) ?? p.ProductImages.OrderBy(i => i.DisplayOrder).First()).ImageUrl
             : null,
