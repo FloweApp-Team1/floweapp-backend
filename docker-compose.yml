@@ -175,6 +175,9 @@ services:
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
 
+      Gateway__PaymentServiceUrl: http://paymentservice:8080
+      Gateway__CatalogServiceUrl: http://catalogservice:8080
+
       # Fronts the driver-location read path behind GET /orders/{id}/tracking.
       Redis__ConnectionString: redis:6379
 
@@ -224,6 +227,10 @@ services:
 
       Stripe__SecretKey: ${Stripe__SecretKey}
       Stripe__WebhookSecret: ${Stripe__WebhookSecret}
+
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]

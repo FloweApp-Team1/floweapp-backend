@@ -11,7 +11,7 @@ public class UpdateOrderStatusEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPatch("/orders/{orderId:guid}/status", async (
+        app.MapPatch("/{orderId:guid}/status", async (
                 Guid orderId,
                 [FromBody] UpdateOrderStatusRequest request,
                 ISender sender,

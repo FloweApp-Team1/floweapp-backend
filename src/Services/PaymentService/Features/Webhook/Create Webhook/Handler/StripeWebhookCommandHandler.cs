@@ -106,6 +106,7 @@ namespace PaymentService.Features.Webhook
                     await _publishEndpoint.Publish(new OrderPaymentFailedEvent
                     {
                         OrderId = paymentAttempt.OrderId,
+                        PaymentAttemptId = paymentAttempt.Id,
                         Reason = stripeEvent.Type
                     }, cancellationToken);
                 }

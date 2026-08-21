@@ -1,4 +1,4 @@
-﻿using OrdersService.Infrastructure.Messaging;
+using OrdersService.Infrastructure.Messaging;
 using OrdersService.Infrastructure.Persistence;
 using OrdersService.Infrastructure.Repositories;
 using OrdersService.Infrastructure.Services;
@@ -17,6 +17,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Text;
+using Polly;
+using Polly.Extensions.Http;
 
 namespace OrdersService.Infrastructure
 {
@@ -62,6 +64,9 @@ namespace OrdersService.Infrastructure
 
             AddDriverLocationCache(services, configuration);
             AddIntegrationEventPublisher(services, configuration);
+            AddHttpClients(services, configuration);
+
+            services.AddScoped<ICatalogServiceClient, CatalogServiceClient>();
 
             return services;
         }
@@ -76,6 +81,33 @@ namespace OrdersService.Infrastructure
 
             services.AddSharedRedis(configuration);
             services.AddScoped<IDriverLocationCache, DriverLocationCache>();
+        }
+
+        private static void AddHttpClients(IServiceCollection services, IConfiguration configuration)
+        {
+            var paymentUrl = Required(configuration, "Gateway:PaymentServiceUrl");
+            var catalogUrl = Required(configuration, "Gateway:CatalogServiceUrl");
+
+            services.AddHttpClient("PaymentServiceClient", client =>
+            {
+                client.BaseAddress = new Uri(paymentUrl);
+                client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .AddPolicyHandler(GetRetryPolicy());
+
+            services.AddHttpClient("CatalogServiceClient", client =>
+            {
+                client.BaseAddress = new Uri(catalogUrl);
+                client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .AddPolicyHandler(GetRetryPolicy());
+        }
+
+        private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+        {
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
         }
 
         // Same reasoning for RabbitMQ: a missing broker costs the customer the silent push
@@ -93,6 +125,13 @@ namespace OrdersService.Infrastructure
             services.AddMassTransit(bus =>
             {
                 bus.SetKebabCaseEndpointNameFormatter();
+                bus.AddConsumers(Assembly.GetExecutingAssembly());
+
+                bus.AddEntityFrameworkOutbox<OrdersDbContext>(o =>
+                {
+                    o.UseSqlServer();
+                    o.UseBusOutbox();
+                });
 
                 bus.UsingRabbitMq((context, configurator) =>
                 {
