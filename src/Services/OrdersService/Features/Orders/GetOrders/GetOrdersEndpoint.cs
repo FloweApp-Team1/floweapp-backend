@@ -8,7 +8,7 @@ public class GetOrdersEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/orders", () =>
+        app.MapGet("/", () =>
                 ApiResponse.Success(new { }, "Orders retrieved").ToHttpResult())
             .WithTags("Orders")
             .WithName("GetOrders")

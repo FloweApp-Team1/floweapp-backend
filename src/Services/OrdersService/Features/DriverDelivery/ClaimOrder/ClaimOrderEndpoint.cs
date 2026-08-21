@@ -10,7 +10,7 @@ public class ClaimOrderEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/orders/{orderId:guid}/claim", async (
+        app.MapPost("/{orderId:guid}/claim", async (
                 Guid orderId,
                 ISender sender,
                 CancellationToken cancellationToken) =>

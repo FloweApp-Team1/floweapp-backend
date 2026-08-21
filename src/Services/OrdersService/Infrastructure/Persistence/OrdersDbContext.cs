@@ -1,5 +1,6 @@
 using OrdersService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using MassTransit;
 
 namespace OrdersService.Infrastructure.Persistence
 {
@@ -38,6 +39,10 @@ namespace OrdersService.Infrastructure.Persistence
             builder.Entity<OrderStatusHistory>().HasQueryFilter(x => !x.Order.IsDeleted);
 
             builder.ApplyConfigurationsFromAssembly(typeof(OrdersDbContext).Assembly);
+
+            builder.AddInboxStateEntity();
+            builder.AddOutboxMessageEntity();
+            builder.AddOutboxStateEntity();
         }
     }
 }
