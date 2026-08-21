@@ -1,6 +1,9 @@
 using AddressCartService.Infrastructure.Persistence;
 using AddressCartService.Infrastructure.Repositories;
 using AddressCartService.Infrastructure.Services;
+using AddressCartService.Infrastructure.Services.Geocoding;
+using AddressCartService.Infrastructure.Services.StoreCoverage;
+using AddressCartService.Infrastructure.Settings;
 using Shared.Behaviors;
 using Shared.Extensions;
 using Shared.Handlers;
@@ -11,6 +14,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Text;
@@ -53,6 +57,25 @@ namespace AddressCartService.Infrastructure
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+            services.AddScoped<IStoreResolutionService, StoreResolutionService>();
+
+            // Geocoding__UseMockProvider swaps in a canned, no-network implementation for
+            // local/manual testing - read directly since the provider choice is made at
+            // registration time, before the options pipeline resolves GeocodingSettings.
+            if (configuration.GetValue<bool>("Geocoding:UseMockProvider"))
+            {
+                services.AddScoped<IGeocodingProvider, MockGeocodingProvider>();
+            }
+            else
+            {
+                // Typed HttpClient for the reverse-geocoding provider; BaseAddress isn't set
+                // here since GeocodingSettings.BaseUrl is only resolvable once options are bound.
+                services.AddHttpClient<IGeocodingProvider, GoogleGeocodingProvider>((provider, client) =>
+                {
+                    var settings = provider.GetRequiredService<IOptions<GeocodingSettings>>().Value;
+                    client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+                });
+            }
 
             return services;
         }
@@ -65,6 +88,12 @@ namespace AddressCartService.Infrastructure
                 .Validate(s => Encoding.UTF8.GetByteCount(s.SecretKey ?? "") >= 32, "Jwt__SecretKey must be at least 32 characters.")
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Issuer), "Jwt__Issuer is not set.")
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Audience), "Jwt__Audience is not set.")
+                .ValidateOnStart();
+
+            services.AddOptions<GeocodingSettings>()
+                .Bind(configuration.GetSection("Geocoding"))
+                .Validate(s => s.UseMockProvider || !string.IsNullOrWhiteSpace(s.ApiKey), "Geocoding__ApiKey is not set.")
+                .Validate(s => !string.IsNullOrWhiteSpace(s.BaseUrl), "Geocoding__BaseUrl is not set.")
                 .ValidateOnStart();
         }
         public static IServiceCollection AddJwtAuthentication(
