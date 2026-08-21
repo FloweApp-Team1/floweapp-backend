@@ -12,9 +12,9 @@ namespace CatalogService.Features.Home
     {
         public void MapEndpoint(IEndpointRouteBuilder app)
         {
-            app.MapGet("/home/layout", async (IMediator mediator) =>
+            app.MapGet("/home/layout", async (Guid? storeId, IMediator mediator) =>
             {
-                var result = await mediator.Send(new GetHomeLayoutQuery());
+                var result = await mediator.Send(new GetHomeLayoutQuery(storeId));
                 return result.ToMinimalApiResult("Home layout retrieved");
             })
             .WithTags("Home")

@@ -13,13 +13,14 @@ public class SearchProductsEndpoint : IEndpoint
        
         app.MapGet("/products/search", async (
                 string q,
+                Guid? storeId,
                 ProductSortOption? sort,
                 [AsParameters] PaginationRequest pagination,
                 ISender sender,
                 CancellationToken cancellationToken) =>
         {
-         
-            var result = await sender.Send(new SearchProductsQuery(q, sort, pagination), cancellationToken);
+
+            var result = await sender.Send(new SearchProductsQuery(q, storeId, sort, pagination), cancellationToken);
             return result.ToHttpResult();
         })
             .WithName("SearchProducts")

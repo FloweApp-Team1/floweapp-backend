@@ -15,7 +15,7 @@ namespace CatalogService.Features.Home
         private readonly ISender _sender;
         private readonly IRedisCacheService _cacheService;
         private readonly IUnitOfWork _unitOfWork;
-        private const string CacheKey = "catalog:home:layout";
+        private const string CacheKeyPrefix = "catalog:home:layout";
 
         public GetHomeLayoutOrchestrator(ISender sender, IRedisCacheService cacheService, IUnitOfWork unitOfWork)
         {
@@ -26,7 +26,14 @@ namespace CatalogService.Features.Home
 
         public async Task<Result<List<HomeLayoutSectionDto>>> Handle(GetHomeLayoutQuery request, CancellationToken cancellationToken)
         {
-            var cached = await _cacheService.GetAsync<List<HomeLayoutSectionDto>>(CacheKey);
+            // Availability (via ProductRail) differs per store, so the cache must be keyed
+            // per store too - otherwise the first store to populate the cache would have its
+            // stock snapshot served to every other store for the cache's lifetime.
+            var cacheKey = request.StoreId is { } storeId
+                ? $"{CacheKeyPrefix}:{storeId}"
+                : CacheKeyPrefix;
+
+            var cached = await _cacheService.GetAsync<List<HomeLayoutSectionDto>>(cacheKey);
             if (cached != null)
             {
                 return Result.Success(cached);
@@ -41,20 +48,21 @@ namespace CatalogService.Features.Home
             var dtos = new List<HomeLayoutSectionDto>();
             foreach (var section in sections)
             {
-                var sectionResult = await BuildSectionDtoAsync(section, cancellationToken);
+                var sectionResult = await BuildSectionDtoAsync(section, request.StoreId, cancellationToken);
                 if (sectionResult.IsFailure)
                     continue; // Skip failed sections instead of crashing the entire layout
 
                 dtos.Add(sectionResult.Value);
             }
 
-            await _cacheService.SetAsync(CacheKey, dtos, TimeSpan.FromMinutes(10));
+            await _cacheService.SetAsync(cacheKey, dtos, TimeSpan.FromMinutes(10));
 
             return Result.Success(dtos);
         }
 
         private async Task<Result<HomeLayoutSectionDto>> BuildSectionDtoAsync(
             HomeLayoutSection section,
+            Guid? storeId,
             CancellationToken cancellationToken)
         {
             BaseSectionPayloadDto payloadDto;
@@ -73,15 +81,15 @@ namespace CatalogService.Features.Home
                     var categoriesResult = await _sender.Send(new GetTopCategoriesQuery(c.Count), cancellationToken);
                     if (categoriesResult.IsFailure)
                         return Result.Failure<HomeLayoutSectionDto>(categoriesResult.Error);
-                    payloadDto = new CategoryRailPayloadDto 
-                    { 
+                    payloadDto = new CategoryRailPayloadDto
+                    {
                         Items = categoriesResult.Value,
                         ViewAllAction = c.ViewAllAction
                     };
                     break;
 
                 case ProductRailPayload p:
-                    var productsResult = await _sender.Send(new GetBestSellersQuery(p.Count), cancellationToken);
+                    var productsResult = await _sender.Send(new GetBestSellersQuery(p.Count, storeId), cancellationToken);
                     if (productsResult.IsFailure)
                         return Result.Failure<HomeLayoutSectionDto>(productsResult.Error);
                     payloadDto = new ProductRailPayloadDto 
