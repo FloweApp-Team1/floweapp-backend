@@ -14,5 +14,28 @@ namespace OrdersService.Features.Orders.GetOrder
         decimal Subtotal, 
         decimal DeliveryFee, 
         decimal Total, 
-        DateTime CreatedAt);
+        DateTime CreatedAt,
+        List<OrderItemDto> Items,
+        OrderAddressDto? DeliveryAddress,
+        bool IsGift,
+        string? GiftRecipientName,
+        string? GiftRecipientPhone,
+        string? GiftRecipientAddress,
+        bool IsLiveTrackingAvailable);
+
+    public record OrderItemDto(
+        Guid ProductId,
+        string ProductName,
+        string? ProductImageUrl,
+        decimal UnitPrice,
+        int Quantity);
+
+    public record OrderAddressDto(
+        string City,
+        string Area,
+        string AddressLine,
+        string RecipientName,
+        string RecipientPhone,
+        double? Latitude,
+        double? Longitude);
 }
