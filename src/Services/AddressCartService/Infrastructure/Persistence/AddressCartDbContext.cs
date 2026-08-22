@@ -14,6 +14,13 @@ namespace AddressCartService.Infrastructure.Persistence
         {
         }
 
+        // Protected non-generic overload allows derived test contexts to pass DbContextOptions<TDerived>,
+        // which forces EF Core to use the derived type as the model cache key and call the
+        // derived OnModelCreating instead of reusing the cached base-class model.
+        protected AddressCartDbContext(DbContextOptions options) : base(options)
+        {
+        }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

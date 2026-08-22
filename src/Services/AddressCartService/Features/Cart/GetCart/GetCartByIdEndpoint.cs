@@ -5,21 +5,22 @@ using Shared.Security;
 
 namespace AddressCartService.Features.Cart.GetCart
 {
-    public class GetCartEndpoint : IEndpoint
+    public class GetCartByIdEndpoint : IEndpoint
     {
         public void MapEndpoint(IEndpointRouteBuilder app)
         {
-            app.MapGet("/cart", async (
+            app.MapGet("/users/me/carts/{cartId:guid}", async (
+                    Guid cartId,
                     ISender sender,
                     CancellationToken cancellationToken) =>
                 {
-                    var query = new GetCartQuery();
+                    var query = new GetCartQuery(cartId);
                     var result = await sender.Send(query, cancellationToken);
 
                     return result.ToMinimalApiResult("Cart retrieved");
                 })
                 .WithTags("Cart")
-                .WithName("GetCart")
+                .WithName("GetCartById")
                 .RequireAuthorization(AppPolicies.CustomerOnly);
         }
     }

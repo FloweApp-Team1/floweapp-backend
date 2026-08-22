@@ -1,9 +1,12 @@
+using AddressCartService.Infrastructure.Messaging;
 using AddressCartService.Infrastructure.Persistence;
 using AddressCartService.Infrastructure.Repositories;
 using AddressCartService.Infrastructure.Services;
+using AddressCartService.Infrastructure.Services.Catalog;
 using AddressCartService.Infrastructure.Services.Geocoding;
 using AddressCartService.Infrastructure.Services.StoreCoverage;
 using AddressCartService.Infrastructure.Settings;
+using MassTransit;
 using Shared.Behaviors;
 using Shared.Extensions;
 using Shared.Handlers;
@@ -77,11 +80,49 @@ namespace AddressCartService.Infrastructure
                 });
             }
 
+            // ICatalogClient HTTP registration
+            services.AddHttpClient<ICatalogClient, CatalogClient>();
+
+            AddIntegrationEventPublisher(services, configuration);
+
             return services;
+        }
+
+        private static void AddIntegrationEventPublisher(IServiceCollection services, IConfiguration configuration)
+        {
+            var rabbitMq = configuration.GetSection(AddressCartService.Infrastructure.Messaging.RabbitMqSettings.SectionName)
+                .Get<AddressCartService.Infrastructure.Messaging.RabbitMqSettings>();
+
+            if (rabbitMq is null || string.IsNullOrWhiteSpace(rabbitMq.Host))
+            {
+                services.AddSingleton<IIntegrationEventPublisher, LoggingEventPublisher>();
+                return;
+            }
+
+            services.AddMassTransit(bus =>
+            {
+                bus.SetKebabCaseEndpointNameFormatter();
+                bus.AddConsumers(Assembly.GetExecutingAssembly());
+
+                bus.UsingRabbitMq((context, configurator) =>
+                {
+                    configurator.Host(rabbitMq.Host, host =>
+                    {
+                        host.Username(rabbitMq.Username);
+                        host.Password(rabbitMq.Password);
+                    });
+
+                    configurator.ConfigureEndpoints(context);
+                });
+            });
+
+            services.AddScoped<IIntegrationEventPublisher, MassTransitEventPublisher>();
         }
 
         private static void AddConfigurationOptions(IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<CatalogSettings>(configuration.GetSection(CatalogSettings.SectionName));
+
             services.AddOptions<JwtSettings>()
                 .Bind(configuration.GetSection("Jwt"))
                 .Validate(s => !string.IsNullOrWhiteSpace(s.SecretKey), "Jwt__SecretKey is not set.")
