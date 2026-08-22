@@ -24,6 +24,8 @@ namespace AddressCartService.Features.Addresses.GetAddresses
 
             var addresses = await _unitOfWork.Repository<Address>()
                 .GetAll(a => a.UserId == userId)
+                .OrderByDescending(a => a.IsDefault)
+                .ThenByDescending(a => a.CreatedAt)
                 .Select(x=>new AddressResponse
                 (
                     x.Id,
@@ -41,8 +43,7 @@ namespace AddressCartService.Features.Addresses.GetAddresses
                     x.CreatedAt,
                     x.UpdatedAt
                 ))
-                .OrderByDescending(a => a.IsDefault)
-                .ThenByDescending(a=>a.CreatedAt)
+            
                 .ToListAsync(cancellationToken);
 
             return Result<List<AddressResponse>>.Success(addresses);

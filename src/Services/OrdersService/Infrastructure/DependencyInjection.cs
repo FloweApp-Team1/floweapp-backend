@@ -1,24 +1,26 @@
-using OrdersService.Infrastructure.Messaging;
-using OrdersService.Infrastructure.Persistence;
-using OrdersService.Infrastructure.Repositories;
-using OrdersService.Infrastructure.Services;
-using OrdersService.Infrastructure.Settings;
-using Shared.Behaviors;
-using Shared.Extensions;
-using Shared.Handlers;
-using Shared.Interfaces;
-using Shared.Security;
-using Shared.Settings;
 using FluentValidation;
 using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using System.Reflection;
-using System.Text;
+using OrdersService.Infrastructure.Clients;
+using OrdersService.Infrastructure.Messaging;
+using OrdersService.Infrastructure.Persistence;
+using OrdersService.Infrastructure.Repositories;
+using OrdersService.Infrastructure.Services;
+using OrdersService.Infrastructure.Services.OrdersService.Infrastructure.Services;
+using OrdersService.Infrastructure.Settings;
 using Polly;
 using Polly.Extensions.Http;
+using Shared.Behaviors;
+using Shared.Extensions;
+using Shared.Handlers;
+using Shared.Interfaces;
+using Shared.Security;
+using Shared.Settings;
+using System.Reflection;
+using System.Text;
 
 namespace OrdersService.Infrastructure
 {
@@ -62,6 +64,8 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IOrderStatusHistoryWriter, OrderStatusHistoryWriter>();
             services.AddScoped<IDriverSnapshotService, DriverSnapshotService>();
 
+           
+
             services.AddScoped<global::Shared.Contracts.IEmailService, OrdersService.Infrastructure.Services.Email.SmtpEmailService>();
 
             AddDriverLocationCache(services, configuration);
@@ -69,6 +73,13 @@ namespace OrdersService.Infrastructure
             AddHttpClients(services, configuration);
 
             services.AddScoped<ICatalogServiceClient, CatalogServiceClient>();
+            services.AddScoped<IAddressServiceClient, HttpAddressServiceClient>();
+            services.AddScoped<ICartServiceClient, HttpCartServiceClient>();
+            services.AddScoped<IDeliveryFeeCalculator, FlatRateDeliveryFeeCalculator>();
+
+
+            services.AddTransient<AuthorizationHeaderForwardingHandler>();
+
 
             return services;
         }
@@ -103,6 +114,13 @@ namespace OrdersService.Infrastructure
                 client.Timeout = TimeSpan.FromSeconds(30);
             })
             .AddPolicyHandler(GetRetryPolicy());
+
+            services.AddHttpClient("AddressCartServiceClient", client =>
+            {
+                client.BaseAddress = new Uri(configuration["Services:AddressCartService:BaseUrl"]!);
+            })
+            .AddHttpMessageHandler<AuthorizationHeaderForwardingHandler>();
+
         }
 
         private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
