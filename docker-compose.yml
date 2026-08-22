@@ -181,6 +181,7 @@ services:
 
       Gateway__PaymentServiceUrl: http://paymentservice:8080
       Gateway__CatalogServiceUrl: http://catalogservice:8080
+      Gateway__AddressCartServiceUrl: http://addresscartservice:8080
 
       # Fronts the driver-location read path behind GET /orders/{id}/tracking.
       Redis__ConnectionString: redis:6379

@@ -14,12 +14,12 @@ namespace AddressCartService.Features.StoreCoverage.Stores.DeactivateStore
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
-        private readonly IEventPublisher _eventPublisher;
+        private readonly IIntegrationEventPublisher _eventPublisher;
 
         public DeactivateStoreCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IEventPublisher eventPublisher
+            IIntegrationEventPublisher eventPublisher
             )
         {
             _unitOfWork = unitOfWork;
@@ -65,7 +65,6 @@ namespace AddressCartService.Features.StoreCoverage.Stores.DeactivateStore
                 throw;
             }
             await _eventPublisher.PublishAsync(
-                "store.deactivated",
                 new StoreDeactivatedEvent(store.Id, store.Name, DateTime.UtcNow),
                 cancellationToken);
 
