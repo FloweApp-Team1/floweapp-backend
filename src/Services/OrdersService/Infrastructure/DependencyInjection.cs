@@ -100,6 +100,7 @@ namespace OrdersService.Infrastructure
         {
             var paymentUrl = Required(configuration, "Gateway:PaymentServiceUrl");
             var catalogUrl = Required(configuration, "Gateway:CatalogServiceUrl");
+            var addressCartUrl = Required(configuration, "Gateway:AddressCartServiceUrl");
 
             services.AddHttpClient("PaymentServiceClient", client =>
             {
@@ -117,7 +118,7 @@ namespace OrdersService.Infrastructure
 
             services.AddHttpClient("AddressCartServiceClient", client =>
             {
-                client.BaseAddress = new Uri(configuration["Services:AddressCartService:BaseUrl"]!);
+                client.BaseAddress = new Uri(addressCartUrl);
             })
             .AddHttpMessageHandler<AuthorizationHeaderForwardingHandler>();
 
