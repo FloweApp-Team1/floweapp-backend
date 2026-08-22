@@ -18,7 +18,7 @@ namespace Shared.Extensions
                 _ => ConnectionMultiplexer.Connect(redisConnectionString));
 
             services.AddSingleton<IRedisCacheService, RedisCacheService>();
-
+            
             return services;
         }
     }

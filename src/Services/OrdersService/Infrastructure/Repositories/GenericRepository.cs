@@ -67,7 +67,13 @@ namespace OrdersService.Infrastructure.Repositories
         public void Remove(T entity)
         {
             entity.IsDeleted = true;
-            _dbSet.Update(entity);
+            var entry = _context.Entry(entity);
+            if (entry.State == EntityState.Detached)
+            {
+                _dbSet.Attach(entity);
+            }
+            entry.Property(nameof(BaseEntity.IsDeleted)).IsModified = true;
+
         }
 
         public Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate)

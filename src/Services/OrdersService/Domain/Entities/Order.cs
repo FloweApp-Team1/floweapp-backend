@@ -22,6 +22,7 @@ namespace OrdersService.Domain.Entities
         public OrderStatusEnum Status { get; set; } = OrderStatusEnum.Placed;
         public PaymentMethodEnum PaymentMethod { get; set; }
         public PaymentStatusEnum PaymentStatus { get; set; } = PaymentStatusEnum.Pending;
+        public Guid? LastPaymentAttemptId { get; set; }
 
         public decimal Subtotal { get; set; }
         public decimal DeliveryFee { get; set; }

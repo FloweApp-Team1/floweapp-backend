@@ -12,11 +12,12 @@ public class GetProductDetailsEndpoint : IEndpoint
                 "/products/{id:guid}",
                 async (
                     Guid id,
+                    Guid? storeId,
                     ISender sender,
                     CancellationToken cancellationToken) =>
                 {
                     var result = await sender.Send(
-                        new GetProductDetailsQuery(id),
+                        new GetProductDetailsQuery(id, storeId),
                         cancellationToken);
 
                     return result.ToMinimalApiResult("Product retrieved");

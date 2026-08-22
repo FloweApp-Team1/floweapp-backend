@@ -14,6 +14,7 @@ namespace CatalogService.Features.Products
             app.MapGet("/products", async (
                  Guid? categoryId,
                  Guid? occasionId,
+                 Guid? storeId,
                  ProductSortOption? sort,
                 [AsParameters] PaginationRequest pagination,
                 ISender sender,
@@ -22,6 +23,7 @@ namespace CatalogService.Features.Products
                 var query = new GetProductsQuery(
                     CategoryId: categoryId,
                     OccasionId: occasionId,
+                    StoreId: storeId,
                     Sort: sort,
                     Pagination: pagination
                 );

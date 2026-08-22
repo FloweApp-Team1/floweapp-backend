@@ -35,6 +35,10 @@ namespace CatalogService.Features.Home.Dtos
         public string Name { get; set; } = null!;
         public string ImageUrl { get; set; } = null!;
         public decimal Price { get; set; }
+
+        // True when no storeId was resolved (legacy/aggregate stock) or when the
+        // resolved store carries this product; false when that store has none.
+        public bool InStock { get; set; }
     }
 
     public class OccasionRailPayloadDto : BaseSectionPayloadDto
