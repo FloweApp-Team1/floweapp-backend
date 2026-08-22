@@ -25,6 +25,8 @@ namespace IdentityService.Infrastructure.Persistence.Configrations
                     .HasForeignKey(x => x.RoleId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+            builder.HasIndex(x => new { x.UserId, x.RoleId }).IsUnique();
+
 
         }
     }

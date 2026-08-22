@@ -1,4 +1,5 @@
-﻿namespace IdentityService.Domain.Entities
+﻿using Shared.Domain;
+namespace IdentityService.Domain.Entities
 {
     public class LoginAttempt:BaseEntity
     {

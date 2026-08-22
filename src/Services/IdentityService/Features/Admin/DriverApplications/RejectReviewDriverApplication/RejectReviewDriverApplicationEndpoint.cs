@@ -1,0 +1,39 @@
+using IdentityService.Features.Admin.DriverApplications.RejectReviewDriverApplication.Dtos_VM;
+using IdentityService.Features.Admin.DriverApplications.ReviewDriverApplication;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Shared.Contracts;
+using Shared.Responses;
+using Shared.Security;
+
+namespace IdentityService.Features.Admin.DriverApplications.RejectReviewDriverApplication;
+
+public class RejectReviewDriverApplicationEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPatch("/admin/drivers/applications/reject", async ([FromBody] RejectReviewDriverApplicationRequest request, CancellationToken cancelationToken,
+            [FromServices] IMediator mediator) =>
+        {
+            var result = await mediator.Send(new RejectReviewDriverApplicationCommand(request.ApplicationId, request.Reason), cancelationToken);
+            if (result.IsSuccess)
+            {
+                var RejectVM = new RejectReviewDriverApplicationVM
+                {
+                    ApplicationId = result.Value.ApplicationId.ToString(),
+                    RejectReason = result.Value.RejectReason,
+                    ReviewedAt = result.Value.ReviewedAt,
+                    ReviewedBy = result.Value.ReviewedBy,
+                    Status = result.Value.Status.ToString()
+                };
+                return Results.Ok(ApiResponse<RejectReviewDriverApplicationVM>.Success(RejectVM));
+            }
+            return Results.BadRequest(ApiResponse<RejectReviewDriverApplicationVM>.Fail(result.Error.Message));
+        })
+            .WithTags("Admin")
+            .WithName("RejectReviewDriverApplication")
+            .RequireAuthorization(AppPolicies.AdminOnly);
+    }
+}
+
+public record RejectReviewDriverApplicationRequest(Guid ApplicationId, string Reason);
