@@ -1,4 +1,7 @@
+using MediatR;
 using Shared.Contracts;
+using Shared.Extensions;
+using Shared.Requests;
 using Shared.Responses;
 using Shared.Security;
 
@@ -8,10 +11,25 @@ public class GetAssignedOrdersEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/drivers/me/orders", () =>
-                ApiResponse.Success(new { }, "Assigned orders retrieved").ToHttpResult())
+        app.MapGet("/drivers/me/orders", async Task<IResult> (
+                [AsParameters] PaginationRequest request,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await sender.Send(new GetAssignedOrdersQuery(request), cancellationToken);
+
+                return result.IsSuccess
+                    ? ApiResponse.Paginated(
+                        result.Value.Orders,
+                        result.Value.TotalCount,
+                        request,
+                        "Assigned orders retrieved").ToHttpResult()
+                    : result.ToMinimalApiResult();
+            })
             .WithTags("Driver Fulfillment")
             .WithName("GetDriverOrders")
-            .RequireAuthorization(AppPolicies.DriverApproved);
+            .RequireAuthorization(AppPolicies.DriverApproved)
+            .Produces<ApiResponse<IReadOnlyList<AssignedOrderDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized);
     }
 }
