@@ -14,6 +14,8 @@ public sealed class GetProductDetailsQueryHandler(
         GetProductDetailsQuery request,
         CancellationToken cancellationToken)
     {
+        var storeId = request.StoreId;
+
         var product = await repository.Query()
             .AsNoTracking()
             .Where(x => x.Id == request.ProductId )
@@ -33,7 +35,10 @@ public sealed class GetProductDetailsQueryHandler(
                     .OrderByDescending(d => d.StartDate)
                     .Select(d => (decimal?)d.Percentage)
                     .FirstOrDefault(),
-                x.StockQuantity > 0,
+
+                storeId == null
+                    ? x.StockQuantity > 0
+                    : x.StoreStocks!.Any(s => s.StoreId == storeId && s.Quantity > 0),
 
                 x.ProductImages!
                     .OrderBy(i => i.DisplayOrder)
@@ -46,11 +51,15 @@ public sealed class GetProductDetailsQueryHandler(
                     .Select(i => i.Name)
                     .ToList(),
 
-                x.StockQuantity > 0
+                (storeId == null
+                    ? x.StockQuantity
+                    : x.StoreStocks!.Where(s => s.StoreId == storeId).Select(s => s.Quantity).FirstOrDefault()) > 0
                     ? "IN_STOCK"
                     : "OUT_OF_STOCK",
 
-                x.StockQuantity,
+                storeId == null
+                    ? x.StockQuantity
+                    : x.StoreStocks!.Where(s => s.StoreId == storeId).Select(s => s.Quantity).FirstOrDefault(),
 
                 new List<Guid>
                 {

@@ -11,6 +11,7 @@ namespace CatalogService.Features.Products.SearchProducts
 {
     public sealed record SearchProductsQuery(
        string Q,
+       Guid? StoreId,
        ProductSortOption? Sort,
        PaginationRequest Pagination) : IRequest<ApiResponse<IReadOnlyList<ProductListItemDto>>>;
 
@@ -38,7 +39,7 @@ namespace CatalogService.Features.Products.SearchProducts
 
             var items = await ordered
                 .ApplyPagination(request.Pagination)
-                .Select(ProductMappingExtensions.ToListItemDto)
+                .Select(ProductMappingExtensions.ToListItemDto(request.StoreId))
                 .ToListAsync(cancellationToken);
 
             return ApiResponse.Paginated(

@@ -46,10 +46,10 @@ namespace PaymentService.Infrastructure
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
-                    cfg.Host(configuration["RABBITMQ_HOST"] ?? "localhost", "/", h =>
+                    cfg.Host(configuration["RabbitMq:Host"] ?? "localhost", "/", h =>
                     {
-                        h.Username(configuration["RABBITMQ_USER"] ?? "guest");
-                        h.Password(configuration["RABBITMQ_PASSWORD"] ?? "guest");
+                        h.Username(configuration["RabbitMq:Username"] ?? "guest");
+                        h.Password(configuration["RabbitMq:Password"] ?? "guest");
                     });
                     cfg.ConfigureEndpoints(context);
                 });

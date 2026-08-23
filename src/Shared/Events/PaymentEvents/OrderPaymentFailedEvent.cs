@@ -6,6 +6,7 @@ namespace Shared.Events.PaymentEvents
     public record OrderPaymentFailedEvent
     {
         public Guid OrderId { get; init; }
+        public Guid PaymentAttemptId { get; init; }
         public string Reason { get; init; } = string.Empty;
     }
 }

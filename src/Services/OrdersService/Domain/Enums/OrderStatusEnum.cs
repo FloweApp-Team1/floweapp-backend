@@ -41,5 +41,17 @@ namespace OrdersService.Domain.Enums
         // it just may not have a driver or a position yet.
         public static bool IsActiveDelivery(this OrderStatusEnum status) =>
             status is not (OrderStatusEnum.Delivered or OrderStatusEnum.Cancelled);
+
+        // Required mapping for frontend display consistency. PickedUp folds into Out for Delivery.
+        public static string ToDisplayString(this OrderStatusEnum status) => status switch
+        {
+            OrderStatusEnum.Placed => "Placed",
+            OrderStatusEnum.Preparing => "Preparing",
+            OrderStatusEnum.PickedUp => "Out for Delivery",
+            OrderStatusEnum.OutForDelivery => "Out for Delivery",
+            OrderStatusEnum.Delivered => "Delivered",
+            OrderStatusEnum.Cancelled => "Cancelled",
+            _ => status.ToString()
+        };
     }
 }

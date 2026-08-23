@@ -9,7 +9,7 @@ public class GetOrderTrackingEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/orders/{orderId:guid}/tracking", async (
+        app.MapGet("/{orderId:guid}/tracking", async (
                 Guid orderId,
                 ISender sender,
                 CancellationToken cancellationToken) =>

@@ -1,17 +1,23 @@
+using MediatR;
 using Shared.Contracts;
-using Shared.Responses;
-using Shared.Security;
-
+using Shared.Extensions;
 namespace AddressCartService.Features.Addresses.SetDefaultAddress;
 
-public class SetDefaultAddressEndpoint : IEndpoint
+public sealed class SetDefaultAddressEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPatch("/addresses/{addressId:guid}/default", (Guid addressId) =>
-                ApiResponse.Success(new { }, "Default address updated").ToHttpResult())
-            .WithTags("Addresses")
+        app.MapPatch("/users/me/addresses/{id:guid}/default", async (
+                Guid id,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(new SetDefaultAddressCommand(id), cancellationToken);
+            return result.ToMinimalApiResult("Default address updated successfully.");
+        })
+            .RequireAuthorization()
             .WithName("SetDefaultAddress")
-            .RequireAuthorization(AppPolicies.CustomerOnly);
+            .WithTags("Addresses")
+            .WithSummary("Marks the given address as the current user's default address.");
     }
 }

@@ -1,6 +1,12 @@
+using AddressCartService.Infrastructure.Messaging;
 using AddressCartService.Infrastructure.Persistence;
 using AddressCartService.Infrastructure.Repositories;
 using AddressCartService.Infrastructure.Services;
+using AddressCartService.Infrastructure.Services.Catalog;
+using AddressCartService.Infrastructure.Services.Geocoding;
+using AddressCartService.Infrastructure.Services.StoreCoverage;
+using AddressCartService.Infrastructure.Settings;
+using MassTransit;
 using Shared.Behaviors;
 using Shared.Extensions;
 using Shared.Handlers;
@@ -11,6 +17,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Text;
@@ -53,12 +60,69 @@ namespace AddressCartService.Infrastructure
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+            services.AddScoped<IStoreResolutionService, StoreResolutionService>();
+
+            // Geocoding__UseMockProvider swaps in a canned, no-network implementation for
+            // local/manual testing - read directly since the provider choice is made at
+            // registration time, before the options pipeline resolves GeocodingSettings.
+            if (configuration.GetValue<bool>("Geocoding:UseMockProvider"))
+            {
+                services.AddScoped<IGeocodingProvider, MockGeocodingProvider>();
+            }
+            else
+            {
+                // Typed HttpClient for the reverse-geocoding provider; BaseAddress isn't set
+                // here since GeocodingSettings.BaseUrl is only resolvable once options are bound.
+                services.AddHttpClient<IGeocodingProvider, GoogleGeocodingProvider>((provider, client) =>
+                {
+                    var settings = provider.GetRequiredService<IOptions<GeocodingSettings>>().Value;
+                    client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+                });
+            }
+
+            // ICatalogClient HTTP registration
+            services.AddHttpClient<ICatalogClient, CatalogClient>();
+
+            AddIntegrationEventPublisher(services, configuration);
 
             return services;
         }
 
+        private static void AddIntegrationEventPublisher(IServiceCollection services, IConfiguration configuration)
+        {
+            var rabbitMq = configuration.GetSection(AddressCartService.Infrastructure.Messaging.RabbitMqSettings.SectionName)
+                .Get<AddressCartService.Infrastructure.Messaging.RabbitMqSettings>();
+
+            if (rabbitMq is null || string.IsNullOrWhiteSpace(rabbitMq.Host))
+            {
+                services.AddSingleton<IIntegrationEventPublisher, LoggingEventPublisher>();
+                return;
+            }
+
+            services.AddMassTransit(bus =>
+            {
+                bus.SetKebabCaseEndpointNameFormatter();
+                bus.AddConsumers(Assembly.GetExecutingAssembly());
+
+                bus.UsingRabbitMq((context, configurator) =>
+                {
+                    configurator.Host(rabbitMq.Host, host =>
+                    {
+                        host.Username(rabbitMq.Username);
+                        host.Password(rabbitMq.Password);
+                    });
+
+                    configurator.ConfigureEndpoints(context);
+                });
+            });
+
+            services.AddScoped<IIntegrationEventPublisher, MassTransitEventPublisher>();
+        }
+
         private static void AddConfigurationOptions(IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<CatalogSettings>(configuration.GetSection(CatalogSettings.SectionName));
+
             services.AddOptions<JwtSettings>()
                 .Bind(configuration.GetSection("Jwt"))
                 .Validate(s => !string.IsNullOrWhiteSpace(s.SecretKey), "Jwt__SecretKey is not set.")
@@ -66,10 +130,13 @@ namespace AddressCartService.Infrastructure
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Issuer), "Jwt__Issuer is not set.")
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Audience), "Jwt__Audience is not set.")
                 .ValidateOnStart();
-        }
 
-        // Validates tokens issued by IdentityService - this service never issues its own,
-        // so it must share the same signing key/issuer/audience as IdentityService's Jwt__* config.
+            services.AddOptions<GeocodingSettings>()
+                .Bind(configuration.GetSection("Geocoding"))
+                .Validate(s => s.UseMockProvider || !string.IsNullOrWhiteSpace(s.ApiKey), "Geocoding__ApiKey is not set.")
+                .Validate(s => !string.IsNullOrWhiteSpace(s.BaseUrl), "Geocoding__BaseUrl is not set.")
+                .ValidateOnStart();
+        }
         public static IServiceCollection AddJwtAuthentication(
             this IServiceCollection services, IConfiguration configuration)
         {
@@ -85,8 +152,6 @@ namespace AddressCartService.Infrastructure
                     .RequireAuthenticatedUser()
                     .Build();
             });
-
-            // Renders 401/403 in the same ApiResponse shape as every other failure.
             services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationMiddlewareResultHandler>();
 
             return services;
@@ -118,9 +183,6 @@ namespace AddressCartService.Infrastructure
 
             return services;
         }
-
-        // Configuration comes from environment variables only (.env locally,
-        // docker-compose `environment:` in containers) - never from appsettings.json.
         private static string Required(IConfiguration configuration, string key) =>
             configuration[key] is { Length: > 0 } value
                 ? value

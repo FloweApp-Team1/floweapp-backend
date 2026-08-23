@@ -1,17 +1,26 @@
+using MediatR;
 using Shared.Contracts;
-using Shared.Responses;
+using Shared.Extensions;
 using Shared.Security;
 
-namespace AddressCartService.Features.Cart.GetCart;
-
-public class GetCartEndpoint : IEndpoint
+namespace AddressCartService.Features.Cart.GetCart
 {
-    public void MapEndpoint(IEndpointRouteBuilder app)
+    public class GetCartEndpoint : IEndpoint
     {
-        app.MapGet("/cart", () =>
-                ApiResponse.Success(new { }, "Cart retrieved").ToHttpResult())
-            .WithTags("Cart")
-            .WithName("GetCart")
-            .RequireAuthorization(AppPolicies.CustomerOnly);
+        public void MapEndpoint(IEndpointRouteBuilder app)
+        {
+            app.MapGet("/cart", async (
+                    ISender sender,
+                    CancellationToken cancellationToken) =>
+                {
+                    var query = new GetCartQuery();
+                    var result = await sender.Send(query, cancellationToken);
+
+                    return result.ToMinimalApiResult("Cart retrieved");
+                })
+                .WithTags("Cart")
+                .WithName("GetCart")
+                .RequireAuthorization(AppPolicies.CustomerOnly);
+        }
     }
 }

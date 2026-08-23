@@ -1,20 +1,24 @@
-﻿using OrdersService.Infrastructure.Messaging;
-using OrdersService.Infrastructure.Persistence;
-using OrdersService.Infrastructure.Repositories;
-using OrdersService.Infrastructure.Services;
-using OrdersService.Infrastructure.Settings;
-using Shared.Behaviors;
-using Shared.Extensions;
-using Shared.Handlers;
-using Shared.Interfaces;
-using Shared.Security;
-using Shared.Settings;
 using FluentValidation;
 using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using OrdersService.Infrastructure.Clients;
+using OrdersService.Infrastructure.Messaging;
+using OrdersService.Infrastructure.Persistence;
+using OrdersService.Infrastructure.Repositories;
+using OrdersService.Infrastructure.Services;
+using OrdersService.Infrastructure.Services.OrdersService.Infrastructure.Services;
+using OrdersService.Infrastructure.Settings;
+using Polly;
+using Polly.Extensions.Http;
+using Shared.Behaviors;
+using Shared.Extensions;
+using Shared.Handlers;
+using Shared.Interfaces;
+using Shared.Security;
+using Shared.Settings;
 using System.Reflection;
 using System.Text;
 
@@ -60,8 +64,22 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IOrderStatusHistoryWriter, OrderStatusHistoryWriter>();
             services.AddScoped<IDriverSnapshotService, DriverSnapshotService>();
 
+           
+
+            services.AddScoped<global::Shared.Contracts.IEmailService, OrdersService.Infrastructure.Services.Email.SmtpEmailService>();
+
             AddDriverLocationCache(services, configuration);
             AddIntegrationEventPublisher(services, configuration);
+            AddHttpClients(services, configuration);
+
+            services.AddScoped<ICatalogServiceClient, CatalogServiceClient>();
+            services.AddScoped<IAddressServiceClient, HttpAddressServiceClient>();
+            services.AddScoped<ICartServiceClient, HttpCartServiceClient>();
+            services.AddScoped<IDeliveryFeeCalculator, FlatRateDeliveryFeeCalculator>();
+
+
+            services.AddTransient<AuthorizationHeaderForwardingHandler>();
+
 
             return services;
         }
@@ -76,6 +94,41 @@ namespace OrdersService.Infrastructure
 
             services.AddSharedRedis(configuration);
             services.AddScoped<IDriverLocationCache, DriverLocationCache>();
+        }
+
+        private static void AddHttpClients(IServiceCollection services, IConfiguration configuration)
+        {
+            var paymentUrl = Required(configuration, "Gateway:PaymentServiceUrl");
+            var catalogUrl = Required(configuration, "Gateway:CatalogServiceUrl");
+            var addressCartUrl = Required(configuration, "Gateway:AddressCartServiceUrl");
+
+            services.AddHttpClient("PaymentServiceClient", client =>
+            {
+                client.BaseAddress = new Uri(paymentUrl);
+                client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .AddPolicyHandler(GetRetryPolicy());
+
+            services.AddHttpClient("CatalogServiceClient", client =>
+            {
+                client.BaseAddress = new Uri(catalogUrl);
+                client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .AddPolicyHandler(GetRetryPolicy());
+
+            services.AddHttpClient("AddressCartServiceClient", client =>
+            {
+                client.BaseAddress = new Uri(addressCartUrl);
+            })
+            .AddHttpMessageHandler<AuthorizationHeaderForwardingHandler>();
+
+        }
+
+        private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+        {
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
         }
 
         // Same reasoning for RabbitMQ: a missing broker costs the customer the silent push
@@ -93,6 +146,13 @@ namespace OrdersService.Infrastructure
             services.AddMassTransit(bus =>
             {
                 bus.SetKebabCaseEndpointNameFormatter();
+                bus.AddConsumers(Assembly.GetExecutingAssembly());
+
+                bus.AddEntityFrameworkOutbox<OrdersDbContext>(o =>
+                {
+                    o.UseSqlServer();
+                    o.UseBusOutbox();
+                });
 
                 bus.UsingRabbitMq((context, configurator) =>
                 {
@@ -126,6 +186,12 @@ namespace OrdersService.Infrastructure
                 .Validate(s => Encoding.UTF8.GetByteCount(s.SecretKey ?? "") >= 32, "Jwt__SecretKey must be at least 32 characters.")
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Issuer), "Jwt__Issuer is not set.")
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Audience), "Jwt__Audience is not set.")
+                .ValidateOnStart();
+
+            services.AddOptions<OrdersService.Infrastructure.Services.Email.EmailSettings>()
+                .Bind(configuration.GetSection("Email"))
+                .Validate(s => !string.IsNullOrWhiteSpace(s.SmtpHost), "Email__SmtpHost is not set.")
+                .Validate(s => s.SmtpPort > 0, "Email__SmtpPort must be greater than zero.")
                 .ValidateOnStart();
         }
 

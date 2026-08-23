@@ -141,6 +141,10 @@ services:
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
 
+      Geocoding__ApiKey: ${Geocoding__ApiKey}
+      Geocoding__BaseUrl: ${Geocoding__BaseUrl}
+      Geocoding__UseMockProvider: ${Geocoding__UseMockProvider}
+
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
@@ -175,6 +179,10 @@ services:
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
 
+      Gateway__PaymentServiceUrl: http://paymentservice:8080
+      Gateway__CatalogServiceUrl: http://catalogservice:8080
+      Gateway__AddressCartServiceUrl: http://addresscartservice:8080
+
       # Fronts the driver-location read path behind GET /orders/{id}/tracking.
       Redis__ConnectionString: redis:6379
 
@@ -183,6 +191,14 @@ services:
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: ${RABBITMQ_USER}
       RabbitMq__Password: ${RABBITMQ_PASSWORD}
+
+      Email__SmtpHost: ${Email__SmtpHost}
+      Email__SmtpPort: ${Email__SmtpPort}
+      Email__SenderEmail: ${Email__SenderEmail}
+      Email__SenderName: ${Email__SenderName}
+      Email__Username: ${Email__Username}
+      Email__Password: ${Email__Password}
+      Email__EnableSsl: ${Email__EnableSsl}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
@@ -224,6 +240,10 @@ services:
 
       Stripe__SecretKey: ${Stripe__SecretKey}
       Stripe__WebhookSecret: ${Stripe__WebhookSecret}
+
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
