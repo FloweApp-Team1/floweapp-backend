@@ -39,6 +39,10 @@ namespace AddressCartService.Features.Addresses.CreateAddress
             var storeId = await _storeResolution.ResolveServingStoreAsync(
                 request.Lat, request.Lng, request.City, request.Area, cancellationToken);
 
+            if(storeId is null)
+                return Result.Failure<CreateAddressResponse>(
+                    Error.New("Address.Unserviceable", "The provided address is not serviceable."));
+
             var now = DateTime.UtcNow;
 
             var address = new Address
@@ -55,7 +59,7 @@ namespace AddressCartService.Features.Addresses.CreateAddress
                 Lng = request.Lng,
                 IsDefault = isFirstAddress,
                 StoreId = storeId,
-                IsServiceable = storeId is not null,
+                IsServiceable = true,
                 CreatedAt = now,
                 UpdatedAt = now,
                 LastChangedBy = userId
