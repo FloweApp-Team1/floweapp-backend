@@ -145,6 +145,10 @@ services:
 
       Redis__ConnectionString: redis:6379
 
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RabbitMq__Username}
+      RabbitMq__Password: ${RabbitMq__Password}
+
       Geocoding__ApiKey: ${Geocoding__ApiKey}
       Geocoding__BaseUrl: ${Geocoding__BaseUrl}
       Geocoding__UseMockProvider: ${Geocoding__UseMockProvider}
@@ -193,8 +197,8 @@ services:
       # Carries DriverLocationUpdatedEvent to NotificationService, which turns it into the
       # silent push that moves the customer's map marker.
       RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RABBITMQ_USER}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      RabbitMq__Username: ${RabbitMq__Username}
+      RabbitMq__Password: ${RabbitMq__Password}
 
       Email__SmtpHost: ${Email__SmtpHost}
       Email__SmtpPort: ${Email__SmtpPort}
@@ -246,8 +250,8 @@ services:
       Stripe__WebhookSecret: ${Stripe__WebhookSecret}
 
       RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RABBITMQ_USER}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      RabbitMq__Username: ${RabbitMq__Username}
+      RabbitMq__Password: ${RabbitMq__Password}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
@@ -269,11 +273,11 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${RABBITMQ_PORT}:5672"
+      - "${RabbitMq__Port}:5672"
 
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_USER: ${RabbitMq__Username}
+      RABBITMQ_DEFAULT_PASS: ${RabbitMq__Password}
 
     healthcheck:
       test: rabbitmq-diagnostics -q ping

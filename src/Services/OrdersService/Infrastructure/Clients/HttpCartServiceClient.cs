@@ -1,4 +1,4 @@
-﻿
+
     using global::OrdersService.Infrastructure.Services;
     using System.Net;
     using System.Net.Http.Json;
