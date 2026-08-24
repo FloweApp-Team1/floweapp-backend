@@ -1,6 +1,7 @@
-﻿using AddressCartService.Domain.Entities;
+using AddressCartService.Domain.Entities;
 using AddressCartService.Infrastructure.Services.StoreCoverage;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Shared.Interfaces;
 using Shared.Results;
 
@@ -13,15 +14,18 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
             private readonly IUnitOfWork _unitOfWork;
             private readonly ICurrentUserService _currentUserService;
             private readonly IStoreResolutionService _storeResolutionService;
+            private readonly AddressCartService.Infrastructure.Repositories.ILocationRepository _locationRepository;
 
             public UpdateAddressHandler(
                 IUnitOfWork unitOfWork,
                 ICurrentUserService currentUserService,
-                IStoreResolutionService storeResolutionService)
+                IStoreResolutionService storeResolutionService,
+                AddressCartService.Infrastructure.Repositories.ILocationRepository locationRepository)
             {
                 _unitOfWork = unitOfWork;
                 _currentUserService = currentUserService;
                 _storeResolutionService = storeResolutionService;
+                _locationRepository = locationRepository;
             }
 
             public async Task<Result<UpdateAddressResponse>> Handle(
@@ -49,17 +53,27 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
 
                 var locationChanged =
                     !string.Equals(address.AddressLine, request.AddressLine, StringComparison.Ordinal) ||
-                    !string.Equals(address.City, request.City, StringComparison.Ordinal) ||
+                    address.GovernorateId != request.GovernorateId ||
+                    address.CityId != request.CityId ||
                     !string.Equals(address.Area, request.Area, StringComparison.Ordinal) ||
                     address.Lat != request.Lat ||
                     address.Lng != request.Lng;
+
+                var city = await _locationRepository.GetCityWithGovernorateAsync(request.CityId, cancellationToken);
+                
+                if (city == null || city.GovernorateId != request.GovernorateId)
+                {
+                     return Result.Failure<UpdateAddressResponse>(
+                        Error.New("Address.InvalidLocation", "Invalid Governorate or City."));
+                }
 
                 var now = DateTime.UtcNow;
 
                 address.RecipientName = request.RecipientName;
                 address.RecipientPhone = request.RecipientPhone;
                 address.AddressLine = request.AddressLine;
-                address.City = request.City;
+                address.GovernorateId = request.GovernorateId;
+                address.CityId = request.CityId;
                 address.Area = request.Area;
                 address.Label = request.Label;
                 address.Lat = request.Lat;
@@ -72,7 +86,8 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
                 nameof(Address.RecipientName),
                 nameof(Address.RecipientPhone),
                 nameof(Address.AddressLine),
-                nameof(Address.City),
+                nameof(Address.GovernorateId),
+                nameof(Address.CityId),
                 nameof(Address.Area),
                 nameof(Address.Label),
                 nameof(Address.Lat),
@@ -85,7 +100,7 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
                 if (locationChanged)
                 {
                     var storeId = await _storeResolutionService.ResolveServingStoreAsync(
-                        address.Lat, address.Lng, address.City, address.Area, cancellationToken);
+                        address.Lat, address.Lng, city.NameEn, address.Area, cancellationToken);
 
                     address.StoreId = storeId;
                     address.IsServiceable = storeId.HasValue;
@@ -103,7 +118,10 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
                     address.RecipientName,
                     address.RecipientPhone,
                     address.AddressLine,
-                    address.City,
+                    address.GovernorateId,
+                    city.Governorate.NameEn,
+                    address.CityId,
+                    city.NameEn,
                     address.Area,
                     address.Label,
                     address.Lat,
