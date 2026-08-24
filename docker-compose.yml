@@ -269,6 +269,8 @@ services:
     depends_on:
       sqlserver:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
     networks:
       - flowers-network
