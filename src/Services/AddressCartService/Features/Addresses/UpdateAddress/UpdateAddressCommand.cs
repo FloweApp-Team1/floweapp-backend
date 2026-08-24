@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Shared.Results;
 
 namespace AddressCartService.Features.Addresses.UpdateAddress
@@ -8,7 +8,8 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
        string RecipientName,
        string RecipientPhone,
        string AddressLine,
-       string City,
+       int GovernorateId,
+       int CityId,
        string Area,
        string? Label,
        double? Lat,

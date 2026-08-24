@@ -1,11 +1,14 @@
-﻿namespace AddressCartService.Features.Addresses.GetAddress
+namespace AddressCartService.Features.Addresses.GetAddress
 {
     public sealed record AddressDetailsResponse(
         Guid Id,
         string RecipientName,
         string RecipientPhone,
         string AddressLine,
-        string City,
+        int GovernorateId,
+        string GovernorateName,
+        int CityId,
+        string CityName,
         string Area,
         string? Label,
         double? Lat,

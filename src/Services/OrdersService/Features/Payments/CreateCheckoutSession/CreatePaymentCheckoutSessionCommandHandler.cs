@@ -76,23 +76,30 @@ namespace OrdersService.Features.Payments.CreateCheckoutSession
                 PaymentStatus = PaymentStatusEnum.Pending
             };
 
+            var catalogTasks = request.Items.Select(async item =>
+            {
+                var product = await _catalogServiceClient.GetProductDetailsAsync(item.ProductId, cancellationToken);
+                return (Item: item, Product: product);
+            }).ToList();
+
+            var lookups = await Task.WhenAll(catalogTasks);
+
+            var missing = lookups.FirstOrDefault(l => l.Product == null);
+            if (missing.Item != null)
+                return Result<CreatePaymentCheckoutSessionResponse>.Failure(Error.New("NotFound", $"Product with ID {missing.Item.ProductId} not found."));
+
             decimal calculatedSubtotal = 0;
 
-            foreach (var item in request.Items)
+            foreach (var lookup in lookups)
             {
-                var catalogProduct = await _catalogServiceClient.GetProductDetailsAsync(item.ProductId, cancellationToken);
-                if (catalogProduct == null)
-                    return Result<CreatePaymentCheckoutSessionResponse>.Failure(Error.New("NotFound", $"Product with ID {item.ProductId} not found."));
-
-                
                 var orderItem = new OrderItem
                 {
                     Id = Guid.NewGuid(),
-                    ProductId = item.ProductId,
-                    ProductName = catalogProduct.Name,
-                    ProductImageUrl = catalogProduct.ImageUrl,
-                    UnitPrice = catalogProduct.Price, // from CatalogService
-                    Quantity = item.Quantity,
+                    ProductId = lookup.Item.ProductId,
+                    ProductName = lookup.Product!.Name,
+                    ProductImageUrl = lookup.Product.ImageUrl,
+                    UnitPrice = lookup.Product.Price, // from CatalogService
+                    Quantity = lookup.Item.Quantity,
                     OrderId = order.Id
                 };
 
@@ -158,8 +165,7 @@ namespace OrdersService.Features.Payments.CreateCheckoutSession
 
             await orderRepo.AddAsync(order);
             
-            // Publish OrderPlacedEvent so Cart can be cleared
-            await _publishEndpoint.PublishAsync(new OrderPlacedEvent { OrderId = order.Id, UserId = userId }, cancellationToken);
+            // OrderPlacedEvent is no longer published here. Cart is cleared when payment is confirmed.
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 

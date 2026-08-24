@@ -43,7 +43,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection(); // Removed to prevent internal docker redirects
+// app.UseHttpsRedirection(); // Removed to prevent internal docker redirect
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -56,6 +56,7 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<AddressCartDbContext>();
 
     await context.Database.MigrateAsync();
+    await AddressCartService.Infrastructure.Persistence.Seed.LocationSeeder.SeedAsync(context);
 }
 
 app.Run();

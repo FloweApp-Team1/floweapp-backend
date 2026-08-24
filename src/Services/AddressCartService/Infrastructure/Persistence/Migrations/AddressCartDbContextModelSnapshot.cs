@@ -39,13 +39,14 @@ namespace AddressCartService.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<int>("CityId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("GovernorateId")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsDefault")
                         .HasColumnType("bit");
@@ -90,6 +91,10 @@ namespace AddressCartService.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CityId");
+
+                    b.HasIndex("GovernorateId");
+
                     b.HasIndex("StoreId");
 
                     b.HasIndex("UserId")
@@ -102,76 +107,45 @@ namespace AddressCartService.Infrastructure.Persistence.Migrations
                     b.ToTable("Addresses", "AddressCart");
                 });
 
-            modelBuilder.Entity("AddressCartService.Domain.Entities.Cart", b =>
+            modelBuilder.Entity("AddressCartService.Domain.Entities.City", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid>("LastChangedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("Carts", "AddressCart");
-                });
-
-            modelBuilder.Entity("AddressCartService.Domain.Entities.CartItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("CartId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid>("LastChangedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("PriceAtAdd")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Quantity")
+                    b.Property<int>("Id")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<int>("GovernorateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CartId", "ProductId")
-                        .IsUnique();
+                    b.HasIndex("GovernorateId");
 
-                    b.ToTable("CartItems", "AddressCart");
+                    b.ToTable("Cities", "AddressCart");
+                });
+
+            modelBuilder.Entity("AddressCartService.Domain.Entities.Governorate", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Governorates", "AddressCart");
                 });
 
             modelBuilder.Entity("AddressCartService.Domain.Entities.Store", b =>
@@ -211,23 +185,39 @@ namespace AddressCartService.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("AddressCartService.Domain.Entities.Address", b =>
                 {
+                    b.HasOne("AddressCartService.Domain.Entities.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AddressCartService.Domain.Entities.Governorate", "Governorate")
+                        .WithMany()
+                        .HasForeignKey("GovernorateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AddressCartService.Domain.Entities.Store", "Store")
                         .WithMany("Addresses")
                         .HasForeignKey("StoreId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.Navigation("City");
+
+                    b.Navigation("Governorate");
+
                     b.Navigation("Store");
                 });
 
-            modelBuilder.Entity("AddressCartService.Domain.Entities.CartItem", b =>
+            modelBuilder.Entity("AddressCartService.Domain.Entities.City", b =>
                 {
-                    b.HasOne("AddressCartService.Domain.Entities.Cart", "Cart")
-                        .WithMany("Items")
-                        .HasForeignKey("CartId")
+                    b.HasOne("AddressCartService.Domain.Entities.Governorate", "Governorate")
+                        .WithMany("Cities")
+                        .HasForeignKey("GovernorateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Cart");
+                    b.Navigation("Governorate");
                 });
 
             modelBuilder.Entity("AddressCartService.Domain.Entities.Store", b =>
@@ -305,9 +295,9 @@ namespace AddressCartService.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("AddressCartService.Domain.Entities.Cart", b =>
+            modelBuilder.Entity("AddressCartService.Domain.Entities.Governorate", b =>
                 {
-                    b.Navigation("Items");
+                    b.Navigation("Cities");
                 });
 
             modelBuilder.Entity("AddressCartService.Domain.Entities.Store", b =>

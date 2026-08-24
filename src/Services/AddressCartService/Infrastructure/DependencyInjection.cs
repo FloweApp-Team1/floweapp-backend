@@ -58,6 +58,9 @@ namespace AddressCartService.Infrastructure
             // Persistence
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            services.AddScoped<ILocationRepository, LocationRepository>();
+
+            services.AddSharedRedis(configuration);
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IStoreResolutionService, StoreResolutionService>();
@@ -121,7 +124,10 @@ namespace AddressCartService.Infrastructure
 
         private static void AddConfigurationOptions(IServiceCollection services, IConfiguration configuration)
         {
-            services.Configure<CatalogSettings>(configuration.GetSection(CatalogSettings.SectionName));
+            services.AddOptions<CatalogSettings>()
+                .Bind(configuration.GetSection(CatalogSettings.SectionName))
+                .Validate(s => !string.IsNullOrWhiteSpace(s.BaseUrl), "CatalogService__BaseUrl is not set.")
+                .ValidateOnStart();
 
             services.AddOptions<JwtSettings>()
                 .Bind(configuration.GetSection("Jwt"))

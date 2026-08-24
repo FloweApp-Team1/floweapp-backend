@@ -7,7 +7,10 @@ namespace AddressCartService.Domain.Entities
         public string RecipientName { get; set; } = null!;
         public string RecipientPhone { get; set; } = null!;
         public string AddressLine { get; set; } = null!;
-        public string City { get; set; } = null!;
+        public int GovernorateId { get; set; }
+        public int CityId { get; set; }
+        public Governorate? Governorate { get; set; }
+        public City? City { get; set; }
         public string Area { get; set; } = null!;
         public string? Label { get; set; }
         public double? Lat { get; set; }

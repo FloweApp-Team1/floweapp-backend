@@ -1,6 +1,7 @@
 using MassTransit;
 using OrdersService.Domain.Entities;
 using OrdersService.Domain.Enums;
+using Shared.Events.OrderEvents;
 using Shared.Events.PaymentEvents;
 using Shared.Interfaces;
 
@@ -10,13 +11,11 @@ namespace OrdersService.Features.Payments.PaymentWebhook.Consumers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<OrderPaymentSucceededConsumer> _logger;
-        private readonly global::Shared.Contracts.IEmailService _emailService;
 
-        public OrderPaymentSucceededConsumer(IUnitOfWork unitOfWork, ILogger<OrderPaymentSucceededConsumer> logger, global::Shared.Contracts.IEmailService emailService)
+        public OrderPaymentSucceededConsumer(IUnitOfWork unitOfWork, ILogger<OrderPaymentSucceededConsumer> logger)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
-            _emailService = emailService;
         }
 
         public async Task Consume(ConsumeContext<OrderPaymentSucceededEvent> context)
@@ -43,27 +42,20 @@ namespace OrdersService.Features.Payments.PaymentWebhook.Consumers
             {
                 order.PaymentStatus = PaymentStatusEnum.Paid;
                 orderRepo.Update(order);
+                
+                await context.Publish(new OrderConfirmedEvent
+                {
+                    OrderId = order.Id,
+                    UserId = order.UserId,
+                    PaymentMethod = order.PaymentMethod.ToString(),
+                    OrderNumber = order.OrderNumber,
+                    Total = order.Total,
+                    UserEmail = message.CustomerEmail
+                }, context.CancellationToken);
+
                 await _unitOfWork.SaveChangesAsync(context.CancellationToken);
                 
-                _logger.LogInformation("Order {OrderId} marked as Paid.", order.Id);
-
-                try
-                {
-                    if (!string.IsNullOrWhiteSpace(message.CustomerEmail))
-                    {
-                        string body = $"Hello,\n\nYour card payment for order {order.OrderNumber} was successful.\nTotal: {order.Total:C}\n\nThank you for shopping with Flowers App!";
-                        await _emailService.SendAsync(message.CustomerEmail, "Payment Successful - Flowers App", body, context.CancellationToken);
-                    }
-                    else
-                    {
-                        // Note: A user repository does not exist in OrdersService. Since HTTP calls to IdentityService are forbidden to keep it decoupled, we skip the email if Stripe didn't provide it.
-                        _logger.LogWarning("Cannot send order confirmation email for order {OrderId} because CustomerEmail is missing in the event.", order.Id);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to send order confirmation email for order {OrderId}", order.Id);
-                }
+                _logger.LogInformation("Order {OrderId} marked as Paid and OrderConfirmedEvent published.", order.Id);
             }
         }
     }

@@ -13,7 +13,6 @@ using Shared.Settings;
 using Shared.Swagger;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
-using IdentityService.Infrastructure.Services.Email;
 using IdentityService.Infrastructure.Services.OTP;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -75,7 +74,7 @@ namespace IdentityService.Infrastructure
             services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             // Messaging / storage
-            services.AddScoped<IEmailService, SmtpEmailService>();
+            services.AddSharedEmailService(configuration);
             services.AddScoped<IImageService, LocalImageService>();
 
             services.AddSharedRedis(configuration);
@@ -96,16 +95,6 @@ namespace IdentityService.Infrastructure
                 .Validate(s => !string.IsNullOrWhiteSpace(s.Audience), "Jwt__Audience is not set.")
                 .Validate(s => s.AccessTokenExpiryMinutes > 0, "Jwt__AccessTokenExpiryMinutes must be greater than 0.")
                 .Validate(s => s.RefreshTokenExpiryDays > 0, "Jwt__RefreshTokenExpiryDays must be greater than 0.")
-                .ValidateOnStart();
-
-            services.AddOptions<EmailSettings>()
-                .Bind(configuration.GetSection("Email"))
-                .Validate(s => !string.IsNullOrWhiteSpace(s.SmtpHost), "Email__SmtpHost is not set.")
-                .Validate(s => s.SmtpPort > 0, "Email__SmtpPort is not set.")
-                .Validate(s => !string.IsNullOrWhiteSpace(s.SenderEmail), "Email__SenderEmail is not set.")
-                .Validate(s => !string.IsNullOrWhiteSpace(s.SenderName), "Email__SenderName is not set.")
-                .Validate(s => !string.IsNullOrWhiteSpace(s.Username), "Email__Username is not set.")
-                .Validate(s => !string.IsNullOrWhiteSpace(s.Password), "Email__Password is not set.")
                 .ValidateOnStart();
 
             return services;
