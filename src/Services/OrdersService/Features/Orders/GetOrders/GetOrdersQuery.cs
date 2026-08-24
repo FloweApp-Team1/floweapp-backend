@@ -19,5 +19,6 @@ namespace OrdersService.Features.Orders.GetOrders
         int ItemCount,
         string? FirstItemThumbnailUrl,
         string Status,
-        decimal Total);
+        decimal Total,
+        string PaymentStatus);
 }

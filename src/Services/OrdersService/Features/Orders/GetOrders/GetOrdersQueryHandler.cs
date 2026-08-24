@@ -47,7 +47,8 @@ namespace OrdersService.Features.Orders.GetOrders
                     ItemCount = o.Items.Count(),
                     FirstItemThumbnailUrl = o.Items.OrderBy(i => i.CreatedAt).Select(i => i.ProductImageUrl).FirstOrDefault(),
                     o.Status,
-                    o.Total
+                    o.Total,
+                    o.PaymentStatus
                 })
                 .ToListAsync(cancellationToken);
 
@@ -58,7 +59,8 @@ namespace OrdersService.Features.Orders.GetOrders
                 o.ItemCount,
                 o.FirstItemThumbnailUrl,
                 o.Status.ToDisplayString(),
-                o.Total
+                o.Total,
+                o.PaymentStatus.ToString()
             )).ToList();
 
             return Result<GetOrdersResponse>.Success(new GetOrdersResponse(orders, totalCount));
