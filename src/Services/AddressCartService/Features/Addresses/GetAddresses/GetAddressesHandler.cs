@@ -1,4 +1,4 @@
-﻿using AddressCartService.Domain.Entities;
+using AddressCartService.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Interfaces;
@@ -23,16 +23,22 @@ namespace AddressCartService.Features.Addresses.GetAddresses
                 return Result<List<AddressResponse>>.Failure(Error.New("Address.Unauthorized", "User is not authenticated."));
 
             var addresses = await _unitOfWork.Repository<Address>()
-                .GetAll(a => a.UserId == userId)
+                .Query()
+                .Include(a => a.Governorate)
+                .Include(a => a.City)
+                .Where(a => a.UserId == userId)
                 .OrderByDescending(a => a.IsDefault)
                 .ThenByDescending(a => a.CreatedAt)
-                .Select(x=>new AddressResponse
+                .Select(x => new AddressResponse
                 (
                     x.Id,
                     x.RecipientName,
                     x.RecipientPhone,
                     x.AddressLine,
-                    x.City,
+                    x.GovernorateId,
+                    x.Governorate != null ? x.Governorate.NameEn : "",
+                    x.CityId,
+                    x.City != null ? x.City.NameEn : "",
                     x.Area,
                     x.Label,
                     x.Lat,
@@ -43,7 +49,6 @@ namespace AddressCartService.Features.Addresses.GetAddresses
                     x.CreatedAt,
                     x.UpdatedAt
                 ))
-            
                 .ToListAsync(cancellationToken);
 
             return Result<List<AddressResponse>>.Success(addresses);

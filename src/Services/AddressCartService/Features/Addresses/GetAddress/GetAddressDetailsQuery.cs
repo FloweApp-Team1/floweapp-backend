@@ -1,4 +1,4 @@
-﻿using AddressCartService.Domain.Entities;
+using AddressCartService.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Interfaces;
@@ -41,7 +41,10 @@ namespace AddressCartService.Features.Addresses.GetAddress
                     a.RecipientName,
                     a.RecipientPhone,
                     a.AddressLine,
-                    a.City,
+                    a.GovernorateId,
+                    a.Governorate != null ? a.Governorate.NameEn : "",
+                    a.CityId,
+                    a.City != null ? a.City.NameEn : "",
                     a.Area,
                     a.Label,
                     a.Lat,

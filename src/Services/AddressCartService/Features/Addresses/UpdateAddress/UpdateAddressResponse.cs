@@ -1,11 +1,14 @@
-﻿namespace AddressCartService.Features.Addresses.UpdateAddress
+namespace AddressCartService.Features.Addresses.UpdateAddress
 {
     public sealed record UpdateAddressResponse(
         Guid Id,
         string RecipientName,
         string RecipientPhone,
         string AddressLine,
-        string City,
+        int GovernorateId,
+        string GovernorateName,
+        int CityId,
+        string CityName,
         string Area,
         string? Label,
         double? Lat,

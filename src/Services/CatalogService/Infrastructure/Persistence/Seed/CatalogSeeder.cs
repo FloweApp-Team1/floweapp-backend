@@ -203,6 +203,46 @@ namespace CatalogService.Infrastructure.Persistence.Seed
 
                 context.Products.Add(product);
             }
+
+            var random = new Random(42);
+            var categoryList = categories.Values.ToList();
+            var occasionList = occasions.Values.ToList();
+
+            for (int i = 1; i <= 100; i++)
+            {
+                var name = $"Test Pagination Product {i}";
+                if (existingNames.Contains(name))
+                    continue;
+
+                var category = categoryList[random.Next(categoryList.Count)];
+                var productOccasions = new List<Occasion> { occasionList[random.Next(occasionList.Count)] };
+                if (random.Next(2) == 0)
+                {
+                    var secondOccasion = occasionList[random.Next(occasionList.Count)];
+                    if (secondOccasion.Id != productOccasions[0].Id)
+                        productOccasions.Add(secondOccasion);
+                }
+
+                var product = new Product
+                {
+                    Id = Guid.NewGuid(),
+                    Name = name,
+                    Description = $"This is an auto-generated product #{i} designed specifically to test pagination.",
+                    Price = random.Next(10, 100) + 0.99m,
+                    StockQuantity = random.Next(10, 500),
+                    CategoryId = category.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    Occasions = productOccasions,
+                    ProductImages =
+                    [
+                        NewImage(name, variant: 1, isPrimary: true),
+                        NewImage(name, variant: 2, isPrimary: false)
+                    ]
+                };
+
+                context.Products.Add(product);
+            }
         }
 
         private static ProductImage NewImage(string productName, int variant, bool isPrimary) => new()

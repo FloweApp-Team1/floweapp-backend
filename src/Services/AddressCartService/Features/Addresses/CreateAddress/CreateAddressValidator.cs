@@ -22,9 +22,11 @@ namespace AddressCartService.Features.Addresses.CreateAddress
                 .NotEmpty().WithMessage("Address line is required.")
                 .MaximumLength(500);
 
-            RuleFor(x => x.City)
-                .NotEmpty().WithMessage("City is required.")
-                .MaximumLength(100);
+            RuleFor(x => x.GovernorateId)
+                .GreaterThan(0).WithMessage("Governorate is required.");
+                
+            RuleFor(x => x.CityId)
+                .GreaterThan(0).WithMessage("City is required.");
 
             RuleFor(x => x.Area)
                 .NotEmpty().WithMessage("Area is required.")

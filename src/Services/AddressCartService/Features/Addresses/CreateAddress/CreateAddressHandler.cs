@@ -1,6 +1,7 @@
 using AddressCartService.Domain.Entities;
 using AddressCartService.Infrastructure.Services.StoreCoverage;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Shared.Interfaces;
 using Shared.Results;
 
@@ -11,15 +12,18 @@ namespace AddressCartService.Features.Addresses.CreateAddress
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
         private readonly IStoreResolutionService _storeResolution;
+        private readonly AddressCartService.Infrastructure.Repositories.ILocationRepository _locationRepository;
 
         public CreateAddressHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IStoreResolutionService storeResolution)
+            IStoreResolutionService storeResolution,
+            AddressCartService.Infrastructure.Repositories.ILocationRepository locationRepository)
         {
             _unitOfWork = unitOfWork;
             _currentUser = currentUser;
             _storeResolution = storeResolution;
+            _locationRepository = locationRepository;
         }
 
         public async Task<Result<CreateAddressResponse>> Handle(
@@ -34,10 +38,18 @@ namespace AddressCartService.Features.Addresses.CreateAddress
             // First address for this user becomes the default automatically.
             var isFirstAddress = !await repo.ExistsAsync(a => a.UserId == userId);
 
+            var city = await _locationRepository.GetCityWithGovernorateAsync(request.CityId, cancellationToken);
+                
+            if (city == null || city.GovernorateId != request.GovernorateId)
+            {
+                 return Result.Failure<CreateAddressResponse>(
+                    Error.New("Address.InvalidLocation", "Invalid Governorate or City."));
+            }
+
             // Unresolved coverage doesn't block creation - it just leaves StoreId null
             // and IsServiceable false, per SCRUM-91.
             var storeId = await _storeResolution.ResolveServingStoreAsync(
-                request.Lat, request.Lng, request.City, request.Area, cancellationToken);
+                request.Lat, request.Lng, city.NameEn, request.Area, cancellationToken);
 
             if(storeId is null)
                 return Result.Failure<CreateAddressResponse>(
@@ -52,7 +64,8 @@ namespace AddressCartService.Features.Addresses.CreateAddress
                 RecipientName = request.RecipientName,
                 RecipientPhone = request.RecipientPhone,
                 AddressLine = request.AddressLine,
-                City = request.City,
+                GovernorateId = request.GovernorateId,
+                CityId = request.CityId,
                 Area = request.Area,
                 Label = request.Label,
                 Lat = request.Lat,
@@ -73,7 +86,10 @@ namespace AddressCartService.Features.Addresses.CreateAddress
                 address.RecipientName,
                 address.RecipientPhone,
                 address.AddressLine,
-                address.City,
+                address.GovernorateId,
+                city.Governorate.NameEn,
+                address.CityId,
+                city.NameEn,
                 address.Area,
                 address.Label,
                 address.Lat,

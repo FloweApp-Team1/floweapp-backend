@@ -293,7 +293,7 @@ namespace AddressCartService.Tests
 
             // Verify item is HARD-deleted: FindAsync with IgnoreQueryFilters returns null —
             // a soft-deleted row would still be visible here.
-            var ghost = await _dbContext.CartItems.IgnoreQueryFilters().FindAsync(itemId);
+            var ghost = await _dbContext.CartItems.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == itemId);
             Assert.Null(ghost);
 
             // Verify re-insertion with same (CartId, ProductId) succeeds — no unique-constraint ghost row.
