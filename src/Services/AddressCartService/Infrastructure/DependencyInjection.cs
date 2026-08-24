@@ -58,6 +58,7 @@ namespace AddressCartService.Infrastructure
             // Persistence
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            services.AddScoped<ILocationRepository, LocationRepository>();
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IStoreResolutionService, StoreResolutionService>();

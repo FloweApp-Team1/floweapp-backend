@@ -15,7 +15,6 @@ namespace AddressCartService.Infrastructure.Persistence.Configurations
             builder.Property(x => x.RecipientName).IsRequired().HasMaxLength(150);
             builder.Property(x => x.RecipientPhone).IsRequired().HasMaxLength(20);
             builder.Property(x => x.AddressLine).IsRequired().HasMaxLength(500);
-            builder.Property(x => x.City).IsRequired().HasMaxLength(100);
             builder.Property(x => x.Area).IsRequired().HasMaxLength(100);
             builder.Property(x => x.Label).HasMaxLength(50);
 
@@ -33,7 +32,15 @@ namespace AddressCartService.Infrastructure.Persistence.Configurations
                 .HasForeignKey(x => x.StoreId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            
+            builder.HasOne(x => x.Governorate)
+                .WithMany()
+                .HasForeignKey(x => x.GovernorateId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.City)
+                .WithMany()
+                .HasForeignKey(x => x.CityId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 
 namespace AddressCartService.Features.Addresses.UpdateAddress
 {
@@ -18,7 +18,8 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
                 .WithMessage("Phone must be a valid Egyptian mobile number.");
 
             RuleFor(x => x.AddressLine).NotEmpty().MaximumLength(500);
-            RuleFor(x => x.City).NotEmpty().MaximumLength(100);
+            RuleFor(x => x.GovernorateId).GreaterThan(0);
+            RuleFor(x => x.CityId).GreaterThan(0);
             RuleFor(x => x.Area).NotEmpty().MaximumLength(100);
             RuleFor(x => x.Label).MaximumLength(50);
 
