@@ -41,7 +41,7 @@ namespace OrdersService.Features.Checkout.Consumers
                     paymentText = "Your card payment for order";
                 }
 
-                string body = $"Hello,\n\n{paymentText} {message.OrderNumber} was successful.\nTotal: {message.Total:C}\n\nThank you for shopping with Flowers App!";
+                string body = $"<p>Hello,</p><p>{paymentText} {message.OrderNumber} was successful.</p><p>Total: {message.Total:C}</p><p>Thank you for shopping with Flowers App!</p>";
                 
                 // Use MessageId or OrderId for deduplication header
                 var messageId = context.MessageId?.ToString() ?? message.OrderId.ToString();
