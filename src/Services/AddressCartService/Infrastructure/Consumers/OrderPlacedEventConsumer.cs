@@ -1,21 +1,20 @@
-using AddressCartService.Domain.Entities;
-using AddressCartService.Infrastructure.Persistence;
+using AddressCartService.Features.Cart;
 using MassTransit;
-using Microsoft.EntityFrameworkCore;
+using Shared.Contracts;
 using Shared.Events.OrderEvents;
 
 namespace AddressCartService.Infrastructure.Consumers
 {
     public class OrderPlacedEventConsumer : IConsumer<OrderPlacedEvent>
     {
-        private readonly AddressCartDbContext _dbContext;
+        private readonly IRedisCacheService _redisCache;
         private readonly ILogger<OrderPlacedEventConsumer> _logger;
 
         public OrderPlacedEventConsumer(
-            AddressCartDbContext dbContext,
+            IRedisCacheService redisCache,
             ILogger<OrderPlacedEventConsumer> logger)
         {
-            _dbContext = dbContext;
+            _redisCache = redisCache;
             _logger = logger;
         }
 
@@ -24,20 +23,12 @@ namespace AddressCartService.Infrastructure.Consumers
             var message = context.Message;
             _logger.LogInformation("OrderPlacedEvent received for OrderId: {OrderId}, UserId: {UserId}", message.OrderId, message.UserId);
 
-            var cart = await _dbContext.Carts
-                .Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.UserId == message.UserId, context.CancellationToken);
+            var cacheKey = CartCacheKeys.Cart(message.UserId);
+            
+            // Just remove the key entirely. Redis Remove is naturally idempotent.
+            await _redisCache.RemoveAsync(cacheKey);
 
-            if (cart is null || cart.Items.Count == 0)
-            {
-                _logger.LogInformation("No items to clear for UserId: {UserId}", message.UserId);
-                return;
-            }
-
-            _dbContext.CartItems.RemoveRange(cart.Items);
-            await _dbContext.SaveChangesAsync(context.CancellationToken);
-
-            _logger.LogInformation("Cleared {Count} cart items for UserId: {UserId} after Order {OrderId}", cart.Items.Count, message.UserId, message.OrderId);
+            _logger.LogInformation("Cleared cart for UserId: {UserId} after Order {OrderId}", message.UserId, message.OrderId);
         }
     }
 }

@@ -143,6 +143,8 @@ services:
 
       CatalogService__BaseUrl: http://catalogservice:8080
 
+      Redis__ConnectionString: redis:6379
+
       Geocoding__ApiKey: ${Geocoding__ApiKey}
       Geocoding__BaseUrl: ${Geocoding__BaseUrl}
       Geocoding__UseMockProvider: ${Geocoding__UseMockProvider}
