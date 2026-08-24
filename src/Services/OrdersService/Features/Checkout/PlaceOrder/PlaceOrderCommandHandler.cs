@@ -76,7 +76,15 @@ namespace OrdersService.Features.Checkout.PlaceOrder
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             await _eventPublisher.PublishAsync(
-                new OrderPlacedEvent { OrderId = order.Id, UserId = userId.Value },
+                new OrderConfirmedEvent 
+                { 
+                    OrderId = order.Id, 
+                    UserId = userId.Value,
+                    PaymentMethod = request.PaymentMethod.ToString(),
+                    OrderNumber = order.OrderNumber,
+                    Total = order.Total,
+                    UserEmail = _currentUserService.Email
+                },
                 cancellationToken);
 
             return Result.Success(new PlaceOrderResponse(

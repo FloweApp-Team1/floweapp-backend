@@ -15,7 +15,6 @@ namespace OrdersService.Features.Checkout.PlaceCodOrder
         private readonly ICatalogServiceClient _catalogServiceClient;
         private readonly ICurrentUserService _currentUserService;
         private readonly IIntegrationEventPublisher _publishEndpoint;
-        private readonly global::Shared.Contracts.IEmailService _emailService;
         private readonly ILogger<PlaceCodOrderCommandHandler> _logger;
 
         public PlaceCodOrderCommandHandler(
@@ -23,14 +22,12 @@ namespace OrdersService.Features.Checkout.PlaceCodOrder
             ICatalogServiceClient catalogServiceClient,
             ICurrentUserService currentUserService,
             IIntegrationEventPublisher publishEndpoint,
-            global::Shared.Contracts.IEmailService emailService,
             ILogger<PlaceCodOrderCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _catalogServiceClient = catalogServiceClient;
             _currentUserService = currentUserService;
             _publishEndpoint = publishEndpoint;
-            _emailService = emailService;
             _logger = logger;
         }
 
@@ -70,22 +67,30 @@ namespace OrdersService.Features.Checkout.PlaceCodOrder
                 PaymentStatus = PaymentStatusEnum.Pending
             };
 
+            var catalogTasks = request.Items.Select(async item =>
+            {
+                var product = await _catalogServiceClient.GetProductDetailsAsync(item.ProductId, cancellationToken);
+                return (Item: item, Product: product);
+            }).ToList();
+
+            var lookups = await Task.WhenAll(catalogTasks);
+
+            var missing = lookups.FirstOrDefault(l => l.Product == null);
+            if (missing.Item != null)
+                return Result<PlaceCodOrderResponse>.Failure(Error.New("NotFound", $"Product with ID {missing.Item.ProductId} not found."));
+
             decimal calculatedSubtotal = 0;
 
-            foreach (var item in request.Items)
+            foreach (var lookup in lookups)
             {
-                var catalogProduct = await _catalogServiceClient.GetProductDetailsAsync(item.ProductId, cancellationToken);
-                if (catalogProduct == null)
-                    return Result<PlaceCodOrderResponse>.Failure(Error.New("NotFound", $"Product with ID {item.ProductId} not found."));
-                
                 var orderItem = new OrderItem
                 {
                     Id = Guid.NewGuid(),
-                    ProductId = item.ProductId,
-                    ProductName = catalogProduct.Name,
-                    ProductImageUrl = catalogProduct.ImageUrl,
-                    UnitPrice = catalogProduct.Price, // from CatalogService
-                    Quantity = item.Quantity,
+                    ProductId = lookup.Item.ProductId,
+                    ProductName = lookup.Product!.Name,
+                    ProductImageUrl = lookup.Product.ImageUrl,
+                    UnitPrice = lookup.Product.Price, // from CatalogService
+                    Quantity = lookup.Item.Quantity,
                     OrderId = order.Id
                 };
 
@@ -99,23 +104,18 @@ namespace OrdersService.Features.Checkout.PlaceCodOrder
 
             await orderRepo.AddAsync(order);
             
-            // Publish OrderPlacedEvent so Cart can be cleared
-            await _publishEndpoint.PublishAsync(new OrderPlacedEvent { OrderId = order.Id, UserId = userId }, cancellationToken);
+            // Publish OrderConfirmedEvent so Cart can be cleared and email sent
+            await _publishEndpoint.PublishAsync(new OrderConfirmedEvent 
+            { 
+                OrderId = order.Id, 
+                UserId = userId,
+                PaymentMethod = order.PaymentMethod.ToString(),
+                OrderNumber = order.OrderNumber,
+                Total = order.Total,
+                UserEmail = _currentUserService.Email
+            }, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(_currentUserService.Email))
-                {
-                    string body = $"Hello,\n\nYour Cash on Delivery order {order.OrderNumber} has been successfully placed.\nTotal: {order.Total:C}\n\nThank you for shopping with Flowers App!";
-                    await _emailService.SendAsync(_currentUserService.Email, "Order Confirmed - Flowers App", body, cancellationToken);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send order confirmation email for order {OrderId}", order.Id);
-            }
 
             return Result<PlaceCodOrderResponse>.Success(new PlaceCodOrderResponse(order.Id));
         }
