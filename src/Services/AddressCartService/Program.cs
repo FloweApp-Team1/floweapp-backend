@@ -43,7 +43,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection(); // Removed to prevent internal docker redirects
+// app.UseHttpsRedirection(); // Removed to prevent internal docker redirect
 
 app.UseAuthentication();
 app.UseAuthorization();
