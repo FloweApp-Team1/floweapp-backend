@@ -60,6 +60,8 @@ namespace AddressCartService.Infrastructure
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
             services.AddScoped<ILocationRepository, LocationRepository>();
 
+            services.AddSharedRedis(configuration);
+
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IStoreResolutionService, StoreResolutionService>();
 
