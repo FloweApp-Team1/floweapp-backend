@@ -146,12 +146,18 @@ services:
       Redis__ConnectionString: redis:6379
 
       RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RabbitMq__Username}
-      RabbitMq__Password: ${RabbitMq__Password}
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
 
+      # An unset variable interpolates to an empty string, which *overrides* the C#
+      # property defaults rather than falling back to them - and an empty
+      # Geocoding__UseMockProvider throws outright (bool cannot parse ""), crashing
+      # the container before startup validation can report anything useful.
+      # These defaults mirror GeocodingSettings; ApiKey deliberately has none so a
+      # missing real key still fails loudly.
       Geocoding__ApiKey: ${Geocoding__ApiKey}
-      Geocoding__BaseUrl: ${Geocoding__BaseUrl}
-      Geocoding__UseMockProvider: ${Geocoding__UseMockProvider}
+      Geocoding__BaseUrl: ${Geocoding__BaseUrl:-https://maps.googleapis.com/maps/api/geocode/json}
+      Geocoding__UseMockProvider: ${Geocoding__UseMockProvider:-false}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
@@ -197,8 +203,8 @@ services:
       # Carries DriverLocationUpdatedEvent to NotificationService, which turns it into the
       # silent push that moves the customer's map marker.
       RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RabbitMq__Username}
-      RabbitMq__Password: ${RabbitMq__Password}
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
 
       Email__SmtpHost: ${Email__SmtpHost}
       Email__SmtpPort: ${Email__SmtpPort}
@@ -250,8 +256,8 @@ services:
       Stripe__WebhookSecret: ${Stripe__WebhookSecret}
 
       RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RabbitMq__Username}
-      RabbitMq__Password: ${RabbitMq__Password}
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
@@ -273,11 +279,11 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${RabbitMq__Port}:5672"
+      - "${RABBITMQ_PORT}:5672"
 
     environment:
-      RABBITMQ_DEFAULT_USER: ${RabbitMq__Username}
-      RABBITMQ_DEFAULT_PASS: ${RabbitMq__Password}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
 
     healthcheck:
       test: rabbitmq-diagnostics -q ping

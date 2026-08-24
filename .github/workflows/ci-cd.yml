@@ -64,6 +64,13 @@ jobs:
       ORDERS_DATABASE_NAME: FloweAppOrdersDb
       PAYMENT_DATABASE_NAME: FloweAppPaymentDb
       RABBITMQ_USER: flowerapp
+
+      # AddressCartService validates these on start and refuses to boot without them.
+      # The mock provider keeps the throwaway stack off the network and means CI never
+      # needs a real Google key (Geocoding__ApiKey is only required when it is false).
+      Geocoding__UseMockProvider: "true"
+      Geocoding__BaseUrl: https://maps.googleapis.com/maps/api/geocode/json
+
       Jwt__Issuer: FlowersApp.IdentityService
       Jwt__Audience: FlowersApp.Clients
       Jwt__AccessTokenExpiryMinutes: "15"
