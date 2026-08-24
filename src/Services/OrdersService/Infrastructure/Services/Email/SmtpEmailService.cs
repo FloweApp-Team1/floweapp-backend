@@ -22,9 +22,13 @@ namespace OrdersService.Infrastructure.Services.Email
             return Task.CompletedTask; // Not used in OrdersService
         }
 
-        public Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
+        public Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default, string? messageId = null)
         {
             var message = BuildMessage(to, subject, new TextPart("plain") { Text = htmlBody });
+            if (!string.IsNullOrWhiteSpace(messageId))
+            {
+                message.MessageId = messageId.Contains("@") ? messageId : $"{messageId}@{_settings.SenderEmail.Split('@').LastOrDefault() ?? "flowersapp.com"}";
+            }
             return SendInternalAsync(message, cancellationToken);
         }
 

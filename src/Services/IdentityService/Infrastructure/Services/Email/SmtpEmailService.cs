@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Infrastructure.Services.Email
+namespace IdentityService.Infrastructure.Services.Email
 {
     using global::Shared.Contracts;
     using MailKit.Net.Smtp;
@@ -36,9 +36,13 @@
             return SendAsync(message, CancellationToken.None);
         }
 
-        public Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
+        public Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default, string? messageId = null)
         {
             var message = BuildMessage(to, subject, new TextPart("html") { Text = htmlBody });
+            if (!string.IsNullOrWhiteSpace(messageId))
+            {
+                message.MessageId = messageId.Contains("@") ? messageId : $"{messageId}@{_settings.SenderEmail.Split('@').LastOrDefault() ?? "flowersapp.com"}";
+            }
 
             return SendAsync(message, cancellationToken);
         }
