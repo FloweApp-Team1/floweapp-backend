@@ -1,52 +1,27 @@
 using AddressCartService.Domain.Entities;
+using AddressCartService.Features.Cart;
 using AddressCartService.Features.Cart.AddCartItem;
 using AddressCartService.Features.Cart.GetCart;
 using AddressCartService.Features.Cart.RemoveCartItem;
 using AddressCartService.Features.Cart.UpdateCartItem;
 using AddressCartService.Infrastructure.Consumers;
-using AddressCartService.Infrastructure.Persistence;
-using AddressCartService.Infrastructure.Repositories;
 using AddressCartService.Infrastructure.Services.Catalog;
 using MassTransit;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Shared.Events.IntegrationEvents;
+using Shared.Contracts;
 using Shared.Events.OrderEvents;
 using Shared.Interfaces;
 
 namespace AddressCartService.Tests
 {
-    /// <summary>
-    /// Test-specific DbContext that disables the RowVersion optimistic-concurrency token.
-    /// The EF Core InMemory provider auto-increments RowVersion on every SaveChanges, which
-    /// triggers a false DbUpdateConcurrencyException between Remove and Re-Add calls in tests
-    /// when the ChangeTracker is cleared mid-test (the reloaded entity gets a stale RowVersion
-    /// snapshot that doesn't match EF's internal concurrency state).
-    /// </summary>
-    internal class TestAddressCartDbContext : AddressCartDbContext
-    {
-        // Use DbContextOptions<TestAddressCartDbContext> so EF Core's model cache is keyed on this
-        // derived type, ensuring OnModelCreating below is actually called (not the cached base model).
-        public TestAddressCartDbContext(DbContextOptions<TestAddressCartDbContext> options) : base(options) { }
-
-        protected override void OnModelCreating(ModelBuilder builder)
-        {
-            base.OnModelCreating(builder);
-            // Ignore RowVersion entirely in tests.
-            // IsRowVersion() configures both IsConcurrencyToken and ValueGeneratedOnAddOrUpdate;
-            // IsConcurrencyToken(false) alone does not fully override it.
-            // Ignoring the property removes it from the model so EF never checks it,
-            // preventing false DbUpdateConcurrencyExceptions in single-threaded test scenarios.
-            builder.Entity<Cart>().Ignore(x => x.RowVersion);
-        }
-    }
-
     public class CartFeatureTests
     {
-        private readonly AddressCartDbContext _dbContext;
-        private readonly UnitOfWork _unitOfWork;
+        // In-memory stand-in for Redis: handlers only ever Get/Set/Remove by cache key,
+        // so a plain dictionary reproduces real cross-call persistence without a live Redis instance.
+        private readonly Dictionary<string, object> _cacheStore = new();
+        private readonly Mock<IRedisCacheService> _redisCacheMock;
         private readonly Mock<ICurrentUserService> _currentUserMock;
         private readonly Mock<ICatalogClient> _catalogClientMock;
         private readonly Mock<ISender> _senderMock;
@@ -55,18 +30,35 @@ namespace AddressCartService.Tests
 
         public CartFeatureTests()
         {
-            var options = new DbContextOptionsBuilder<TestAddressCartDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
+            _redisCacheMock = new Mock<IRedisCacheService>();
+            _redisCacheMock
+                .Setup(x => x.GetAsync<Cart>(It.IsAny<string>()))
+                .Returns<string>(key => Task.FromResult(
+                    _cacheStore.TryGetValue(key, out var value) ? (Cart?)value : null));
+            _redisCacheMock
+                .Setup(x => x.SetAsync(It.IsAny<string>(), It.IsAny<Cart>(), It.IsAny<TimeSpan>()))
+                .Returns<string, Cart, TimeSpan>((key, value, _) =>
+                {
+                    _cacheStore[key] = value;
+                    return Task.CompletedTask;
+                });
+            _redisCacheMock
+                .Setup(x => x.RemoveAsync(It.IsAny<string>()))
+                .Returns<string>(key =>
+                {
+                    _cacheStore.Remove(key);
+                    return Task.CompletedTask;
+                });
 
-            _dbContext = new TestAddressCartDbContext(options);
-            _unitOfWork = new UnitOfWork(_dbContext);
             _currentUserMock = new Mock<ICurrentUserService>();
             _catalogClientMock = new Mock<ICatalogClient>();
             _senderMock = new Mock<ISender>();
 
             _currentUserMock.Setup(x => x.UserId).Returns(_userId);
         }
+
+        private Cart? GetCachedCart(Guid userId) =>
+            _cacheStore.TryGetValue(CartCacheKeys.Cart(userId), out var value) ? (Cart)value : null;
 
         #region AddCartItem Tests
 
@@ -77,7 +69,7 @@ namespace AddressCartService.Tests
             var product = new CatalogProductDto(productId, "Red Roses", 100m, 100m, null, null, true, 10, "http://image.jpg", false);
             _catalogClientMock.Setup(x => x.GetProductByIdAsync(productId, null, default)).ReturnsAsync(product);
 
-            var handler = new AddCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
+            var handler = new AddCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
             var command = new AddCartItemCommand(productId, 2);
 
             var result = await handler.Handle(command, default);
@@ -86,7 +78,7 @@ namespace AddressCartService.Tests
             Assert.Equal(2, result.Value.Quantity);
             Assert.Equal(100m, result.Value.PriceAtAdd);
 
-            var cart = await _dbContext.Carts.Include(c => c.Items).FirstOrDefaultAsync(c => c.UserId == _userId);
+            var cart = GetCachedCart(_userId);
             Assert.NotNull(cart);
             Assert.Single(cart.Items);
             Assert.Equal(2, cart.Items.First().Quantity);
@@ -99,7 +91,7 @@ namespace AddressCartService.Tests
             var product = new CatalogProductDto(productId, "Red Roses", 100m, 100m, null, null, true, 10, "http://image.jpg", false);
             _catalogClientMock.Setup(x => x.GetProductByIdAsync(productId, null, default)).ReturnsAsync(product);
 
-            var handler = new AddCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
+            var handler = new AddCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
 
             await handler.Handle(new AddCartItemCommand(productId, 1), default);
             var result = await handler.Handle(new AddCartItemCommand(productId, 2), default);
@@ -107,7 +99,7 @@ namespace AddressCartService.Tests
             Assert.True(result.IsSuccess);
             Assert.Equal(3, result.Value.Quantity);
 
-            var cart = await _dbContext.Carts.Include(c => c.Items).FirstOrDefaultAsync(c => c.UserId == _userId);
+            var cart = GetCachedCart(_userId);
             Assert.NotNull(cart);
             Assert.Single(cart.Items);
             Assert.Equal(3, cart.Items.First().Quantity);
@@ -120,7 +112,7 @@ namespace AddressCartService.Tests
             var product = new CatalogProductDto(productId, "Red Roses", 100m, 100m, null, null, true, 3, "http://image.jpg", false);
             _catalogClientMock.Setup(x => x.GetProductByIdAsync(productId, null, default)).ReturnsAsync(product);
 
-            var handler = new AddCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
+            var handler = new AddCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
 
             var result = await handler.Handle(new AddCartItemCommand(productId, 5), default);
 
@@ -135,7 +127,7 @@ namespace AddressCartService.Tests
             var product = new CatalogProductDto(productId, "Red Roses", 100m, 100m, null, null, true, 0, "http://image.jpg", false);
             _catalogClientMock.Setup(x => x.GetProductByIdAsync(productId, null, default)).ReturnsAsync(product);
 
-            var handler = new AddCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
+            var handler = new AddCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
 
             var result = await handler.Handle(new AddCartItemCommand(productId, 1), default);
 
@@ -148,7 +140,7 @@ namespace AddressCartService.Tests
             var productId = Guid.NewGuid();
             _catalogClientMock.Setup(x => x.GetProductByIdAsync(productId, null, default)).ReturnsAsync((CatalogProductDto?)null);
 
-            var handler = new AddCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
+            var handler = new AddCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
 
             var result = await handler.Handle(new AddCartItemCommand(productId, 1), default);
 
@@ -160,7 +152,7 @@ namespace AddressCartService.Tests
         public async Task AddCartItem_Unauthenticated_Fails()
         {
             _currentUserMock.Setup(x => x.UserId).Returns((Guid?)null);
-            var handler = new AddCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
+            var handler = new AddCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
 
             var result = await handler.Handle(new AddCartItemCommand(Guid.NewGuid(), 1), default);
 
@@ -177,10 +169,9 @@ namespace AddressCartService.Tests
         {
             var productId = Guid.NewGuid();
             var cart = new Cart { Id = Guid.NewGuid(), UserId = _userId };
-            var item = new CartItem { Id = Guid.NewGuid(), CartId = cart.Id, ProductId = productId, Quantity = 2, PriceAtAdd = 50m };
+            var item = new CartItem { Id = Guid.NewGuid(), ProductId = productId, Quantity = 2, PriceAtAdd = 50m };
             cart.Items.Add(item);
-            _dbContext.Carts.Add(cart);
-            await _dbContext.SaveChangesAsync();
+            _cacheStore[CartCacheKeys.Cart(_userId)] = cart;
 
             var product = new CatalogProductDto(productId, "Tulips", 50m, 50m, null, null, true, 10, "http://image.jpg", false);
             _catalogClientMock.Setup(x => x.GetProductByIdAsync(productId, null, default)).ReturnsAsync(product);
@@ -188,12 +179,12 @@ namespace AddressCartService.Tests
             _senderMock.Setup(x => x.Send(It.IsAny<GetCartQuery>(), default))
                 .ReturnsAsync(Shared.Results.Result.Success(new GetCartResponse(cart.Id, new List<CartItemResponse>(), 5, 1, 250m, null, 250m, false)));
 
-            var handler = new UpdateCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, _senderMock.Object, Mock.Of<ILogger<UpdateCartItemHandler>>());
+            var handler = new UpdateCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, _senderMock.Object, Mock.Of<ILogger<UpdateCartItemHandler>>());
             var result = await handler.Handle(new UpdateCartItemCommand(item.Id, 5), default);
 
             Assert.True(result.IsSuccess);
-            var updatedItem = await _dbContext.CartItems.FindAsync(item.Id);
-            Assert.Equal(5, updatedItem!.Quantity);
+            var updatedItem = GetCachedCart(_userId)!.Items.First(i => i.Id == item.Id);
+            Assert.Equal(5, updatedItem.Quantity);
         }
 
         [Fact]
@@ -201,15 +192,14 @@ namespace AddressCartService.Tests
         {
             var productId = Guid.NewGuid();
             var cart = new Cart { Id = Guid.NewGuid(), UserId = _userId };
-            var item = new CartItem { Id = Guid.NewGuid(), CartId = cart.Id, ProductId = productId, Quantity = 2, PriceAtAdd = 50m };
+            var item = new CartItem { Id = Guid.NewGuid(), ProductId = productId, Quantity = 2, PriceAtAdd = 50m };
             cart.Items.Add(item);
-            _dbContext.Carts.Add(cart);
-            await _dbContext.SaveChangesAsync();
+            _cacheStore[CartCacheKeys.Cart(_userId)] = cart;
 
             var product = new CatalogProductDto(productId, "Tulips", 50m, 50m, null, null, true, 3, "http://image.jpg", false);
             _catalogClientMock.Setup(x => x.GetProductByIdAsync(productId, null, default)).ReturnsAsync(product);
 
-            var handler = new UpdateCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, _senderMock.Object, Mock.Of<ILogger<UpdateCartItemHandler>>());
+            var handler = new UpdateCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, _senderMock.Object, Mock.Of<ILogger<UpdateCartItemHandler>>());
             var result = await handler.Handle(new UpdateCartItemCommand(item.Id, 5), default);
 
             Assert.True(result.IsFailure);
@@ -219,13 +209,14 @@ namespace AddressCartService.Tests
         [Fact]
         public async Task UpdateCartItem_OtherUserItem_FailsNotFound()
         {
+            // The current user (_userId) has no cart of their own cached, so looking up an
+            // item that only exists in _otherUserId's cart correctly misses regardless of ItemId.
             var cart = new Cart { Id = Guid.NewGuid(), UserId = _otherUserId };
-            var item = new CartItem { Id = Guid.NewGuid(), CartId = cart.Id, ProductId = Guid.NewGuid(), Quantity = 2, PriceAtAdd = 50m };
+            var item = new CartItem { Id = Guid.NewGuid(), ProductId = Guid.NewGuid(), Quantity = 2, PriceAtAdd = 50m };
             cart.Items.Add(item);
-            _dbContext.Carts.Add(cart);
-            await _dbContext.SaveChangesAsync();
+            _cacheStore[CartCacheKeys.Cart(_otherUserId)] = cart;
 
-            var handler = new UpdateCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _catalogClientMock.Object, _senderMock.Object, Mock.Of<ILogger<UpdateCartItemHandler>>());
+            var handler = new UpdateCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, _senderMock.Object, Mock.Of<ILogger<UpdateCartItemHandler>>());
             var result = await handler.Handle(new UpdateCartItemCommand(item.Id, 5), default);
 
             Assert.True(result.IsFailure);
@@ -234,91 +225,63 @@ namespace AddressCartService.Tests
 
         #endregion
 
-        #region RemoveCartItem & Hard Delete Tests
+        #region RemoveCartItem Tests
 
         [Fact]
-        public async Task RemoveCartItem_OwnedItem_HardDeletesItem()
+        public async Task RemoveCartItem_OwnedItem_RemovesItemFromCart()
         {
             var cart = new Cart { Id = Guid.NewGuid(), UserId = _userId };
-            var item = new CartItem { Id = Guid.NewGuid(), CartId = cart.Id, ProductId = Guid.NewGuid(), Quantity = 2, PriceAtAdd = 50m };
+            var item = new CartItem { Id = Guid.NewGuid(), ProductId = Guid.NewGuid(), Quantity = 2, PriceAtAdd = 50m };
             cart.Items.Add(item);
-            _dbContext.Carts.Add(cart);
-            await _dbContext.SaveChangesAsync();
+            _cacheStore[CartCacheKeys.Cart(_userId)] = cart;
 
             _senderMock.Setup(x => x.Send(It.IsAny<GetCartQuery>(), default))
                 .ReturnsAsync(Shared.Results.Result.Success(new GetCartResponse(cart.Id, new List<CartItemResponse>(), 0, 0, 0m, null, 0m, false)));
 
-            var handler = new RemoveCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _senderMock.Object, Mock.Of<ILogger<RemoveCartItemHandler>>());
+            var handler = new RemoveCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _senderMock.Object, Mock.Of<ILogger<RemoveCartItemHandler>>());
             var result = await handler.Handle(new RemoveCartItemCommand(item.Id), default);
 
             Assert.True(result.IsSuccess);
-            var deletedItem = await _dbContext.CartItems.FindAsync(item.Id);
-            Assert.Null(deletedItem); // Hard-deleted cleanly!
+            Assert.DoesNotContain(GetCachedCart(_userId)!.Items, i => i.Id == item.Id);
         }
 
         [Fact]
-        public async Task RemoveAndReAdd_SameProduct_NoUniqueConstraintBug()
+        public async Task RemoveAndReAdd_SameProduct_Succeeds()
         {
-            // Seed Cart + CartItem directly to avoid AddCartItemHandler's IsRowVersion auto-generation.
-            // Going through AddCartItemHandler twice causes EF InMemory to auto-increment RowVersion
-            // on the first save, making the second handler call see a stale concurrency snapshot —
-            // a false positive that masks the real bug this test is verifying.
             var productId = Guid.NewGuid();
-            var cartId = Guid.NewGuid();
-            var itemId = Guid.NewGuid();
+            var product = new CatalogProductDto(productId, "Red Roses", 100m, 100m, null, null, true, 10, "http://image.jpg", false);
+            _catalogClientMock.Setup(x => x.GetProductByIdAsync(productId, null, default)).ReturnsAsync(product);
 
-            var cart = new Cart
-            {
-                Id = cartId, UserId = _userId,
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, LastChangedBy = _userId
-            };
-            var item = new CartItem
-            {
-                Id = itemId, CartId = cartId, ProductId = productId,
-                Quantity = 1, PriceAtAdd = 80m,
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, LastChangedBy = _userId
-            };
-            cart.Items.Add(item);
-            _dbContext.Carts.Add(cart);
-            await _dbContext.SaveChangesAsync();
+            var addHandler = new AddCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object, Mock.Of<ILogger<AddCartItemHandler>>());
+            var addResult = await addHandler.Handle(new AddCartItemCommand(productId, 1), default);
+            Assert.True(addResult.IsSuccess);
+            var itemId = addResult.Value.ItemId;
+            var cartId = addResult.Value.CartId;
 
             _senderMock.Setup(x => x.Send(It.IsAny<GetCartQuery>(), default))
                 .ReturnsAsync(Shared.Results.Result.Success(new GetCartResponse(cartId, new List<CartItemResponse>(), 0, 0, 0m, null, 0m, false)));
 
-            var removeHandler = new RemoveCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _senderMock.Object, Mock.Of<ILogger<RemoveCartItemHandler>>());
+            var removeHandler = new RemoveCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _senderMock.Object, Mock.Of<ILogger<RemoveCartItemHandler>>());
+            var removeResult = await removeHandler.Handle(new RemoveCartItemCommand(itemId), default);
+            Assert.True(removeResult.IsSuccess);
+            Assert.Empty(GetCachedCart(_userId)!.Items);
 
-            // Remove via handler
-            var remRes = await removeHandler.Handle(new RemoveCartItemCommand(itemId), default);
-            Assert.True(remRes.IsSuccess);
-
-            // Verify item is HARD-deleted: FindAsync with IgnoreQueryFilters returns null —
-            // a soft-deleted row would still be visible here.
-            var ghost = await _dbContext.CartItems.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == itemId);
-            Assert.Null(ghost);
-
-            // Verify re-insertion with same (CartId, ProductId) succeeds — no unique-constraint ghost row.
-            // In production (SQL Server) this would fail if the item were only soft-deleted.
-            var readdedItem = new CartItem
-            {
-                Id = Guid.NewGuid(), CartId = cartId, ProductId = productId,
-                Quantity = 2, PriceAtAdd = 80m,
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, LastChangedBy = _userId
-            };
-            _dbContext.CartItems.Add(readdedItem);
-            var ex = await Record.ExceptionAsync(() => _dbContext.SaveChangesAsync());
-            Assert.Null(ex);
+            // Re-adding after removal should start a fresh line, not resurrect the removed item's quantity.
+            var readdResult = await addHandler.Handle(new AddCartItemCommand(productId, 2), default);
+            Assert.True(readdResult.IsSuccess);
+            Assert.Equal(2, readdResult.Value.Quantity);
+            Assert.Single(GetCachedCart(_userId)!.Items);
         }
 
         [Fact]
         public async Task RemoveCartItem_OtherUserItem_FailsNotFound()
         {
             var cart = new Cart { Id = Guid.NewGuid(), UserId = _otherUserId };
-            var item = new CartItem { Id = Guid.NewGuid(), CartId = cart.Id, ProductId = Guid.NewGuid(), Quantity = 2, PriceAtAdd = 50m };
+            var item = new CartItem { Id = Guid.NewGuid(), ProductId = Guid.NewGuid(), Quantity = 2, PriceAtAdd = 50m };
             cart.Items.Add(item);
-            _dbContext.Carts.Add(cart);
-            await _dbContext.SaveChangesAsync();
+            _cacheStore[CartCacheKeys.Cart(_otherUserId)] = cart;
 
-            var handler = new RemoveCartItemHandler(_dbContext, _unitOfWork, _currentUserMock.Object, _senderMock.Object, Mock.Of<ILogger<RemoveCartItemHandler>>());
+            var handler = new RemoveCartItemHandler(_redisCacheMock.Object, _currentUserMock.Object, _senderMock.Object, Mock.Of<ILogger<RemoveCartItemHandler>>());
             var result = await handler.Handle(new RemoveCartItemCommand(item.Id), default);
 
             Assert.True(result.IsFailure);
@@ -332,7 +295,7 @@ namespace AddressCartService.Tests
         [Fact]
         public async Task GetCart_EmptyCart_ReturnsValidEmptyCartResponse()
         {
-            var handler = new GetCartQueryHandler(_dbContext, _currentUserMock.Object, _catalogClientMock.Object);
+            var handler = new GetCartQueryHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object);
             var result = await handler.Handle(new GetCartQuery(), default);
 
             Assert.True(result.IsSuccess);
@@ -352,10 +315,9 @@ namespace AddressCartService.Tests
             var p2 = Guid.NewGuid();
 
             var cart = new Cart { Id = Guid.NewGuid(), UserId = _userId };
-            cart.Items.Add(new CartItem { Id = Guid.NewGuid(), CartId = cart.Id, ProductId = p1, Quantity = 2, PriceAtAdd = 100m });
-            cart.Items.Add(new CartItem { Id = Guid.NewGuid(), CartId = cart.Id, ProductId = p2, Quantity = 5, PriceAtAdd = 50m });
-            _dbContext.Carts.Add(cart);
-            await _dbContext.SaveChangesAsync();
+            cart.Items.Add(new CartItem { Id = Guid.NewGuid(), ProductId = p1, Quantity = 2, PriceAtAdd = 100m });
+            cart.Items.Add(new CartItem { Id = Guid.NewGuid(), ProductId = p2, Quantity = 5, PriceAtAdd = 50m });
+            _cacheStore[CartCacheKeys.Cart(_userId)] = cart;
 
             var batchDict = new Dictionary<Guid, CatalogProductDto>
             {
@@ -365,7 +327,7 @@ namespace AddressCartService.Tests
             _catalogClientMock.Setup(x => x.GetProductsBatchAsync(It.IsAny<IEnumerable<Guid>>(), null, default))
                 .ReturnsAsync(batchDict);
 
-            var handler = new GetCartQueryHandler(_dbContext, _currentUserMock.Object, _catalogClientMock.Object);
+            var handler = new GetCartQueryHandler(_redisCacheMock.Object, _currentUserMock.Object, _catalogClientMock.Object);
             var result = await handler.Handle(new GetCartQuery(), default);
 
             Assert.True(result.IsSuccess);
@@ -387,49 +349,53 @@ namespace AddressCartService.Tests
         #region RabbitMQ Consumer Tests
 
         [Fact]
-        public async Task OrderPlacedEventConsumer_ClearsOnlyUserCart()
+        public async Task ClearCartOnOrderConfirmedConsumer_ClearsOnlyUserCart()
         {
             var userCart = new Cart { Id = Guid.NewGuid(), UserId = _userId };
-            userCart.Items.Add(new CartItem { Id = Guid.NewGuid(), CartId = userCart.Id, ProductId = Guid.NewGuid(), Quantity = 2, PriceAtAdd = 10m });
-            _dbContext.Carts.Add(userCart);
+            userCart.Items.Add(new CartItem { Id = Guid.NewGuid(), ProductId = Guid.NewGuid(), Quantity = 2, PriceAtAdd = 10m });
+            _cacheStore[CartCacheKeys.Cart(_userId)] = userCart;
 
             var otherCart = new Cart { Id = Guid.NewGuid(), UserId = _otherUserId };
-            otherCart.Items.Add(new CartItem { Id = Guid.NewGuid(), CartId = otherCart.Id, ProductId = Guid.NewGuid(), Quantity = 1, PriceAtAdd = 20m });
-            _dbContext.Carts.Add(otherCart);
+            otherCart.Items.Add(new CartItem { Id = Guid.NewGuid(), ProductId = Guid.NewGuid(), Quantity = 1, PriceAtAdd = 20m });
+            _cacheStore[CartCacheKeys.Cart(_otherUserId)] = otherCart;
 
-            await _dbContext.SaveChangesAsync();
-
-            var consumer = new OrderPlacedEventConsumer(_dbContext, Mock.Of<ILogger<OrderPlacedEventConsumer>>());
-            var consumeContextMock = new Mock<ConsumeContext<OrderPlacedEvent>>();
-            consumeContextMock.Setup(x => x.Message).Returns(new OrderPlacedEvent { OrderId = Guid.NewGuid(), UserId = _userId });
+            var consumer = new ClearCartOnOrderConfirmedConsumer(_redisCacheMock.Object, Mock.Of<ILogger<ClearCartOnOrderConfirmedConsumer>>());
+            var consumeContextMock = new Mock<ConsumeContext<OrderConfirmedEvent>>();
+            consumeContextMock.Setup(x => x.Message).Returns(new OrderConfirmedEvent
+            {
+                OrderId = Guid.NewGuid(),
+                UserId = _userId,
+                PaymentMethod = "COD",
+                OrderNumber = "ORD-1",
+                Total = 20m
+            });
 
             await consumer.Consume(consumeContextMock.Object);
 
-            var clearedCart = await _dbContext.Carts.Include(c => c.Items).FirstOrDefaultAsync(c => c.UserId == _userId);
-            Assert.NotNull(clearedCart);
-            Assert.Empty(clearedCart.Items); // Target user cart cleared
-
-            var unchangedCart = await _dbContext.Carts.Include(c => c.Items).FirstOrDefaultAsync(c => c.UserId == _otherUserId);
+            Assert.Null(GetCachedCart(_userId)); // Target user cart cleared
+            var unchangedCart = GetCachedCart(_otherUserId);
             Assert.NotNull(unchangedCart);
             Assert.Single(unchangedCart.Items); // Other user cart intact
         }
 
         [Fact]
-        public async Task OrderPlacedEventConsumer_AlreadyEmptyCart_IsIdempotentAndSafe()
+        public async Task ClearCartOnOrderConfirmedConsumer_NoExistingCart_IsIdempotentAndSafe()
         {
-            var userCart = new Cart { Id = Guid.NewGuid(), UserId = _userId };
-            _dbContext.Carts.Add(userCart);
-            await _dbContext.SaveChangesAsync();
+            var consumer = new ClearCartOnOrderConfirmedConsumer(_redisCacheMock.Object, Mock.Of<ILogger<ClearCartOnOrderConfirmedConsumer>>());
+            var consumeContextMock = new Mock<ConsumeContext<OrderConfirmedEvent>>();
+            consumeContextMock.Setup(x => x.Message).Returns(new OrderConfirmedEvent
+            {
+                OrderId = Guid.NewGuid(),
+                UserId = _userId,
+                PaymentMethod = "COD",
+                OrderNumber = "ORD-2",
+                Total = 0m
+            });
 
-            var consumer = new OrderPlacedEventConsumer(_dbContext, Mock.Of<ILogger<OrderPlacedEventConsumer>>());
-            var consumeContextMock = new Mock<ConsumeContext<OrderPlacedEvent>>();
-            consumeContextMock.Setup(x => x.Message).Returns(new OrderPlacedEvent { OrderId = Guid.NewGuid(), UserId = _userId });
+            var ex = await Record.ExceptionAsync(() => consumer.Consume(consumeContextMock.Object));
 
-            await consumer.Consume(consumeContextMock.Object);
-
-            var cart = await _dbContext.Carts.Include(c => c.Items).FirstOrDefaultAsync(c => c.UserId == _userId);
-            Assert.NotNull(cart);
-            Assert.Empty(cart.Items);
+            Assert.Null(ex);
+            Assert.Null(GetCachedCart(_userId));
         }
 
         #endregion
