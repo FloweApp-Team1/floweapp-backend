@@ -7,8 +7,6 @@ namespace AddressCartService.Infrastructure.Persistence
     {
         public DbSet<Address> Addresses { get; set; }
         public DbSet<Store> Stores { get; set; }
-        public DbSet<Cart> Carts { get; set; }
-        public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Governorate> Governorates { get; set; }
         public DbSet<City> Cities { get; set; }
 
@@ -41,8 +39,6 @@ namespace AddressCartService.Infrastructure.Persistence
 
             builder.Entity<Address>().HasQueryFilter(x => !x.IsDeleted);
             builder.Entity<Store>().HasQueryFilter(x => !x.IsDeleted);
-            builder.Entity<Cart>().HasQueryFilter(x => !x.IsDeleted);
-            builder.Entity<CartItem>().HasQueryFilter(x => !x.Cart.IsDeleted);
 
             builder.ApplyConfigurationsFromAssembly(typeof(AddressCartDbContext).Assembly);
         }

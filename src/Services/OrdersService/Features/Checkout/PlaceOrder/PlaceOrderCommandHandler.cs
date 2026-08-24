@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using OrdersService.Domain.Entities;
 using OrdersService.Domain.Enums;
 using OrdersService.Infrastructure.Clients;

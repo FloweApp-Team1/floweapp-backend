@@ -1,4 +1,4 @@
-﻿namespace OrdersService.Infrastructure.Services
+namespace OrdersService.Infrastructure.Services
 {
    
         public interface ICartServiceClient

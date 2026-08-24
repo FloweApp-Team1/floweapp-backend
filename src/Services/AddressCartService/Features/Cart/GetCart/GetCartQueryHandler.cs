@@ -1,7 +1,6 @@
-using AddressCartService.Infrastructure.Persistence;
 using AddressCartService.Infrastructure.Services.Catalog;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
+using Shared.Contracts;
 using Shared.Interfaces;
 using Shared.Results;
 
@@ -9,16 +8,16 @@ namespace AddressCartService.Features.Cart.GetCart
 {
     public class GetCartQueryHandler : IRequestHandler<GetCartQuery, Result<GetCartResponse>>
     {
-        private readonly AddressCartDbContext _dbContext;
+        private readonly IRedisCacheService _redisCache;
         private readonly ICurrentUserService _currentUser;
         private readonly ICatalogClient _catalogClient;
 
         public GetCartQueryHandler(
-            AddressCartDbContext dbContext,
+            IRedisCacheService redisCache,
             ICurrentUserService currentUser,
             ICatalogClient catalogClient)
         {
-            _dbContext = dbContext;
+            _redisCache = redisCache;
             _currentUser = currentUser;
             _catalogClient = catalogClient;
         }
@@ -30,19 +29,7 @@ namespace AddressCartService.Features.Cart.GetCart
                 return Result.Failure<GetCartResponse>(
                     Error.New("Cart.Unauthorized", "User is not authenticated."));
 
-            var cartQuery = _dbContext.Carts
-                .AsNoTracking()
-                .Include(c => c.Items);
-
-            Domain.Entities.Cart? cart;
-            if (request.CartId.HasValue && request.CartId.Value != Guid.Empty)
-            {
-                cart = await cartQuery.FirstOrDefaultAsync(c => c.Id == request.CartId.Value && c.UserId == userId, cancellationToken);
-            }
-            else
-            {
-                cart = await cartQuery.FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
-            }
+            var cart = await _redisCache.GetAsync<Domain.Entities.Cart>(CartCacheKeys.Cart(userId));
 
             if (cart is null || cart.Items.Count == 0)
             {
