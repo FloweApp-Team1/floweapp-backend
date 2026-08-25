@@ -64,6 +64,13 @@ jobs:
       ORDERS_DATABASE_NAME: FloweAppOrdersDb
       PAYMENT_DATABASE_NAME: FloweAppPaymentDb
       RABBITMQ_USER: flowerapp
+
+      # AddressCartService validates these on start and refuses to boot without them.
+      # The mock provider keeps the throwaway stack off the network and means CI never
+      # needs a real Google key (Geocoding__ApiKey is only required when it is false).
+      Geocoding__UseMockProvider: "true"
+      Geocoding__BaseUrl: https://maps.googleapis.com/maps/api/geocode/json
+
       Jwt__Issuer: FlowersApp.IdentityService
       Jwt__Audience: FlowersApp.Clients
       Jwt__AccessTokenExpiryMinutes: "15"
@@ -286,11 +293,18 @@ jobs:
               fi
 
               for path in /swagger/index.html /; do
-                code="$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://localhost:${port}${path}" || echo 000)"
+                # curl writes %{http_code} with no trailing newline, so an `|| echo 000`
+                # fallback concatenates onto it: a refused connection yields "000000",
+                # which passes both `!= "000"` and `-lt 500` (bash reads it as 0), i.e. a
+                # service that never answered is reported healthy. Assign the fallback to
+                # the variable instead of appending it to curl's output.
+                code="$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://localhost:${port}${path}")" || code=000
+                case "$code" in ''|*[!0-9]*) code=000 ;; esac
                 # Neither service exposes a /health endpoint, so any HTTP answer below 500
                 # is the liveness signal: Kestrel is listening and the pipeline responds
                 # (which also means migrations and startup validation already succeeded).
-                if [ "$code" != "000" ] && [ "$code" -lt 500 ]; then
+                # -ge 100 rejects 000 instead of letting it through as "less than 500".
+                if [ "$code" -ge 100 ] && [ "$code" -lt 500 ]; then
                   echo "  $svc is healthy - GET $path returned HTTP $code (state: $state)"
                   return 0
                 fi

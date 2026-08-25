@@ -42,9 +42,14 @@ namespace PaymentService.Features.Checkout.CreateCheckoutSession.Handler
                 
             int attemptNumber = previousAttemptsCount + 1;
 
-            var scheme = _configuration["Frontend:DeepLinkScheme"] ?? "myapp";
-            var successUrl = $"{scheme}://payment-success?orderId={request.OrderId}";
-            var cancelUrl = $"{scheme}://payment-failed?orderId={request.OrderId}";
+            var successUrlBase = _configuration["Stripe:SuccessUrl"] 
+                ?? throw new InvalidOperationException("Stripe:SuccessUrl is not configured.");
+            var cancelUrlBase = _configuration["Stripe:CancelUrl"] 
+                ?? throw new InvalidOperationException("Stripe:CancelUrl is not configured.");
+
+            var separator = successUrlBase.Contains('?') ? "&" : "?";
+            var successUrl = $"{successUrlBase}{separator}session_id={{CHECKOUT_SESSION_ID}}";
+            var cancelUrl = cancelUrlBase;
 
             var options = new SessionCreateOptions
             {
