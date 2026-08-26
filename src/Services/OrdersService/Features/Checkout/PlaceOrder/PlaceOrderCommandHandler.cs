@@ -3,7 +3,6 @@ using OrdersService.Domain.Entities;
 using OrdersService.Domain.Enums;
 using OrdersService.Infrastructure.Clients;
 using OrdersService.Infrastructure.Services;
-using OrdersService.Infrastructure.Services.OrdersService.Infrastructure.Services;
 using Shared.Events.OrderEvents;
 using Shared.Interfaces;
 using Shared.Results;

@@ -9,7 +9,6 @@ using OrdersService.Infrastructure.Messaging;
 using OrdersService.Infrastructure.Persistence;
 using OrdersService.Infrastructure.Repositories;
 using OrdersService.Infrastructure.Services;
-using OrdersService.Infrastructure.Services.OrdersService.Infrastructure.Services;
 using OrdersService.Infrastructure.Settings;
 using Polly;
 using Polly.Extensions.Http;
