@@ -1,9 +1,5 @@
 ﻿namespace OrdersService.Infrastructure.Services
 {
-  
-    namespace OrdersService.Infrastructure.Services
-    {
-     
         public interface IDeliveryFeeCalculator
         {
             Task<decimal> CalculateAsync(
@@ -18,5 +14,4 @@
                 Guid storeId, OrderAddressDetails address, CancellationToken cancellationToken)
                 => Task.FromResult(FlatFee);
         }
-    }
 }

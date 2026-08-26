@@ -9,10 +9,11 @@ namespace OrdersService.Infrastructure.Services
         {
             Task<Result<OrderAddressDetails>> GetAddressForOrderAsync(
                 Guid addressId, Guid userId, CancellationToken cancellationToken);
-
             Task<Result<OrderAddressDetails>> CreateAddressForOrderAsync(
                 Guid userId, NewAddressRequestPayload newAddress, CancellationToken cancellationToken);
-        }
+           Task<Result<OrderAddressDetails?>> GetDefaultOrLastUsedAddressAsync(
+            Guid userId, CancellationToken cancellationToken);
+    }
 
         public sealed record OrderAddressDetails(
             Guid AddressId,
