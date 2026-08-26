@@ -1,4 +1,5 @@
 ﻿using OrdersService.Domain.Enums;
+using OrdersService.Infrastructure.Services;
 
 namespace OrdersService.Features.Checkout.GetCheckoutDetails
 {
@@ -10,7 +11,7 @@ namespace OrdersService.Features.Checkout.GetCheckoutDetails
        decimal DeliveryFee,
        decimal Total,
        DateTime? EstimatedDeliveryAt,
-       IReadOnlyList<PaymentMethodEnum> PaymentMethods,
+      IReadOnlyList<PaymentMethodOption> PaymentMethods,
        bool IsGift,
        string? GiftRecipientName,
        string? GiftRecipientPhone);

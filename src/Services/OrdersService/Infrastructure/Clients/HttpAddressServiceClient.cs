@@ -24,7 +24,7 @@
             {
                 try
                 {
-                    var response = await _httpClient.GetAsync($"/users/me/addresses/{addressId}", cancellationToken);
+                    var response = await _httpClient.GetAsync($"/addresses/{addressId}", cancellationToken);
 
                     if (response.StatusCode == HttpStatusCode.NotFound)
                         return Result.Failure<OrderAddressDetails>(Error.New("Address.NotFound", "Address not found."));
@@ -78,8 +78,8 @@
             {
                 try
             {
-                     var response = await _httpClient.GetAsync("/users/me/addresses", cancellationToken);
-                     response.EnsureSuccessStatusCode();
+                var response = await _httpClient.GetAsync("/addresses", cancellationToken);
+                response.EnsureSuccessStatusCode();
 
                      var envelope = await response.Content.ReadFromJsonAsync<ApiResponse<List<AddressPayload>>>(
                      cancellationToken: cancellationToken);

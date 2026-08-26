@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using OrdersService.Features.Checkout.Common;
 using OrdersService.Infrastructure.Clients;
 using OrdersService.Infrastructure.Messaging;
 using OrdersService.Infrastructure.Persistence;
@@ -73,7 +74,9 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IAddressServiceClient, HttpAddressServiceClient>();
             services.AddScoped<ICartServiceClient, HttpCartServiceClient>();
             services.AddScoped<IDeliveryFeeCalculator, FlatRateDeliveryFeeCalculator>();
-
+            services.AddScoped<IPaymentMethodProvider, StaticPaymentMethodProvider>();
+            services.AddScoped<IDeliveryEstimateCalculator, FlatDeliveryEstimateCalculator>();
+            services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 
