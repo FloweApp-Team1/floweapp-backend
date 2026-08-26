@@ -66,8 +66,24 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
                      return Result.Failure<UpdateAddressResponse>(
                         Error.New("Address.InvalidLocation", "Invalid Governorate or City."));
                 }
+                if (locationChanged)
+                {
+                var storeId = await _storeResolutionService.ResolveServingStoreAsync(
+                    request.Lat, request.Lng, city.NameEn, request.Area, cancellationToken);
 
-                var now = DateTime.UtcNow;
+              
+                if (storeId is null)
+                {
+                    return Result.Failure<UpdateAddressResponse>(
+                        Error.New("Address.NotServiceable", "Cannot update address: The new location is outside our delivery coverage."));
+                }
+
+                address.StoreId = storeId;
+                address.IsServiceable = true;
+                }
+
+
+            var now = DateTime.UtcNow;
 
                 address.RecipientName = request.RecipientName;
                 address.RecipientPhone = request.RecipientPhone;
@@ -96,15 +112,9 @@ namespace AddressCartService.Features.Addresses.UpdateAddress
                 nameof(Address.LastChangedBy)
             };
 
-                // Re-resolve 
+                
                 if (locationChanged)
                 {
-                    var storeId = await _storeResolutionService.ResolveServingStoreAsync(
-                        address.Lat, address.Lng, city.NameEn, address.Area, cancellationToken);
-
-                    address.StoreId = storeId;
-                    address.IsServiceable = storeId.HasValue;
-
                     includedProperties.Add(nameof(Address.StoreId));
                     includedProperties.Add(nameof(Address.IsServiceable));
                 }

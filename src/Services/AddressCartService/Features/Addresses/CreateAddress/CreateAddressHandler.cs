@@ -35,9 +35,7 @@ namespace AddressCartService.Features.Addresses.CreateAddress
 
             var repo = _unitOfWork.Repository<Address>();
 
-            // First address for this user becomes the default automatically.
-            var isFirstAddress = !await repo.ExistsAsync(a => a.UserId == userId);
-
+          
             var city = await _locationRepository.GetCityWithGovernorateAsync(request.CityId, cancellationToken);
                 
             if (city == null || city.GovernorateId != request.GovernorateId)
@@ -45,11 +43,17 @@ namespace AddressCartService.Features.Addresses.CreateAddress
                  return Result.Failure<CreateAddressResponse>(
                     Error.New("Address.InvalidLocation", "Invalid Governorate or City."));
             }
-
-            // Unresolved coverage doesn't block creation - it just leaves StoreId null
-            // and IsServiceable false, per SCRUM-91.
             var storeId = await _storeResolution.ResolveServingStoreAsync(
-                request.Lat, request.Lng, city.NameEn, request.Area, cancellationToken);
+               request.Lat, request.Lng, city.NameEn, request.Area, cancellationToken);
+
+
+            if (storeId is null)
+            {
+                return Result.Failure<CreateAddressResponse>(
+                    Error.New("Address.NotServiceable", "This address is outside our current delivery coverage."));
+            }
+            
+            var isFirstAddress = !await repo.ExistsAsync(a => a.UserId == userId);
 
             if(storeId is null)
                 return Result.Failure<CreateAddressResponse>(
