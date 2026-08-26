@@ -4,12 +4,12 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using OrdersService.Features.Checkout.Common;
 using OrdersService.Infrastructure.Clients;
 using OrdersService.Infrastructure.Messaging;
 using OrdersService.Infrastructure.Persistence;
 using OrdersService.Infrastructure.Repositories;
 using OrdersService.Infrastructure.Services;
-using OrdersService.Infrastructure.Services.OrdersService.Infrastructure.Services;
 using OrdersService.Infrastructure.Settings;
 using Polly;
 using Polly.Extensions.Http;
@@ -74,7 +74,9 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IAddressServiceClient, HttpAddressServiceClient>();
             services.AddScoped<ICartServiceClient, HttpCartServiceClient>();
             services.AddScoped<IDeliveryFeeCalculator, FlatRateDeliveryFeeCalculator>();
-
+            services.AddScoped<IPaymentMethodProvider, StaticPaymentMethodProvider>();
+            services.AddScoped<IDeliveryEstimateCalculator, FlatDeliveryEstimateCalculator>();
+            services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 

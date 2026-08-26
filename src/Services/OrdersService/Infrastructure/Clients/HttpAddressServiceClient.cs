@@ -24,9 +24,9 @@
             {
                 try
                 {
-                    var response = await _httpClient.GetAsync($"/users/me/addresses/{addressId}", cancellationToken);
+                var response = await _httpClient.GetAsync($"/users/me/addresses/{addressId}", cancellationToken);
 
-                    if (response.StatusCode == HttpStatusCode.NotFound)
+                if (response.StatusCode == HttpStatusCode.NotFound)
                         return Result.Failure<OrderAddressDetails>(Error.New("Address.NotFound", "Address not found."));
 
                     response.EnsureSuccessStatusCode();
@@ -73,6 +73,28 @@
                 }
             }
 
+            public async Task<Result<OrderAddressDetails?>> GetDefaultOrLastUsedAddressAsync(
+             Guid userId, CancellationToken cancellationToken)
+            {
+                try
+            {
+                var response = await _httpClient.GetAsync("/addresses", cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                     var envelope = await response.Content.ReadFromJsonAsync<ApiResponse<List<AddressPayload>>>(
+                     cancellationToken: cancellationToken);
+                 
+                     var first = envelope?.Data?.FirstOrDefault();
+
+                     return Result.Success(first is null ? null : Map(first));
+            }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+                {
+                    _logger.LogError(ex, "Failed to fetch default address for user {UserId} from AddressCartService", userId);
+                    return Result.Failure<OrderAddressDetails?>(
+                       Error.New("Address.ProviderError", "Address service is temporarily unavailable."));
+                }
+        }
             private static OrderAddressDetails Map(AddressPayload p) => new(
                 p.Id, p.RecipientName, p.RecipientPhone, p.AddressLine, p.City, p.Area, p.Lat, p.Lng, p.StoreId, p.IsServiceable);
 

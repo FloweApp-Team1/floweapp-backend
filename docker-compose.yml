@@ -254,6 +254,8 @@ services:
 
       Stripe__SecretKey: ${Stripe__SecretKey}
       Stripe__WebhookSecret: ${Stripe__WebhookSecret}
+      Stripe__SuccessUrl: ${Stripe__SuccessUrl}
+      Stripe__CancelUrl: ${Stripe__CancelUrl}
 
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: ${RABBITMQ_USER}
