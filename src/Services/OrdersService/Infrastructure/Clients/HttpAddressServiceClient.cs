@@ -24,9 +24,9 @@
             {
                 try
                 {
-                    var response = await _httpClient.GetAsync($"/addresses/{addressId}", cancellationToken);
+                var response = await _httpClient.GetAsync($"/users/me/addresses/{addressId}", cancellationToken);
 
-                    if (response.StatusCode == HttpStatusCode.NotFound)
+                if (response.StatusCode == HttpStatusCode.NotFound)
                         return Result.Failure<OrderAddressDetails>(Error.New("Address.NotFound", "Address not found."));
 
                     response.EnsureSuccessStatusCode();
