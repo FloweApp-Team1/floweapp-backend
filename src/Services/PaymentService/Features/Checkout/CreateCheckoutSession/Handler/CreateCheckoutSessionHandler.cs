@@ -106,7 +106,10 @@ namespace PaymentService.Features.Checkout.CreateCheckoutSession.Handler
             var response = new CreateCheckoutSessionResponse(
                 CheckoutUrl: session.Url,
                 StripeSessionId: session.Id,
-                PaymentAttemptId: paymentAttempt.Id
+                PaymentAttemptId: paymentAttempt.Id,
+                ExpiresAt: session.ExpiresAt,
+                SuccessUrl: successUrl,
+                CancelUrl: cancelUrl
             );
 
             return Result<CreateCheckoutSessionResponse>.Success(response);

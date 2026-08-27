@@ -1,203 +1,231 @@
 using MediatR;
 using OrdersService.Domain.Entities;
 using OrdersService.Domain.Enums;
-using OrdersService.Infrastructure.Clients;
+using OrdersService.Features.Checkout.Common;
+using OrdersService.Features.Checkout.PlaceOrder;
 using OrdersService.Infrastructure.Services;
 using Shared.Events.OrderEvents;
 using Shared.Interfaces;
 using Shared.Results;
-
-namespace OrdersService.Features.Checkout.PlaceOrder
+public sealed class PlaceOrderCommandHandler
+    : IRequestHandler<PlaceOrderCommand, Result<PlaceOrderResponse?>>
 {
-    public sealed class PlaceOrderCommandHandler
-        : IRequestHandler<PlaceOrderCommand, Result<PlaceOrderResponse>>
+    private const string DefaultCurrency = "egp"; 
+
+    private readonly ISender _sender;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IAddressServiceClient _addressServiceClient;
+    private readonly ICheckoutPricingService _pricingService;
+    private readonly IPaymentSessionClient _paymentSessionClient;
+    private readonly IIdempotencyService _idempotencyService;
+    private readonly IIntegrationEventPublisher _eventPublisher;
+
+    public PlaceOrderCommandHandler(
+        ISender sender,
+        IUnitOfWork unitOfWork,
+        ICurrentUserService currentUserService,
+        IAddressServiceClient addressServiceClient,
+        ICheckoutPricingService pricingService,
+        IPaymentSessionClient paymentSessionClient,
+        IIdempotencyService idempotencyService,
+        IIntegrationEventPublisher eventPublisher)
     {
-        private readonly ISender _sender;
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly ICurrentUserService _currentUserService;
-        private readonly ICartServiceClient _cartServiceClient;
-        private readonly IAddressServiceClient _addressServiceClient;
-        private readonly ICatalogServiceClient _catalogServiceClient;
-        private readonly IDeliveryFeeCalculator _deliveryFeeCalculator;
-        private readonly IIntegrationEventPublisher _eventPublisher;
+        _sender = sender;
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _addressServiceClient = addressServiceClient;
+        _pricingService = pricingService;
+        _paymentSessionClient = paymentSessionClient;
+        _idempotencyService = idempotencyService;
+        _eventPublisher = eventPublisher;
+    }
 
-        public PlaceOrderCommandHandler(
-            ISender sender,
-            IUnitOfWork unitOfWork,
-            ICurrentUserService currentUserService,
-            ICartServiceClient cartServiceClient,
-            IAddressServiceClient addressServiceClient,
-            ICatalogServiceClient catalogServiceClient,
-            IDeliveryFeeCalculator deliveryFeeCalculator,
-            IIntegrationEventPublisher eventPublisher)
+    public async Task<Result<PlaceOrderResponse?>> Handle(
+        PlaceOrderCommand request, CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId;
+        if (userId is null)
+            return Result.Failure<PlaceOrderResponse?>(Error.New("Order.Unauthorized", "User is not authenticated."));
+
+        // 1) Idempotency 
+        var cached = await _idempotencyService.GetCachedResponseAsync<IdempotentPlaceOrderResult>(
+            userId.Value, request.IdempotencyKey, cancellationToken);
+
+        if (cached is not null)
+            return Result.Success(cached.Data);
+
+        // 2) addressId 
+        var addressResult = await _addressServiceClient.GetAddressForOrderAsync(
+            request.AddressId, userId.Value, cancellationToken);
+
+        if (addressResult.IsFailure)
+            return Result.Failure<PlaceOrderResponse?>(addressResult.Error);
+
+        var address = addressResult.Value;
+
+        if (!address.IsServiceable || address.StoreId is null)
+            return Result.Failure<PlaceOrderResponse?>(Error.New(
+                "Order.NotServiceable", "This address is outside our current delivery coverage."));
+
+        // 3) Pricing 
+        var pricingResult = await _pricingService.CalculateAsync(request.CartId, userId.Value, address, cancellationToken);
+        if (pricingResult.IsFailure)
+            return Result.Failure<PlaceOrderResponse?>(pricingResult.Error);
+
+        var pricing = pricingResult.Value;
+
+        // 4) create Order Aggregate (in-memory) 
+        var order = BuildOrder(request, userId.Value, address, pricing);
+
+        // 5) create Order Aggregate (persisted) 
+        var createResult = await _sender.Send(new CreateOrderCommand(order), cancellationToken);
+        if (createResult.IsFailure)
+            return Result.Failure<PlaceOrderResponse?>(createResult.Error);
+
+        // 6)  Payment Method 
+        var responseResult = request.PaymentMethod == PaymentMethodEnum.Cod
+            ? await HandleCodAsync(order, userId.Value, cancellationToken)
+            : await HandleCardAsync(order, request.PaymentGateway!, pricing.EstimatedDeliveryAt, cancellationToken);
+
+        if (responseResult.IsFailure)
+            return Result.Failure<PlaceOrderResponse?>(responseResult.Error);
+
+        // 7) Idempotency Store Response
+        await _idempotencyService.StoreResponseAsync(
+            userId.Value, request.IdempotencyKey,
+            new IdempotentPlaceOrderResult(order.Id, responseResult.Value), cancellationToken);
+
+        return Result.Success(responseResult.Value);
+    }
+
+    // Order Assembly 
+
+    private static Order BuildOrder(
+        PlaceOrderCommand request, Guid userId, OrderAddressDetails address, CheckoutPricingResult pricing)
+    {
+        var order = new Order
         {
-            _sender = sender;
-            _unitOfWork = unitOfWork;
-            _currentUserService = currentUserService;
-            _cartServiceClient = cartServiceClient;
-            _addressServiceClient = addressServiceClient;
-            _catalogServiceClient = catalogServiceClient;
-            _deliveryFeeCalculator = deliveryFeeCalculator;
-            _eventPublisher = eventPublisher;
-        }
+            Id = Guid.NewGuid(),
+            OrderNumber = GenerateOrderNumber(),
+            UserId = userId,
+            StoreId = address.StoreId!.Value,
+            AddressId = address.AddressId,
+            PaymentMethod = request.PaymentMethod,
+            Status = OrderStatusEnum.Placed,
+            PaymentStatus = PaymentStatusEnum.Pending,
+            Subtotal = pricing.Subtotal,
+            DeliveryFee = pricing.DeliveryFee,
+            Total = pricing.Total
+        };
 
-        public async Task<Result<PlaceOrderResponse>> Handle(
-            PlaceOrderCommand request, CancellationToken cancellationToken)
+        foreach (var item in pricing.Items)
         {
-            var userId = _currentUserService.UserId;
-            if (userId is null)
-                return Result.Failure<PlaceOrderResponse>(Error.New("Order.Unauthorized", "User is not authenticated."));
-
-            var cart = await _cartServiceClient.GetCartAsync(request.CartId, userId.Value, cancellationToken);
-            if (cart is null || cart.Items.Count == 0)
-                return Result.Failure<PlaceOrderResponse>(Error.New("Cart.Empty", "Your cart is empty or could not be found."));
-
-            var addressResult = await ResolveAddressAsync(request, userId.Value, cancellationToken);
-            if (addressResult.IsFailure)
-                return Result.Failure<PlaceOrderResponse>(addressResult.Error);
-
-            var address = addressResult.Value;
-
-            if (!address.IsServiceable || address.StoreId is null)
-                return Result.Failure<PlaceOrderResponse>(Error.New(
-                    "Order.NotServiceable", "This address is outside our current delivery coverage."));
-
-            var itemsResult = await BuildOrderItemsAsync(cart, cancellationToken);
-            if (itemsResult.IsFailure)
-                return Result.Failure<PlaceOrderResponse>(itemsResult.Error);
-
-            var (orderItems, subtotal) = itemsResult.Value;
-
-            var order = await AssembleOrderAsync(request, userId.Value, address, orderItems, subtotal, cancellationToken);
-
-            var orderRepository = _unitOfWork.Repository<Order>();
-            await orderRepository.AddAsync(order, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            await _eventPublisher.PublishAsync(
-                new OrderConfirmedEvent 
-                { 
-                    OrderId = order.Id, 
-                    UserId = userId.Value,
-                    PaymentMethod = request.PaymentMethod.ToString(),
-                    OrderNumber = order.OrderNumber,
-                    Total = order.Total,
-                    UserEmail = _currentUserService.Email
-                },
-                cancellationToken);
-
-            return Result.Success(new PlaceOrderResponse(
-                order.Id, order.OrderNumber, order.Status, order.PaymentStatus,
-                order.PaymentMethod, order.Subtotal, order.DeliveryFee, order.Total));
-        }
-
-    
-
-        private async Task<Result<OrderAddressDetails>> ResolveAddressAsync(
-            PlaceOrderCommand request, Guid userId, CancellationToken cancellationToken)
-        {
-            if (request.AddressId.HasValue)
-                return await _addressServiceClient.GetAddressForOrderAsync(request.AddressId.Value, userId, cancellationToken);
-
-            var payload = new NewAddressRequestPayload(
-                request.NewAddress!.RecipientName,
-                request.NewAddress.RecipientPhone,
-                request.NewAddress.AddressLine,
-                request.NewAddress.City,
-                request.NewAddress.Area,
-                request.NewAddress.Lat,
-                request.NewAddress.Lng);
-
-            return await _addressServiceClient.CreateAddressForOrderAsync(userId, payload, cancellationToken);
-        }
-
-      
-
-        private async Task<Result<(List<OrderItem> Items, decimal Subtotal)>> BuildOrderItemsAsync(
-            CartDetailsDto cart, CancellationToken cancellationToken)
-        {
-            var lookups = await Task.WhenAll(cart.Items.Select(async cartItem =>
-            {
-                var product = await _catalogServiceClient.GetProductDetailsAsync(cartItem.ProductId, cancellationToken);
-                return (CartItem: cartItem, Product: product);
-            }));
-
-            var missing = lookups.FirstOrDefault(l => l.Product is null);
-            if (missing.CartItem is not null)
-                return Result.Failure<(List<OrderItem>, decimal)>(Error.New(
-                    "Product.NotFound", $"Product {missing.CartItem.ProductId} is no longer available."));
-
-            var orderItems = lookups.Select(l => new OrderItem
-            {
-                Id = Guid.NewGuid(),
-                ProductId = l.CartItem.ProductId,
-                ProductName = l.Product!.Name,
-                ProductImageUrl = l.Product.ImageUrl,
-                UnitPrice = l.Product.Price,
-                Quantity = l.CartItem.Quantity
-            }).ToList();
-
-            var subtotal = orderItems.Sum(i => i.UnitPrice * i.Quantity);
-
-            return Result.Success((orderItems, subtotal));
-        }
-
-     
-        private async Task<Order> AssembleOrderAsync(
-            PlaceOrderCommand request,
-            Guid userId,
-            OrderAddressDetails address,
-            List<OrderItem> orderItems,
-            decimal subtotal,
-            CancellationToken cancellationToken)
-        {
-            var order = new Order
-            {
-                Id = Guid.NewGuid(),
-                OrderNumber = GenerateOrderNumber(),
-                UserId = userId,
-                StoreId = address.StoreId!.Value,
-                AddressId = address.AddressId,
-                PaymentMethod = request.PaymentMethod,
-                Status = OrderStatusEnum.Placed,
-                PaymentStatus = PaymentStatusEnum.Pending,
-                Subtotal = subtotal
-            };
-
-            foreach (var item in orderItems)
-            {
-                item.OrderId = order.Id;
-                order.Items.Add(item);
-            }
-
-            order.DeliveryFee = await _deliveryFeeCalculator.CalculateAsync(address.StoreId.Value, address, cancellationToken);
-            order.Total = order.Subtotal + order.DeliveryFee;
-
-            if (request.IsGift)
-            {
-                order.IsGift = true;
-                order.GiftRecipientName = request.GiftRecipient!.RecipientName;
-                order.GiftRecipientPhone = request.GiftRecipient.RecipientPhone;
-                order.GiftRecipientAddress = request.GiftRecipient.RecipientAddress;
-            }
-
-            order.AddressSnapshot = new OrderAddressSnapshot
+            order.Items.Add(new OrderItem
             {
                 Id = Guid.NewGuid(),
                 OrderId = order.Id,
-                RecipientName = address.RecipientName,
-                RecipientPhone = address.RecipientPhone,
-                AddressLine = address.AddressLine,
-                City = address.City,
-                Area = address.Area,
-                Lat = address.Lat,
-                Lng = address.Lng
-            };
-
-            return order;
+                ProductId = item.ProductId,
+                ProductName = item.ProductName,
+                ProductImageUrl = item.ProductImageUrl,
+                UnitPrice = item.UnitPrice,
+                Quantity = item.Quantity
+            });
         }
 
-        private static string GenerateOrderNumber() =>
-            $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpperInvariant()}";
+        if (request.IsGift)
+        {
+            order.IsGift = true;
+            order.GiftRecipientName = request.GiftRecipient!.RecipientName;
+            order.GiftRecipientPhone = request.GiftRecipient.RecipientPhone;
+          
+        }
+
+        order.AddressSnapshot = new OrderAddressSnapshot
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            RecipientName = address.RecipientName,
+            RecipientPhone = address.RecipientPhone,
+            AddressLine = address.AddressLine,
+            City = address.CityName,
+            Area = address.Area,
+            Lat = address.Lat,
+            Lng = address.Lng
+        };
+
+        return order;
     }
+
+    // COD Path
+
+    private async Task<Result<PlaceOrderResponse?>> HandleCodAsync(
+        Order order, Guid userId, CancellationToken cancellationToken)
+    {
+       
+        await _eventPublisher.PublishAsync(
+            new OrderConfirmedEvent
+            {
+                OrderId = order.Id,
+                UserId = userId,
+                PaymentMethod = order.PaymentMethod.ToString(),
+                OrderNumber = order.OrderNumber,
+                Total = order.Total,
+                UserEmail = _currentUserService.Email
+            },
+            cancellationToken);
+
+       
+        return Result.Success<PlaceOrderResponse?>(null);
+    }
+
+    // Card Path
+
+    private async Task<Result<PlaceOrderResponse?>> HandleCardAsync(
+        Order order, string gateway, DateTime? estimatedDeliveryAt, CancellationToken cancellationToken)
+    {
+        var amountTotalCents = (long)Math.Round(order.Total * 100);
+
+        var sessionResult = await _paymentSessionClient.CreateCheckoutSessionAsync(
+            order.Id, amountTotalCents, DefaultCurrency, cancellationToken);
+
+        if (sessionResult.IsFailure)
+            return Result.Failure<PlaceOrderResponse?>(sessionResult.Error);
+
+        var session = sessionResult.Value;
+
+     
+        await _unitOfWork.ExecuteAsync(async () =>
+        {
+            var orderRepository = _unitOfWork.Repository<Order>();
+            var trackedOrder = await orderRepository.GetByIdAsync(order.Id, cancellationToken);
+
+            if (trackedOrder is not null)
+            {
+                trackedOrder.LastPaymentAttemptId = session.PaymentAttemptId;
+                orderRepository.Update(trackedOrder);
+            }
+
+            return Result.Success();
+        }, cancellationToken);
+
+        var response = new PlaceOrderResponse(
+            order.Id,
+            order.Status.ToString(),
+            gateway,
+            session.SessionId,
+            session.SessionUrl,
+            session.SuccessUrl,
+            session.CancelUrl,
+            session.ExpiresAt?? DateTime.UtcNow.AddHours(1),
+            order.Total,
+            DefaultCurrency.ToUpperInvariant(),
+            estimatedDeliveryAt ?? DateTime.UtcNow);
+
+        return Result.Success<PlaceOrderResponse?>(response);
+    }
+
+    private static string GenerateOrderNumber() =>
+        $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpperInvariant()}";
+    private sealed record IdempotentPlaceOrderResult(Guid OrderId, PlaceOrderResponse? Data);
 }

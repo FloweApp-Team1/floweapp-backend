@@ -22,6 +22,8 @@ using Shared.Settings;
 using System.Reflection;
 using System.Text;
 
+
+
 namespace OrdersService.Infrastructure
 {
     public static class DependencyInjection
@@ -77,9 +79,15 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IPaymentMethodProvider, StaticPaymentMethodProvider>();
             services.AddScoped<IDeliveryEstimateCalculator, FlatDeliveryEstimateCalculator>();
             services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
+            services.AddScoped<IIdempotencyService, DistributedCacheIdempotencyService>();
+            services.AddScoped<IPaymentSessionClient,HttpPaymentSessionClient>();
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 
+            services.AddDistributedMemoryCache();
+
+            
+           
 
             return services;
         }
@@ -107,7 +115,8 @@ namespace OrdersService.Infrastructure
                 client.BaseAddress = new Uri(paymentUrl);
                 client.Timeout = TimeSpan.FromSeconds(30);
             })
-            .AddPolicyHandler(GetRetryPolicy());
+            .AddPolicyHandler(GetRetryPolicy())
+            .AddHttpMessageHandler<AuthorizationHeaderForwardingHandler>();
 
             services.AddHttpClient("CatalogServiceClient", client =>
             {
