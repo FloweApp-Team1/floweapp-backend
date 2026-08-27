@@ -22,6 +22,8 @@ using Shared.Settings;
 using System.Reflection;
 using System.Text;
 
+
+
 namespace OrdersService.Infrastructure
 {
     public static class DependencyInjection
@@ -82,6 +84,10 @@ namespace OrdersService.Infrastructure
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 
+            services.AddDistributedMemoryCache();
+
+            
+           
 
             return services;
         }
