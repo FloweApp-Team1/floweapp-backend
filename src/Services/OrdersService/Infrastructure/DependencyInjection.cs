@@ -77,6 +77,7 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IPaymentMethodProvider, StaticPaymentMethodProvider>();
             services.AddScoped<IDeliveryEstimateCalculator, FlatDeliveryEstimateCalculator>();
             services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
+            services.AddScoped<IIdempotencyService, DistributedCacheIdempotencyService>();
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 
