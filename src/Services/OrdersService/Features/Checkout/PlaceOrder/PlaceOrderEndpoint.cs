@@ -11,7 +11,7 @@ namespace OrdersService.Features.Checkout.PlaceOrder
     {
     public void MapEndpoint(IEndpointRouteBuilder app)
         {
-            app.MapPost("/orders/place", async (
+            app.MapPost("/place", async (
                     PlaceOrderRequest request,
                     HttpContext httpContext,
                     ISender sender,
