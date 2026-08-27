@@ -78,6 +78,7 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IDeliveryEstimateCalculator, FlatDeliveryEstimateCalculator>();
             services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
             services.AddScoped<IIdempotencyService, DistributedCacheIdempotencyService>();
+            services.AddScoped<IPaymentSessionClient,HttpPaymentSessionClient>();
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 
@@ -108,7 +109,8 @@ namespace OrdersService.Infrastructure
                 client.BaseAddress = new Uri(paymentUrl);
                 client.Timeout = TimeSpan.FromSeconds(30);
             })
-            .AddPolicyHandler(GetRetryPolicy());
+            .AddPolicyHandler(GetRetryPolicy())
+            .AddHttpMessageHandler<AuthorizationHeaderForwardingHandler>();
 
             services.AddHttpClient("CatalogServiceClient", client =>
             {
