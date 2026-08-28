@@ -57,6 +57,11 @@ using (var scope = app.Services.CreateScope())
 
     await context.Database.MigrateAsync();
     await AddressCartService.Infrastructure.Persistence.Seed.LocationSeeder.SeedAsync(context);
+
+    if (app.Environment.IsDevelopment())
+    {
+        await AddressCartService.Infrastructure.Persistence.Seed.StoreAndAddressSeeder.SeedAsync(context);
+    }
 }
 
 app.Run();
