@@ -112,27 +112,27 @@ public sealed class PlaceOrderCommandHandler
             if (createResult.IsFailure)
                 return Result.Failure(createResult.Error);
 
+
+            // 7- Publish OrderConfirmedEvent for COD orders
+            if (request.PaymentMethod == PaymentMethodEnum.Cod)
+            {
+                await _eventPublisher.PublishAsync(
+                    new OrderConfirmedEvent
+                    {
+                        OrderId = order.Id,
+                        UserId = userId.Value,
+                        PaymentMethod = order.PaymentMethod.ToString(),
+                        OrderNumber = order.OrderNumber,
+                        Total = order.Total,
+                        UserEmail = _currentUserService.Email
+                    },
+                    cancellationToken);
+            }
             return Result.Success();
         }, cancellationToken);
 
         if (persistResult.IsFailure)
             return Result.Failure<PlaceOrderResponse?>(persistResult.Error);
-
-        // 7- Publish OrderConfirmedEvent for COD orders
-        if (request.PaymentMethod == PaymentMethodEnum.Cod)
-        {
-            await _eventPublisher.PublishAsync(
-                new OrderConfirmedEvent
-                {
-                    OrderId = order.Id,
-                    UserId = userId.Value,
-                    PaymentMethod = order.PaymentMethod.ToString(),
-                    OrderNumber = order.OrderNumber,
-                    Total = order.Total,
-                    UserEmail = _currentUserService.Email
-                },
-                cancellationToken);
-        }
 
         // 8) Idempotency store
         await _idempotencyService.StoreResponseAsync(
