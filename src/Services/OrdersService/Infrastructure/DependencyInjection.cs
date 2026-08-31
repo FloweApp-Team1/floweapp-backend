@@ -85,10 +85,7 @@ namespace OrdersService.Infrastructure
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 
-            services.AddDistributedMemoryCache();
-
-            
-           
+        
 
             return services;
         }
