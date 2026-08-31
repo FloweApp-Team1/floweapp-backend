@@ -75,28 +75,70 @@ public sealed class PlaceOrderCommandHandler
 
         var pricing = pricingResult.Value;
 
-        // 4) create Order Aggregate (in-memory) 
+        // 4) create Order  (in-memory) 
         var order = BuildOrder(request, userId.Value, address, pricing);
 
-        // 5) create Order Aggregate (persisted) 
-        var createResult = await _sender.Send(new CreateOrderCommand(order), cancellationToken);
-        if (createResult.IsFailure)
-            return Result.Failure<PlaceOrderResponse?>(createResult.Error);
+        //5) Payment Gateway Integration 
+        PlaceOrderResponse? response = null;
 
-        // 6)  Payment Method 
-        var responseResult = request.PaymentMethod == PaymentMethodEnum.Cod
-            ? await HandleCodAsync(order, userId.Value, cancellationToken)
-            : await HandleCardAsync(order, request.PaymentGateway!, pricing.EstimatedDeliveryAt, cancellationToken);
+        if (request.PaymentMethod == PaymentMethodEnum.Card)
+        {
+            var sessionResult = await _paymentSessionClient.CreateCheckoutSessionAsync(
+                order.Id, (long)Math.Round(order.Total * 100), DefaultCurrency, cancellationToken);
 
-        if (responseResult.IsFailure)
-            return Result.Failure<PlaceOrderResponse?>(responseResult.Error);
+            if (sessionResult.IsFailure)
+                return Result.Failure<PlaceOrderResponse?>(sessionResult.Error);
 
-        // 7) Idempotency Store Response
+            var session = sessionResult.Value;
+            order.LastPaymentAttemptId = session.PaymentAttemptId;
+
+            response = new PlaceOrderResponse(
+               order.Id,
+               order.Status.ToString(),
+               request.PaymentGateway!,
+               session.SessionId,
+               session.SessionUrl,
+               session.SuccessUrl,
+               session.CancelUrl,
+               session.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
+               order.Total,
+               DefaultCurrency.ToUpperInvariant(),
+               pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
+        }
+        // 6) Persist Order
+        var persistResult = await _unitOfWork.ExecuteAsync(async () =>
+        {
+            var createResult = await _sender.Send(new CreateOrderCommand(order), cancellationToken);
+            if (createResult.IsFailure)
+                return Result.Failure(createResult.Error);
+
+            return Result.Success();
+        }, cancellationToken);
+
+        if (persistResult.IsFailure)
+            return Result.Failure<PlaceOrderResponse?>(persistResult.Error);
+
+        // 7- Publish OrderConfirmedEvent for COD orders
+        if (request.PaymentMethod == PaymentMethodEnum.Cod)
+        {
+            await _eventPublisher.PublishAsync(
+                new OrderConfirmedEvent
+                {
+                    OrderId = order.Id,
+                    UserId = userId.Value,
+                    PaymentMethod = order.PaymentMethod.ToString(),
+                    OrderNumber = order.OrderNumber,
+                    Total = order.Total,
+                    UserEmail = _currentUserService.Email
+                },
+                cancellationToken);
+        }
+
+        // 8) Idempotency store
         await _idempotencyService.StoreResponseAsync(
             userId.Value, request.IdempotencyKey,
-            new IdempotentPlaceOrderResult(order.Id, responseResult.Value), cancellationToken);
-
-        return Result.Success(responseResult.Value);
+            new IdempotentPlaceOrderResult(order.Id, response), cancellationToken);
+        return Result.Success(response);
     }
 
     // Order Assembly 
@@ -155,74 +197,6 @@ public sealed class PlaceOrderCommandHandler
         };
 
         return order;
-    }
-
-    // COD Path
-
-    private async Task<Result<PlaceOrderResponse?>> HandleCodAsync(
-        Order order, Guid userId, CancellationToken cancellationToken)
-    {
-       
-        await _eventPublisher.PublishAsync(
-            new OrderConfirmedEvent
-            {
-                OrderId = order.Id,
-                UserId = userId,
-                PaymentMethod = order.PaymentMethod.ToString(),
-                OrderNumber = order.OrderNumber,
-                Total = order.Total,
-                UserEmail = _currentUserService.Email
-            },
-            cancellationToken);
-
-       
-        return Result.Success<PlaceOrderResponse?>(null);
-    }
-
-    // Card Path
-
-    private async Task<Result<PlaceOrderResponse?>> HandleCardAsync(
-        Order order, string gateway, DateTime? estimatedDeliveryAt, CancellationToken cancellationToken)
-    {
-        var amountTotalCents = (long)Math.Round(order.Total * 100);
-
-        var sessionResult = await _paymentSessionClient.CreateCheckoutSessionAsync(
-            order.Id, amountTotalCents, DefaultCurrency, cancellationToken);
-
-        if (sessionResult.IsFailure)
-            return Result.Failure<PlaceOrderResponse?>(sessionResult.Error);
-
-        var session = sessionResult.Value;
-
-     
-        await _unitOfWork.ExecuteAsync(async () =>
-        {
-            var orderRepository = _unitOfWork.Repository<Order>();
-            var trackedOrder = await orderRepository.GetByIdAsync(order.Id, cancellationToken);
-
-            if (trackedOrder is not null)
-            {
-                trackedOrder.LastPaymentAttemptId = session.PaymentAttemptId;
-                orderRepository.Update(trackedOrder);
-            }
-
-            return Result.Success();
-        }, cancellationToken);
-
-        var response = new PlaceOrderResponse(
-            order.Id,
-            order.Status.ToString(),
-            gateway,
-            session.SessionId,
-            session.SessionUrl,
-            session.SuccessUrl,
-            session.CancelUrl,
-            session.ExpiresAt?? DateTime.UtcNow.AddHours(1),
-            order.Total,
-            DefaultCurrency.ToUpperInvariant(),
-            estimatedDeliveryAt ?? DateTime.UtcNow);
-
-        return Result.Success<PlaceOrderResponse?>(response);
     }
 
     private static string GenerateOrderNumber() =>
