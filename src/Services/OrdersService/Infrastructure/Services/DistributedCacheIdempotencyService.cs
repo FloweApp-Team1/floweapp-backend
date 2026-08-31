@@ -1,7 +1,6 @@
 ﻿using StackExchange.Redis;
 using System.Text.Json;
 using static OrdersService.Infrastructure.Services.IIdempotencyService;
-
 namespace OrdersService.Infrastructure.Services
 {
     public class DistributedCacheIdempotencyService : IIdempotencyService
