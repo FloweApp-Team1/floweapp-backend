@@ -1,6 +1,6 @@
-﻿namespace IdentityService.Features.Auth.LogOut
+namespace IdentityService.Features.Auth.LogOut
 {
    
-        public sealed record LogoutRequestDto(string RefreshToken);
+        public sealed record LogoutRequestDto(string RefreshToken, string? DeviceId);
     
 }

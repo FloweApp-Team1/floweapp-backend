@@ -7,7 +7,7 @@ using MediatR;
 
 namespace IdentityService.Features.Auth.LogOut
 {
-    public sealed record LogoutCommand(string RefreshToken) : IRequest<Result>;
+    public sealed record LogoutCommand(string RefreshToken, string? DeviceId) : IRequest<Result>;
 
     public sealed class LogoutHandler(IUnitOfWork unitOfWork, IJwtService jwtService)
         : IRequestHandler<LogoutCommand, Result>
@@ -31,6 +31,17 @@ namespace IdentityService.Features.Auth.LogOut
 
             token.RevokedAt = DateTime.UtcNow;
             tokenRepo.Update(token);
+
+            if (!string.IsNullOrEmpty(request.DeviceId))
+            {
+                var deviceTokenRepo = unitOfWork.Repository<UserDeviceToken>();
+                var deviceToken = await deviceTokenRepo.FirstOrDefaultAsync(x => x.UserId == token.UserId && x.DeviceId == request.DeviceId, ct);
+                if (deviceToken != null)
+                {
+                    deviceTokenRepo.Remove(deviceToken);
+                }
+            }
+
             await unitOfWork.SaveChangesAsync(ct);
 
             return Result.Success();

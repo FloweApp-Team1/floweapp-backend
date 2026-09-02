@@ -1,4 +1,5 @@
 ﻿using Shared.Domain;
+using Shared.Results;
 
 namespace Shared.Interfaces
 {
@@ -13,5 +14,9 @@ namespace Shared.Interfaces
             CancellationToken cancellationToken = default);
         IGenericRepository<T> Repository<T>() where T : BaseEntity;
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+        
+        Task<Result> ExecuteAsync(Func<Task<Result>> action, CancellationToken cancellationToken = default);
+        Task<Result<T>> ExecuteAsync<T>(Func<Task<Result<T>>> action, CancellationToken cancellationToken = default);
     }
 }

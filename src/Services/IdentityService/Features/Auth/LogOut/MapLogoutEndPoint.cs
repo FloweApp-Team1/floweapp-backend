@@ -1,4 +1,4 @@
-﻿using Shared.Contracts;
+using Shared.Contracts;
 using Shared.Extensions;
 using Shared.Responses;
 using MediatR;
@@ -14,7 +14,7 @@ namespace IdentityService.Features.Auth.LogOut
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var result = await sender.Send(new LogoutCommand(request.RefreshToken), ct);
+                var result = await sender.Send(new LogoutCommand(request.RefreshToken, request.DeviceId), ct);
                 return result.ToMinimalApiResult("Logged out successfully.");
             })
             .RequireAuthorization()

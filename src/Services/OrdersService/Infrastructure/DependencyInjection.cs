@@ -22,6 +22,8 @@ using Shared.Settings;
 using System.Reflection;
 using System.Text;
 
+
+
 namespace OrdersService.Infrastructure
 {
     public static class DependencyInjection
@@ -65,6 +67,7 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IDriverSnapshotService, DriverSnapshotService>();
 
             services.AddSharedEmailService(configuration);
+            services.AddSharedRedis(configuration);
 
             AddDriverLocationCache(services, configuration);
             AddIntegrationEventPublisher(services, configuration);
@@ -77,9 +80,12 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IPaymentMethodProvider, StaticPaymentMethodProvider>();
             services.AddScoped<IDeliveryEstimateCalculator, FlatDeliveryEstimateCalculator>();
             services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
+            services.AddScoped<IIdempotencyService, DistributedCacheIdempotencyService>();
+            services.AddScoped<IPaymentSessionClient,HttpPaymentSessionClient>();
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 
+        
 
             return services;
         }
@@ -92,7 +98,7 @@ namespace OrdersService.Infrastructure
                 return;
             }
 
-            services.AddSharedRedis(configuration);
+           
             services.AddScoped<IDriverLocationCache, DriverLocationCache>();
         }
 
@@ -107,7 +113,8 @@ namespace OrdersService.Infrastructure
                 client.BaseAddress = new Uri(paymentUrl);
                 client.Timeout = TimeSpan.FromSeconds(30);
             })
-            .AddPolicyHandler(GetRetryPolicy());
+            .AddPolicyHandler(GetRetryPolicy())
+            .AddHttpMessageHandler<AuthorizationHeaderForwardingHandler>();
 
             services.AddHttpClient("CatalogServiceClient", client =>
             {

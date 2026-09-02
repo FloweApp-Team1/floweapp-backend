@@ -9,11 +9,12 @@ using Shared.Handlers;
 using IdentityService.Common.Interfaces;
 using Shared.Interfaces;
 using Shared.Security;
-using Shared.Settings;
-using Shared.Swagger;
 using IdentityService.Infrastructure.Repositories;
 using IdentityService.Infrastructure.Services;
 using IdentityService.Infrastructure.Services.OTP;
+using IdentityService.Infrastructure.Notifications;
+using Shared.Settings;
+using Shared.Swagger;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -80,6 +81,9 @@ namespace IdentityService.Infrastructure
             services.AddSharedRedis(configuration);
             services.AddOtpServices();
             services.AddFirebase(configuration, environment);
+            services.AddScoped<IFcmService, FcmService>();
+            
+            services.AddMessaging(configuration);
 
             return services;
         }
@@ -136,6 +140,42 @@ namespace IdentityService.Infrastructure
             }));
 
             return services;
+        }
+        
+        private static void AddMessaging(this IServiceCollection services, IConfiguration configuration)
+        {
+            var hostStr = configuration["RabbitMq:Host"];
+            
+            if (string.IsNullOrWhiteSpace(hostStr))
+            {
+                return;
+            }
+
+            var username = configuration["RabbitMq:Username"];
+            var password = configuration["RabbitMq:Password"];
+
+            services.AddMassTransit(bus =>
+            {
+                bus.SetKebabCaseEndpointNameFormatter();
+                bus.AddConsumers(Assembly.GetExecutingAssembly());
+
+                bus.AddEntityFrameworkOutbox<AuthDbContext>(o =>
+                {
+                    o.UseSqlServer();
+                    o.UseBusOutbox();
+                });
+
+                bus.UsingRabbitMq((context, configurator) =>
+                {
+                    configurator.Host(hostStr, host =>
+                    {
+                        host.Username(username);
+                        host.Password(password);
+                    });
+
+                    configurator.ConfigureEndpoints(context);
+                });
+            });
         }
 
         // The single authentication + authorization configuration.

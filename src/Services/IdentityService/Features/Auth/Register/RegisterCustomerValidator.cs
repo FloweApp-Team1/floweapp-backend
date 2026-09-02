@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 
 namespace IdentityService.Features.Auth.Register
 {
@@ -41,8 +41,6 @@ namespace IdentityService.Features.Auth.Register
 
             RuleFor(x => x.ConfirmPassword)
                 .Equal(x => x.Password).WithMessage("Passwords do not match");
-            RuleFor(x => x.FcmToken)
-                .NotEmpty().WithMessage("FCM Token is required");
 
 
         }
