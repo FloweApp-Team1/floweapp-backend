@@ -1,9 +1,10 @@
-﻿using MediatR;
+using MediatR;
 using OrdersService.Domain.Entities;
 using OrdersService.Domain.Enums;
 using OrdersService.Infrastructure.Services;
 using Shared.Interfaces;
 using Shared.Results;
+using Shared.Events.OrderEvents;
 
 namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
 {
@@ -30,6 +31,7 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
         private readonly IOrderStatusHistoryWriter _historyWriter;
         private readonly IDriverLocationCache _locationCache;
         private readonly IDriverSnapshotService _driverSnapshots;
+        private readonly IIntegrationEventPublisher _eventPublisher;
         private readonly ILogger<UpdateOrderStatusHandler> _logger;
 
         public UpdateOrderStatusHandler(
@@ -38,6 +40,7 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
             IOrderStatusHistoryWriter historyWriter,
             IDriverLocationCache locationCache,
             IDriverSnapshotService driverSnapshots,
+            IIntegrationEventPublisher eventPublisher,
             ILogger<UpdateOrderStatusHandler> logger)
         {
             _unitOfWork = unitOfWork;
@@ -45,6 +48,7 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
             _historyWriter = historyWriter;
             _locationCache = locationCache;
             _driverSnapshots = driverSnapshots;
+            _eventPublisher = eventPublisher;
             _logger = logger;
         }
 
@@ -70,6 +74,7 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
                 return Result.Failure<UpdateOrderStatusResponse>(transitionError);
 
             var occurredAt = DateTime.UtcNow;
+            var oldStatus = order.Status.ToString();
 
             order.Status = request.Status;
             order.UpdatedAt = occurredAt;
@@ -82,6 +87,14 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
             // entry commit together or not at all. Wrapping it in an explicit Begin/Commit
             // would add nothing but a second ordering to get wrong.
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _eventPublisher.PublishAsync(new OrderStatusUpdatedEvent(
+                order.Id,
+                order.UserId,
+                oldStatus,
+                request.Status.ToString(),
+                occurredAt
+            ), cancellationToken);
 
             await AfterCommitAsync(order, cancellationToken);
 

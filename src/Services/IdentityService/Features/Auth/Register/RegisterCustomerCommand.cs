@@ -1,4 +1,4 @@
-﻿using Shared.Responses;
+using Shared.Responses;
 using IdentityService.Domain.Enums;
 using MediatR;
 
@@ -12,7 +12,8 @@ namespace IdentityService.Features.Auth.Register
     GenderEnum Gender,
     string Password,
     string ConfirmPassword,
-    string FcmToken,
+    string? DeviceId,
+    string? FcmToken,
     NotificationStatusEnum NotificationStatus = NotificationStatusEnum.on
     ) : IRequest<ApiResponse<RegisterCustomerResponse>>;
 }

@@ -1,4 +1,4 @@
-﻿using IdentityService.Domain.Entities;
+using IdentityService.Domain.Entities;
 using IdentityService.Domain.Enums;
 using IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverApplication.Dtos_VM;
 using IdentityService.Features.Admin.DriverApplications.ReviewDriverApplication.Dtos;
@@ -78,10 +78,7 @@ namespace IdentityService.Features.Admin.DriverApplications.ApproveReviewDriverA
                         PlateNumber=application.VehiclePlateNumber,
                         VehicleTypeId=application.VehicleTypeId
                     },
-                    CreatedAt = DateTime.UtcNow,
-                    FcmToken=application.FcmToken
-
-
+                    CreatedAt = DateTime.UtcNow
 
                 };
 

@@ -10,8 +10,8 @@ public class UpdateFcmTokenEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPut("/users/fcm-token", async (
-            UpdateFcmTokenCommand request,
+        app.MapPut("/devices/fcm-token", async (
+            [FromBody] UpdateFcmTokenCommand request,
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
@@ -19,7 +19,7 @@ public class UpdateFcmTokenEndpoint : IEndpoint
 
             return result.ToMinimalApiResult("FCM token updated");
         })
-        .WithTags("Users")
+        .WithTags("Devices")
         .WithName("UpdateFcmToken")
         .RequireAuthorization()
         .Produces<ApiResponse<UpdateFcmTokenResponse>>(StatusCodes.Status200OK)

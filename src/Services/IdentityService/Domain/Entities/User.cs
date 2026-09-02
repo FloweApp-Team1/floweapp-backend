@@ -15,7 +15,7 @@ namespace IdentityService.Domain.Entities
         public GenderEnum Gender { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; } = true;
-        public string? FcmToken { get; set; }
+        public ICollection<UserDeviceToken>? DeviceTokens { get; set; }
         public NotificationStatusEnum NotificationStatus { get; set; } = NotificationStatusEnum.on;
 
         public ICollection<UserRole>? UserRoles { get; set; }
