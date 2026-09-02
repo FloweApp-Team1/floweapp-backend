@@ -67,6 +67,7 @@ namespace OrdersService.Infrastructure
             services.AddScoped<IDriverSnapshotService, DriverSnapshotService>();
 
             services.AddSharedEmailService(configuration);
+            services.AddSharedRedis(configuration);
 
             AddDriverLocationCache(services, configuration);
             AddIntegrationEventPublisher(services, configuration);
@@ -84,10 +85,7 @@ namespace OrdersService.Infrastructure
 
             services.AddTransient<AuthorizationHeaderForwardingHandler>();
 
-            services.AddDistributedMemoryCache();
-
-            
-           
+        
 
             return services;
         }
@@ -100,7 +98,7 @@ namespace OrdersService.Infrastructure
                 return;
             }
 
-            services.AddSharedRedis(configuration);
+           
             services.AddScoped<IDriverLocationCache, DriverLocationCache>();
         }
 

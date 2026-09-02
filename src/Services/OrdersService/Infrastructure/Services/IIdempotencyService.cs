@@ -1,13 +1,19 @@
 ﻿namespace OrdersService.Infrastructure.Services
 {
-   
+    public sealed record IdempotencyReservation<TResponse>(
+        bool Acquired,
+        bool AlreadyCompleted,
+        TResponse? CachedResult) where TResponse : class;
+
     public interface IIdempotencyService
     {
-        Task<TResponse?> GetCachedResponseAsync<TResponse>(
+        Task<IdempotencyReservation<TResponse>> TryReserveAsync<TResponse>(
             Guid userId, string idempotencyKey, CancellationToken cancellationToken) where TResponse : class;
 
-        Task StoreResponseAsync<TResponse>(
+        Task CompleteReservationAsync<TResponse>(
             Guid userId, string idempotencyKey, TResponse response, CancellationToken cancellationToken)
             where TResponse : class;
+
+        Task ReleaseReservationAsync(Guid userId, string idempotencyKey, CancellationToken cancellationToken);
     }
 }

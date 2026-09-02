@@ -20,6 +20,7 @@ namespace IdentityService.Infrastructure
         public DbSet<AdminLoginAudit> AdminLoginAudits { get; set; }
         public DbSet<DriverApplication> DriverApplications { get; set; }
         public DbSet<VehicleType> VehicleTypes { get; set; }
+        public DbSet<UserDeviceToken> UserDeviceTokens { get; set; }
 
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)
         {

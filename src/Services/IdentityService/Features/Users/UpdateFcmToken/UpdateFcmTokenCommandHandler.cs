@@ -3,12 +3,13 @@ using Shared.Models;
 using Shared.Results;
 using IdentityService.Domain.Entities;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace IdentityService.Features.Users.UpdateFcmToken;
 
 public class UpdateFcmTokenCommandHandler(
     ICurrentUserService _currentUser,
-    IGenericRepository<User> _repository,
+    IGenericRepository<UserDeviceToken> _repository,
     IUnitOfWork _unitOfWork)
     : IRequestHandler<UpdateFcmTokenCommand, Result<UpdateFcmTokenResponse>>
 {
@@ -24,17 +25,27 @@ public class UpdateFcmTokenCommandHandler(
                 .Failure(Error.New("Users.Unauthorized", "Unauthorized"));
         }
 
-        var user = await _repository.GetByIdAsync(
-            userId.Value,
-            cancellationToken);
+        var deviceToken = await _repository.Query()
+            .FirstOrDefaultAsync(x => x.UserId == userId.Value && x.DeviceId == request.DeviceId, cancellationToken);
 
-        if (user is null)
+        if (deviceToken is null)
         {
-            return Result<UpdateFcmTokenResponse>
-                .Failure(Error.New("Users.NotFound", "User not found"));
+            deviceToken = new UserDeviceToken
+            {
+                UserId = userId.Value,
+                DeviceId = request.DeviceId,
+                FcmToken = request.FcmToken,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await _repository.AddAsync(deviceToken, cancellationToken);
         }
-
-        user.FcmToken = request.FcmToken;
+        else
+        {
+            deviceToken.FcmToken = request.FcmToken;
+            deviceToken.UpdatedAt = DateTime.UtcNow;
+            _repository.Update(deviceToken);
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
