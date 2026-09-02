@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using Shared.Contracts;
 using IdentityService.Common.Interfaces;
 using Shared.Interfaces;
@@ -50,7 +50,6 @@ namespace IdentityService.Features.Auth.Register
                 PhoneNumber = request.Phone,
                 Gender = request.Gender,
                 PasswordHash = _passwordHasher.Hash(request.Password),
-                FcmToken = request.FcmToken,
                 NotificationStatus = request.NotificationStatus,
                 CreatedAt = DateTime.UtcNow,
                 UserRoles = new List<UserRole>()
@@ -75,6 +74,20 @@ namespace IdentityService.Features.Auth.Register
             };
 
             await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshToken, cancellationToken);
+
+            if (!string.IsNullOrEmpty(request.DeviceId) && !string.IsNullOrEmpty(request.FcmToken))
+            {
+                var deviceToken = new UserDeviceToken
+                {
+                    UserId = customer.Id,
+                    DeviceId = request.DeviceId,
+                    FcmToken = request.FcmToken,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<UserDeviceToken>().AddAsync(deviceToken, cancellationToken);
+            }
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
 

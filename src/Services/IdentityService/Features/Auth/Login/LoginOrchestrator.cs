@@ -1,4 +1,4 @@
-﻿using Shared.Interfaces;
+using Shared.Interfaces;
 using Shared.Results;
 using IdentityService.Common.Interfaces;
 using IdentityService.Features.Auth.Login.Commands;
@@ -43,9 +43,9 @@ namespace IdentityService.Features.Auth.Login
             Result<string> refreshTokenResult;
             try
             {
-                if (!string.IsNullOrEmpty(request.Request.FcmToken))
+                if (!string.IsNullOrEmpty(request.Request.FcmToken) && !string.IsNullOrEmpty(request.Request.DeviceId))
                 {
-                    await sender.Send(new UpdateFcmTokenCommand(user.Id, request.Request.FcmToken), ct);
+                    await sender.Send(new UpdateFcmTokenCommand(user.Id, request.Request.DeviceId, request.Request.FcmToken), ct);
                 }
 
                 refreshTokenResult = await sender.Send(new IssueUserRefreshTokenCommand(user.Id, request.IpAddress ?? "Unknown"), ct);
