@@ -60,10 +60,13 @@ namespace OrdersService.Features.DriverDelivery.UpdateDriverLocation
                 ? clientTime
                 : now;
 
+            // The live-delivery statuses, inlined because IsLiveDelivery() is a method EF
+            // cannot translate. Must stay in step with OrderStatusExtensions.IsLiveDelivery.
             var activeOrders = await _unitOfWork.Repository<Order>()
                 .GetAll(o => o.DriverId == driverId
                              && (o.Status == OrderStatusEnum.PickedUp
-                                 || o.Status == OrderStatusEnum.OutForDelivery))
+                                 || o.Status == OrderStatusEnum.OutForDelivery
+                                 || o.Status == OrderStatusEnum.AwaitingDeliveryConfirmation))
                 .ToListAsync(cancellationToken);
 
             if (activeOrders.Count == 0)

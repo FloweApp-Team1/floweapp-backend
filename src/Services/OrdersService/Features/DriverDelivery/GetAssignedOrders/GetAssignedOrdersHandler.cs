@@ -31,7 +31,8 @@ namespace OrdersService.Features.DriverDelivery.GetAssignedOrders
             var query = _unitOfWork.Repository<Order>()
                 .Query()
                 .AsNoTracking()
-                .Where(o => o.DriverId == driverId);
+                .Where(o => o.DriverId == driverId)
+                .Where(o => request.Status == null || o.Status == request.Status);
 
             var totalCount = await query.CountAsync(cancellationToken);
 

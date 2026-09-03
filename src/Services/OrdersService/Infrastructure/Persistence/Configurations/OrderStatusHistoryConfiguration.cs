@@ -13,8 +13,9 @@ namespace OrdersService.Infrastructure.Persistence.Configurations
             builder.HasKey(x => x.Id);
 
             // Stored as its name for the same reason Order.Status is: a reordered enum must
-            // not silently repoint historical rows at a different stage.
-            builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            // not silently repoint historical rows at a different stage. 40 matches
+            // OrderConfiguration - the longest name (AwaitingDeliveryConfirmation) is 28.
+            builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(40).IsRequired();
 
             builder.Property(x => x.OccurredAt).IsRequired();
             builder.Property(x => x.Note).HasMaxLength(500);

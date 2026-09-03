@@ -5,7 +5,11 @@ using Shared.Results;
 
 namespace OrdersService.Features.DriverDelivery.GetAssignedOrders
 {
-    public record GetAssignedOrdersQuery(PaginationRequest Request) : IRequest<Result<GetAssignedOrdersResponse>>;
+    // Status is the contract's optional history filter: absent means "every assigned order",
+    // otherwise only orders currently in that status.
+    public record GetAssignedOrdersQuery(
+        PaginationRequest Request,
+        OrderStatusEnum? Status = null) : IRequest<Result<GetAssignedOrdersResponse>>;
 
     public record GetAssignedOrdersResponse(
         IReadOnlyList<AssignedOrderDto> Orders,
