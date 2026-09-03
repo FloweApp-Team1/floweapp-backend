@@ -141,7 +141,15 @@ namespace OrdersService.Features.Tracking.GetOrderTracking
             IReadOnlyDictionary<OrderStatusEnum, DateTime> history)
         {
             var stages = OrderStatusExtensions.TimelineStages;
-            var currentIndex = Array.IndexOf(stages, status);
+
+            // AwaitingDeliveryConfirmation is not a timeline stage of its own - to the
+            // customer it is still "Out for Delivery" (ToDisplayString folds it the same
+            // way), so it leaves the marker on the OutForDelivery stage until the driver
+            // confirms completion and the order becomes Delivered.
+            var timelineStatus = status == OrderStatusEnum.AwaitingDeliveryConfirmation
+                ? OrderStatusEnum.OutForDelivery
+                : status;
+            var currentIndex = Array.IndexOf(stages, timelineStatus);
 
             var timeline = stages
                 .Select((stage, index) => new OrderTrackingStageDto(
