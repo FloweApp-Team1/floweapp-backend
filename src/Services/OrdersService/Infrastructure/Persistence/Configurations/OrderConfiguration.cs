@@ -37,6 +37,8 @@ namespace OrdersService.Infrastructure.Persistence.Configurations
             builder.HasIndex(x => x.StoreId);
             builder.HasIndex(x => x.DriverId);
             builder.HasIndex(x => x.Status);
+            //For Get Available Orders for Driver
+            builder.HasIndex(x => new { x.Status, x.DriverId, x.CreatedAt });
 
             builder.HasMany(x => x.Items)
                 .WithOne(x => x.Order)
