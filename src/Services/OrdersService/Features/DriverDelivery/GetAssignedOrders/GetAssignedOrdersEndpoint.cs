@@ -1,4 +1,6 @@
 using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using OrdersService.Domain.Enums;
 using Shared.Contracts;
 using Shared.Extensions;
 using Shared.Requests;
@@ -13,10 +15,11 @@ public class GetAssignedOrdersEndpoint : IEndpoint
     {
         app.MapGet("/drivers/me/orders", async Task<IResult> (
                 [AsParameters] PaginationRequest request,
+                [FromQuery] OrderStatusEnum? status,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                var result = await sender.Send(new GetAssignedOrdersQuery(request), cancellationToken);
+                var result = await sender.Send(new GetAssignedOrdersQuery(request, status), cancellationToken);
 
                 return result.IsSuccess
                     ? ApiResponse.Paginated(

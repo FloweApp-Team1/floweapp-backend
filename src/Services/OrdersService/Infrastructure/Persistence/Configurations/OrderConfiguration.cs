@@ -15,7 +15,9 @@ namespace OrdersService.Infrastructure.Persistence.Configurations
             builder.Property(x => x.OrderNumber).IsRequired().HasMaxLength(30);
             builder.HasIndex(x => x.OrderNumber).IsUnique();
 
-            builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            // 40, not 20: the status is stored as its enum name and the longest
+            // (AwaitingDeliveryConfirmation) is 28 characters. See AddAwaitingDeliveryConfirmationStatus.
+            builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(40).IsRequired();
             builder.Property(x => x.PaymentMethod).HasConversion<string>().HasMaxLength(10).IsRequired();
             builder.Property(x => x.PaymentStatus).HasConversion<string>().HasMaxLength(10).IsRequired();
 
@@ -35,6 +37,8 @@ namespace OrdersService.Infrastructure.Persistence.Configurations
             builder.HasIndex(x => x.StoreId);
             builder.HasIndex(x => x.DriverId);
             builder.HasIndex(x => x.Status);
+            //For Get Available Orders for Driver
+            builder.HasIndex(x => new { x.Status, x.DriverId, x.CreatedAt });
 
             builder.HasMany(x => x.Items)
                 .WithOne(x => x.Order)

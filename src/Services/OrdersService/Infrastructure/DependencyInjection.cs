@@ -230,6 +230,10 @@ namespace OrdersService.Infrastructure
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen(options =>
             {
+                // Renders enum query parameters (e.g. ?status= on GET /drivers/me/orders) as
+                // their string names rather than integers, matching the contract.
+                options.ParameterFilter<Shared.Swagger.EnumParameterFilter>();
+
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",

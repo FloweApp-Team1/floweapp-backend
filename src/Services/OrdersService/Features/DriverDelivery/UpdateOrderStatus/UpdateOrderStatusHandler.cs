@@ -15,17 +15,6 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
     public class UpdateOrderStatusHandler
         : IRequestHandler<UpdateOrderStatusCommand, Result<UpdateOrderStatusResponse>>
     {
-        // The stages a driver may set. Placed is set at checkout and Preparing belongs to
-        // the store, so neither is reachable from this driver-authenticated endpoint even
-        // though both are valid order statuses.
-        private static readonly OrderStatusEnum[] DriverControlledStatuses =
-        [
-            OrderStatusEnum.PickedUp,
-            OrderStatusEnum.OutForDelivery,
-            OrderStatusEnum.Delivered,
-            OrderStatusEnum.Cancelled
-        ];
-
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
         private readonly IOrderStatusHistoryWriter _historyWriter;
@@ -61,27 +50,33 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
                     "The access token does not identify a driver.");
             }
 
+            // DriverStatusUpdate has already narrowed the input to the statuses a driver may
+            // set; this widens it back to the domain enum the rest of the pipeline
+            // (transition rules, history, events) speaks. Whether the order can actually move
+            // there from its current status is ValidateTransition's job.
+            var targetStatus = request.Status.ToOrderStatus();
+
             var order = await _unitOfWork.Repository<Order>()
                 .FirstOrDefaultAsync(x => x.Id == request.OrderId, cancellationToken);
 
             if (order is null)
                 return Failure("OrderStatus.NotFound", "Order was not found.");
 
-            if (Authorize(order, driverId, request.Status) is { } authorizationError)
+            if (Authorize(order, driverId) is { } authorizationError)
                 return Result.Failure<UpdateOrderStatusResponse>(authorizationError);
 
-            if (ValidateTransition(order.Status, request.Status) is { } transitionError)
+            if (ValidateTransition(order.Status, targetStatus) is { } transitionError)
                 return Result.Failure<UpdateOrderStatusResponse>(transitionError);
 
             var occurredAt = DateTime.UtcNow;
             var oldStatus = order.Status.ToString();
 
-            order.Status = request.Status;
+            order.Status = targetStatus;
             order.UpdatedAt = occurredAt;
             order.LastChangedBy = driverId;
 
             await _historyWriter.RecordAsync(
-                order, request.Status, occurredAt, driverId, request.Note, cancellationToken);
+                order, targetStatus, occurredAt, driverId, request.Note, cancellationToken);
 
             // One SaveChanges is already one transaction, so the order row and its history
             // entry commit together or not at all. Wrapping it in an explicit Begin/Commit
@@ -92,7 +87,7 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
                 order.Id,
                 order.UserId,
                 oldStatus,
-                request.Status.ToString(),
+                targetStatus.ToString(),
                 occurredAt
             ), cancellationToken);
 
@@ -131,14 +126,10 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
             }
         }
 
-        private static Error? Authorize(Order order, Guid driverId, OrderStatusEnum newStatus)
+        // Which statuses a driver may set is enforced by the DriverStatusUpdate type on the
+        // command, so this only has to answer "is this that driver's order?".
+        private static Error? Authorize(Order order, Guid driverId)
         {
-            if (!DriverControlledStatuses.Contains(newStatus))
-            {
-                return Error.New("OrderStatus.Forbidden",
-                    $"{newStatus} is not a status a driver can set.");
-            }
-
             if (order.DriverId is not { } assignedDriverId)
             {
                 return Error.New("OrderStatus.Conflict",
@@ -157,7 +148,9 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
         }
 
         // Statuses only ever move forward along the delivery path, or sideways to Cancelled
-        // before the order is handed over.
+        // before the order is handed over. OutForDelivery does not go straight to Delivered:
+        // the driver marks AwaitingDeliveryConfirmation on arrival and only then confirms
+        // completion, so the confirmation step cannot be skipped.
         private static Error? ValidateTransition(OrderStatusEnum current, OrderStatusEnum next)
         {
             if (current == next)
@@ -168,7 +161,8 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
                 OrderStatusEnum.Placed => next is OrderStatusEnum.Preparing or OrderStatusEnum.Cancelled,
                 OrderStatusEnum.Preparing => next is OrderStatusEnum.PickedUp or OrderStatusEnum.Cancelled,
                 OrderStatusEnum.PickedUp => next is OrderStatusEnum.OutForDelivery or OrderStatusEnum.Cancelled,
-                OrderStatusEnum.OutForDelivery => next is OrderStatusEnum.Delivered or OrderStatusEnum.Cancelled,
+                OrderStatusEnum.OutForDelivery => next is OrderStatusEnum.AwaitingDeliveryConfirmation or OrderStatusEnum.Cancelled,
+                OrderStatusEnum.AwaitingDeliveryConfirmation => next is OrderStatusEnum.Delivered or OrderStatusEnum.Cancelled,
 
                 // Delivered and Cancelled are terminal.
                 _ => false
