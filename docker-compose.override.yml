@@ -13,6 +13,11 @@ services:
   paymentservice:
     environment:
       - ASPNETCORE_HTTPS_PORTS=8081
+      # Local webhook traffic is forwarded by the stripe-cli sidecar below. Its
+      # signing secret is created by the CLI, so local development explicitly
+      # opts out of signature verification instead of requiring developers to
+      # copy a new whsec_* value into their environment.
+      - Stripe__VerifyWebhookSignature=false
     ports:
       - "${PAYMENT_HTTPS_PORT:-7058}:8081"
     volumes:
@@ -20,3 +25,24 @@ services:
       - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
       - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+
+  stripe-cli:
+    image: stripe/stripe-cli:v1.42.0
+    restart: unless-stopped
+    environment:
+      STRIPE_API_KEY: ${Stripe__SecretKey}
+      STRIPE_DEVICE_NAME: flowerapp-local-docker
+    command:
+      - listen
+      - --forward-to
+      - http://paymentservice:8080/webhook
+      - --events
+      - checkout.session.completed,checkout.session.expired,checkout.session.async_payment_failed
+    depends_on:
+      paymentservice:
+        # Visual Studio Fast mode starts service containers with a helper process
+        # and launches the .NET app only after Compose setup completes. Waiting
+        # for health here would deadlock that startup sequence.
+        condition: service_started
+    networks:
+      - flowers-network
