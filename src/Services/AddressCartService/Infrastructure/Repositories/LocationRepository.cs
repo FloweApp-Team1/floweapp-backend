@@ -17,6 +17,14 @@ namespace AddressCartService.Infrastructure.Repositories
             _context = context;
         }
 
+        public async Task<IReadOnlyList<Country>> GetCountriesAsync(CancellationToken cancellationToken = default)
+        {
+            return await _context.Countries
+                .OrderBy(c => c.Id)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task<IReadOnlyList<Governorate>> GetGovernoratesAsync(CancellationToken cancellationToken = default)
         {
             return await _context.Governorates
