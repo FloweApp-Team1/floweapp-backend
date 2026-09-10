@@ -9,6 +9,7 @@ namespace AddressCartService.Infrastructure.Persistence.Seed
     {
         public static async Task SeedAsync(AddressCartDbContext context, CancellationToken ct = default)
         {
+            await SeedCountriesAsync(context, ct);
             await SeedGovernoratesAsync(context, ct);
             await SeedCitiesAsync(context, ct);
         }
@@ -76,6 +77,46 @@ namespace AddressCartService.Infrastructure.Persistence.Seed
 
             context.Cities.AddRange(cities);
             await context.SaveChangesAsync(ct);
+        }
+
+        private static async Task SeedCountriesAsync(AddressCartDbContext context, CancellationToken ct)
+        {
+            if (await context.Countries.AnyAsync(ct))
+                return;
+
+            var path = Path.Combine(AppContext.BaseDirectory, "Infrastructure", "Persistence", "Seed", "Data", "countries.json");
+            if (!File.Exists(path))
+            {
+                path = Path.Combine("Infrastructure", "Persistence", "Seed", "Data", "countries.json");
+            }
+            if (!File.Exists(path)) return;
+
+            var json = await File.ReadAllTextAsync(path, ct);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var data = JsonSerializer.Deserialize<List<CountryDto>>(json, options);
+
+            if (data == null) return;
+
+            var countries = data.Select(d => new Country
+            {
+                Id = d.Id,
+                NameAr = d.Name_Ar,
+                NameEn = d.Name_En,
+                Code = d.Code,
+                PhoneCode = d.Phone_Code
+            });
+
+            context.Countries.AddRange(countries);
+            await context.SaveChangesAsync(ct);
+        }
+
+        private class CountryDto
+        {
+            public int Id { get; set; }
+            public string Name_Ar { get; set; } = string.Empty;
+            public string Name_En { get; set; } = string.Empty;
+            public string Code { get; set; } = string.Empty;
+            public string Phone_Code { get; set; } = string.Empty;
         }
 
         private class GovernorateDto

@@ -6,15 +6,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IdentityService.Features.Auth.Login.Commands
 {
-    public sealed record UpdateFcmTokenCommand(Guid UserId, string DeviceId, string FcmToken) : IRequest<Result>;
+    public sealed record UpdateFcmTokenCommand(Guid UserId, string DeviceId, string? FcmToken) : IRequest<Result<bool>>;
 
     public sealed class UpdateFcmTokenHandler(IUnitOfWork unitOfWork)
-        : IRequestHandler<UpdateFcmTokenCommand, Result>
+        : IRequestHandler<UpdateFcmTokenCommand, Result<bool>>
     {
-        public async Task<Result> Handle(UpdateFcmTokenCommand request, CancellationToken ct)
+        public async Task<Result<bool>> Handle(UpdateFcmTokenCommand request, CancellationToken ct)
         {
-            if (string.IsNullOrEmpty(request.FcmToken) || string.IsNullOrEmpty(request.DeviceId))
-                return Result.Success();
+            if (string.IsNullOrWhiteSpace(request.DeviceId))
+                return Result<bool>.Success(true);
 
             var repository = unitOfWork.Repository<UserDeviceToken>();
             var token = await repository.Query()
@@ -22,24 +22,31 @@ namespace IdentityService.Features.Auth.Login.Commands
 
             if (token == null)
             {
+                // A device preference is stored alongside its FCM token. If notification
+                // permission has not produced a token yet, report the default without
+                // creating an incomplete device row.
+                if (string.IsNullOrWhiteSpace(request.FcmToken))
+                    return Result<bool>.Success(true);
+
                 token = new UserDeviceToken
                 {
                     UserId = request.UserId,
                     DeviceId = request.DeviceId,
                     FcmToken = request.FcmToken,
+                    NotificationsEnabled = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
                 await repository.AddAsync(token, ct);
             }
-            else
+            else if (!string.IsNullOrWhiteSpace(request.FcmToken))
             {
                 token.FcmToken = request.FcmToken;
                 token.UpdatedAt = DateTime.UtcNow;
                 repository.Update(token);
             }
 
-            return Result.Success();
+            return Result<bool>.Success(token.NotificationsEnabled);
         }
     }
 }
