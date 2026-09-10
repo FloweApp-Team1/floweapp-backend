@@ -11,6 +11,7 @@ namespace IdentityService.Infrastructure.Persistence.Configurations
             builder.HasKey(x => x.Id);
             builder.Property(x => x.DeviceId).IsRequired().HasMaxLength(255);
             builder.Property(x => x.FcmToken).IsRequired();
+            builder.Property(x => x.NotificationsEnabled).IsRequired().HasDefaultValue(true);
             
             builder.HasOne(x => x.User)
                    .WithMany(x => x.DeviceTokens)

@@ -6,6 +6,7 @@ using IdentityService.Features.Auth.Login.Queries;
 using MediatR;
 using IdentityService.Domain.Entities;
 using Shared.Contracts;
+using IdentityService.Domain.Enums;
 
 namespace IdentityService.Features.Auth.Login
 {
@@ -41,11 +42,14 @@ namespace IdentityService.Features.Auth.Login
 
             await unitOfWork.BeginTransactionAsync(ct);
             Result<string> refreshTokenResult;
+            var notificationsEnabled = user.NotificationStatus == NotificationStatusEnum.on;
             try
             {
-                if (!string.IsNullOrEmpty(request.Request.FcmToken) && !string.IsNullOrEmpty(request.Request.DeviceId))
+                if (!string.IsNullOrWhiteSpace(request.Request.DeviceId))
                 {
-                    await sender.Send(new UpdateFcmTokenCommand(user.Id, request.Request.DeviceId, request.Request.FcmToken), ct);
+                    var deviceResult = await sender.Send(
+                        new UpdateFcmTokenCommand(user.Id, request.Request.DeviceId, request.Request.FcmToken), ct);
+                    notificationsEnabled = deviceResult.Value;
                 }
 
                 refreshTokenResult = await sender.Send(new IssueUserRefreshTokenCommand(user.Id, request.IpAddress ?? "Unknown"), ct);
@@ -90,7 +94,9 @@ namespace IdentityService.Features.Auth.Login
                 CreatedAt: user.CreatedAt,
                 UpdatedAt: user.CreatedAt, // Binding UpdatedAt to CreatedAt
                 Gender: user.Gender.ToString().ToUpper(),
-                NotificationStatus: user.NotificationStatus.ToString().ToUpper()
+                NotificationStatus: (notificationsEnabled
+                    ? NotificationStatusEnum.on
+                    : NotificationStatusEnum.off).ToString().ToUpperInvariant()
             );
 
             var response = new AuthResponse(userDto, accessToken, refreshTokenResult.Value);
