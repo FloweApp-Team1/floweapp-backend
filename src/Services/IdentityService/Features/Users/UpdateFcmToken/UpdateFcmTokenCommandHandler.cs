@@ -35,6 +35,7 @@ public class UpdateFcmTokenCommandHandler(
                 UserId = userId.Value,
                 DeviceId = request.DeviceId,
                 FcmToken = request.FcmToken,
+                NotificationsEnabled = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
