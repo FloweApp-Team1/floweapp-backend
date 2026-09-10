@@ -34,7 +34,7 @@ namespace IdentityService.Infrastructure.Messaging.Consumers
 
             var tokens = await _unitOfWork.Repository<UserDeviceToken>()
                 .Query()
-                .Where(t => t.UserId == message.CustomerId)
+                .Where(t => t.UserId == message.CustomerId && t.NotificationsEnabled)
                 .Select(t => t.FcmToken)
                 .ToListAsync(context.CancellationToken);
 

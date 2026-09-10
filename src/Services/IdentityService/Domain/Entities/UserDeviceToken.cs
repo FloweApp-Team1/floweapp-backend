@@ -7,6 +7,7 @@ namespace IdentityService.Domain.Entities
         public Guid UserId { get; set; }
         public string DeviceId { get; set; } = null!;
         public string FcmToken { get; set; } = null!;
+        public bool NotificationsEnabled { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

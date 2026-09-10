@@ -82,6 +82,7 @@ namespace IdentityService.Features.Auth.Register
                     UserId = customer.Id,
                     DeviceId = request.DeviceId,
                     FcmToken = request.FcmToken,
+                    NotificationsEnabled = request.NotificationStatus == Domain.Enums.NotificationStatusEnum.on,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };

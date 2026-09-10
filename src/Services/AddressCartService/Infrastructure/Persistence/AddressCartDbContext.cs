@@ -9,6 +9,7 @@ namespace AddressCartService.Infrastructure.Persistence
         public DbSet<Store> Stores { get; set; }
         public DbSet<Governorate> Governorates { get; set; }
         public DbSet<City> Cities { get; set; }
+        public DbSet<Country> Countries { get; set; }
 
         public AddressCartDbContext(DbContextOptions<AddressCartDbContext> options) : base(options)
         {
@@ -26,6 +27,9 @@ namespace AddressCartService.Infrastructure.Persistence
             base.OnModelCreating(builder);
 
             builder.HasDefaultSchema("AddressCart");
+
+            builder.Entity<Country>().HasKey(c => c.Id);
+            builder.Entity<Country>().Property(c => c.Id).ValueGeneratedNever();
 
             builder.Entity<Governorate>().HasKey(g => g.Id);
             builder.Entity<Governorate>().Property(g => g.Id).ValueGeneratedNever();

@@ -38,6 +38,7 @@ namespace PaymentService.Infrastructure
 
             services.AddMassTransit(x =>
             {
+                x.SetKebabCaseEndpointNameFormatter();
                 x.AddEntityFrameworkOutbox<PaymentDbContext>(o =>
                 {
                     o.UseSqlServer();
