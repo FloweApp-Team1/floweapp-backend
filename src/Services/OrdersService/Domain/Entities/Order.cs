@@ -7,6 +7,15 @@ namespace OrdersService.Domain.Entities
         public string OrderNumber { get; set; } = null!;
         public Guid UserId { get; set; }
         public Guid StoreId { get; set; }
+        // Pickup snapshot used by the driver order screen. The source store can be edited
+        // later, but an accepted delivery must keep the pickup details it was created with.
+        public string? StoreName { get; set; }
+        public string? StorePhoneNumber { get; set; }
+        public string? StoreWhatsAppNumber { get; set; }
+        public string? StoreImageUrl { get; set; }
+        public string? StoreAddressLine { get; set; }
+        public double? StoreLat { get; set; }
+        public double? StoreLng { get; set; }
         public Guid? AddressId { get; set; }
         public Guid? DriverId { get; set; }
 

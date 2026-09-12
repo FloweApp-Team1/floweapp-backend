@@ -27,7 +27,14 @@ namespace OrdersService.Infrastructure.Services
          double? Lat,
          double? Lng,
          Guid? StoreId,
-         bool IsServiceable);
+         bool IsServiceable,
+         string? StoreName,
+         string? StorePhoneNumber,
+         string? StoreWhatsAppNumber,
+         string? StoreImageUrl,
+         string? StoreAddressLine,
+         double? StoreLat,
+         double? StoreLng);
 }
 
 

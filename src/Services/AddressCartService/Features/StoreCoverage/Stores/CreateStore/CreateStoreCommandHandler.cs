@@ -28,6 +28,9 @@ namespace AddressCartService.Features.StoreCoverage.Stores.CreateStore
             {
                 Id = Guid.NewGuid(),
                 Name = req.Name.Trim(),
+                PhoneNumber = NullIfWhiteSpace(req.PhoneNumber),
+                WhatsAppNumber = NullIfWhiteSpace(req.WhatsAppNumber),
+                ImageUrl = NullIfWhiteSpace(req.ImageUrl),
                 Location = new StoreLocation
                 {
                     AddressLine = req.Location.AddressLine.Trim(),
@@ -47,5 +50,8 @@ namespace AddressCartService.Features.StoreCoverage.Stores.CreateStore
 
             return Result.Success(CoverageAreaMapper.ToStoreResponse(store));
         }
+
+        private static string? NullIfWhiteSpace(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

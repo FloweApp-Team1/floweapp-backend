@@ -20,6 +20,33 @@ namespace OrdersService.Domain.Enums
 
     public static class OrderStatusExtensions
     {
+        // Minimal API query-string enum binding does not use the JSON enum converter.
+        // Accept both CLR names (OutForDelivery) and public contract names
+        // (OUT_FOR_DELIVERY), case-insensitively.
+        public static bool TryParseContract(string? value, out OrderStatusEnum status)
+        {
+            status = default;
+
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            var normalized = value.Trim().Replace("_", string.Empty);
+
+            foreach (var candidate in Enum.GetValues<OrderStatusEnum>())
+            {
+                if (string.Equals(
+                        candidate.ToString(),
+                        normalized,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    status = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         // The stages the customer-facing tracking timeline renders, in order. PickedUp is
         // folded into OutForDelivery on the client, but both are live-tracking states here.
         // AwaitingDeliveryConfirmation is deliberately NOT a stage of its own: the customer

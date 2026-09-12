@@ -16,6 +16,13 @@ namespace AddressCartService.Features.Addresses.GetAddress
         bool IsDefault,
         bool IsServiceable,
         Guid? StoreId,
+        string? StoreName,
+        string? StorePhoneNumber,
+        string? StoreWhatsAppNumber,
+        string? StoreImageUrl,
+        string? StoreAddressLine,
+        double? StoreLat,
+        double? StoreLng,
         DateTime CreatedAt,
         DateTime UpdatedAt);
 }
