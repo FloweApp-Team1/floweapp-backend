@@ -15,11 +15,31 @@ public class GetAssignedOrdersEndpoint : IEndpoint
     {
         app.MapGet("/drivers/me/orders", async Task<IResult> (
                 [AsParameters] PaginationRequest request,
-                [FromQuery] OrderStatusEnum? status,
+                [FromQuery] string? status,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                var result = await sender.Send(new GetAssignedOrdersQuery(request, status), cancellationToken);
+                OrderStatusEnum? parsedStatus = null;
+
+                if (!string.IsNullOrWhiteSpace(status))
+                {
+                    if (!OrderStatusExtensions.TryParseContract(status, out var value))
+                    {
+                        return ApiResponse.Fail(
+                            $"Unknown order status '{status}'.",
+                            StatusCodes.Status400BadRequest,
+                            [new ApiError(
+                                "Use PLACED, PREPARING, PICKED_UP, OUT_FOR_DELIVERY, " +
+                                "AWAITING_DELIVERY_CONFIRMATION, DELIVERED, or CANCELLED.",
+                                "status")]).ToHttpResult();
+                    }
+
+                    parsedStatus = value;
+                }
+
+                var result = await sender.Send(
+                    new GetAssignedOrdersQuery(request, parsedStatus),
+                    cancellationToken);
 
                 return result.IsSuccess
                     ? ApiResponse.Paginated(
@@ -33,6 +53,8 @@ public class GetAssignedOrdersEndpoint : IEndpoint
             .WithName("GetDriverOrders")
             .RequireAuthorization(AppPolicies.DriverApproved)
             .Produces<ApiResponse<IReadOnlyList<AssignedOrderDto>>>(StatusCodes.Status200OK)
-            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized);
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden);
     }
 }

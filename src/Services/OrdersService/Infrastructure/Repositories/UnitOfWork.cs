@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore;
 using OrdersService.Infrastructure.Persistence;
 using Shared.Domain;
 using Shared.Interfaces;
 using Shared.Results;
+using System.Data;
 
 namespace OrdersService.Infrastructure.Repositories
 {
@@ -36,6 +38,13 @@ namespace OrdersService.Infrastructure.Repositories
         {
             _transaction = await _context.Database
                 .BeginTransactionAsync(cancellationToken);
+        }
+        public async Task BeginTransactionAsync(
+            IsolationLevel isolationLevel,
+            CancellationToken cancellationToken = default)
+        {
+            _transaction = await _context.Database
+                .BeginTransactionAsync(isolationLevel, cancellationToken);
         }
         public async Task RollbackTransactionAsync(
        CancellationToken cancellationToken = default)

@@ -7,17 +7,13 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
     // call, so a body carrying one of those fails to bind and is rejected with 400 before
     // the handler runs. That is a stronger guarantee than a hand-maintained allow-list
     // inside the handler, which only holds as long as someone keeps it in sync with the enum.
-    //
-    // Delivered IS here: the driver completes the delivery. It is only reachable from
-    // AwaitingDeliveryConfirmation though - the transition rules reject a driver trying to
-    // jump straight from OutForDelivery to Delivered (409), so the confirmation step cannot
-    // be skipped.
+    // The driver stops at AwaitingDeliveryConfirmation after handing over the order. Only
+    // the owning customer can confirm the delivery and move it to Delivered.
     public enum DriverStatusUpdate
     {
         PickedUp,
         OutForDelivery,
-        AwaitingDeliveryConfirmation,
-        Delivered
+        AwaitingDeliveryConfirmation
     }
 
     public static class DriverStatusUpdateExtensions
@@ -27,7 +23,6 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
             DriverStatusUpdate.PickedUp => OrderStatusEnum.PickedUp,
             DriverStatusUpdate.OutForDelivery => OrderStatusEnum.OutForDelivery,
             DriverStatusUpdate.AwaitingDeliveryConfirmation => OrderStatusEnum.AwaitingDeliveryConfirmation,
-            DriverStatusUpdate.Delivered => OrderStatusEnum.Delivered,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(status), status, "Unmapped driver status update.")
         };

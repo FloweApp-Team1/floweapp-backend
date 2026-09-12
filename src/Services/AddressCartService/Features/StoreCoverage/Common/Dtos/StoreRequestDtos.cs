@@ -16,10 +16,16 @@
     public record CreateStoreRequest(
         string Name,
         LocationRequest Location,
-        CoverageAreaRequest CoverageArea);
+        CoverageAreaRequest CoverageArea,
+        string? PhoneNumber = null,
+        string? WhatsAppNumber = null,
+        string? ImageUrl = null);
 
     public record UpdateStoreRequest(
         string Name,
         LocationRequest Location,
-        CoverageAreaRequest CoverageArea);
+        CoverageAreaRequest CoverageArea,
+        string? PhoneNumber = null,
+        string? WhatsAppNumber = null,
+        string? ImageUrl = null);
 }

@@ -1,5 +1,6 @@
 ﻿using Shared.Domain;
 using Shared.Results;
+using System.Data;
 
 namespace Shared.Interfaces
 {
@@ -7,6 +8,9 @@ namespace Shared.Interfaces
     {
         Task BeginTransactionAsync(
         CancellationToken cancellationToken = default);
+        Task BeginTransactionAsync(
+            IsolationLevel isolationLevel,
+            CancellationToken cancellationToken = default);
         Task CommitTransactionAsync(
       CancellationToken cancellationToken = default);
 
