@@ -52,6 +52,13 @@ namespace AddressCartService.Features.Addresses.GetAddress
                     a.IsDefault,
                     a.IsServiceable,
                     a.StoreId,
+                    a.Store != null ? a.Store.Name : null,
+                    a.Store != null ? a.Store.PhoneNumber : null,
+                    a.Store != null ? a.Store.WhatsAppNumber : null,
+                    a.Store != null ? a.Store.ImageUrl : null,
+                    a.Store != null ? a.Store.Location.AddressLine : null,
+                    a.Store != null ? a.Store.Location.Lat : null,
+                    a.Store != null ? a.Store.Location.Lng : null,
                     a.CreatedAt,
                     a.UpdatedAt))
                 .FirstOrDefaultAsync(cancellationToken);

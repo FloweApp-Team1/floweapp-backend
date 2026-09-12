@@ -89,6 +89,9 @@ namespace AddressCartService.Features.StoreCoverage.Common.Mapping
         public static StoreResponse ToStoreResponse(Store store) => new(
             store.Id,
             store.Name,
+            store.PhoneNumber,
+            store.WhatsAppNumber,
+            store.ImageUrl,
             new LocationDto(store.Location.AddressLine, store.Location.Lat, store.Location.Lng),
             ToDto(store.CoverageArea),
             store.Status.ToString().ToUpperInvariant(),

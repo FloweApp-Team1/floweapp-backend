@@ -13,6 +13,9 @@ namespace AddressCartService.Infrastructure.Persistence.Configurations
             builder.HasKey(x => x.Id);
 
             builder.Property(x => x.Name).IsRequired().HasMaxLength(150);
+            builder.Property(x => x.PhoneNumber).HasMaxLength(20);
+            builder.Property(x => x.WhatsAppNumber).HasMaxLength(20);
+            builder.Property(x => x.ImageUrl).HasMaxLength(500);
 
             builder.Property(x => x.Status)
                 .HasConversion<string>()

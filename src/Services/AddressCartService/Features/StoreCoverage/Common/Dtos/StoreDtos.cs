@@ -16,6 +16,9 @@
     public record StoreResponse(
         Guid Id,
         string Name,
+        string? PhoneNumber,
+        string? WhatsAppNumber,
+        string? ImageUrl,
         LocationDto Location,
         CoverageAreaDto CoverageArea,
         string Status,

@@ -17,6 +17,13 @@ namespace AddressCartService.Features.StoreCoverage.Stores.UpdateStore
                     .NotEmpty().WithMessage("name is required.")
                     .MaximumLength(150).WithMessage("name must be 150 characters or fewer.");
 
+                RuleFor(x => x.Request.PhoneNumber)
+                    .MaximumLength(20).WithMessage("phoneNumber must be 20 characters or fewer.");
+                RuleFor(x => x.Request.WhatsAppNumber)
+                    .MaximumLength(20).WithMessage("whatsAppNumber must be 20 characters or fewer.");
+                RuleFor(x => x.Request.ImageUrl)
+                    .MaximumLength(500).WithMessage("imageUrl must be 500 characters or fewer.");
+
                 RuleFor(x => x.Request.Location)
                     .NotNull().WithMessage("location is required.");
 

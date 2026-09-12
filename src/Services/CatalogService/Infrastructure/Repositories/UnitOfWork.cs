@@ -1,8 +1,10 @@
 using CatalogService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore;
 using Shared.Domain;
 using Shared.Interfaces;
 using Shared.Results;
+using System.Data;
 
 namespace CatalogService.Infrastructure.Repositories
 {
@@ -35,6 +37,13 @@ namespace CatalogService.Infrastructure.Repositories
         {
             _transaction = await _context.Database
                 .BeginTransactionAsync(cancellationToken);
+        }
+        public async Task BeginTransactionAsync(
+            IsolationLevel isolationLevel,
+            CancellationToken cancellationToken = default)
+        {
+            _transaction = await _context.Database
+                .BeginTransactionAsync(isolationLevel, cancellationToken);
         }
         public async Task RollbackTransactionAsync(
        CancellationToken cancellationToken = default)

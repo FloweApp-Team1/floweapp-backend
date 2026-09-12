@@ -14,6 +14,13 @@ namespace OrdersService.Infrastructure.Persistence.Seed
         private static readonly Guid DefaultSecondDriverId = new("dddddddd-dddd-dddd-dddd-eeeeeeeeeeee");
 
         private static readonly Guid StoreId = new("55555555-5555-5555-5555-555555555555");
+        private const string StoreName = "Flowery Store";
+        private const string StorePhoneNumber = "+20238000004";
+        private const string StoreWhatsAppNumber = "+201000000004";
+        private const string StoreImageUrl = "https://picsum.photos/seed/flowery-store/200/200";
+        private const string StoreAddress = "20th St, Sheikh Zayed, Giza";
+        private const double StoreLat = 30.0497;
+        private const double StoreLng = 30.9769;
 
         private const decimal DeliveryFee = 25.00m;
 
@@ -37,6 +44,20 @@ namespace OrdersService.Infrastructure.Persistence.Seed
                 "+201007654321",
                 Placeholder("driver-youssef-adel"));
 
+            // Extra identities keep the development fixtures faithful to the one-active-
+            // assignment rule while retaining multiple live tracking scenarios.
+            var trackingDriver = new DriverSeed(
+                new Guid("dddddddd-dddd-dddd-dddd-111111111111"),
+                "Mahmoud Tarek",
+                "+201009991111",
+                Placeholder("driver-mahmoud-tarek"));
+
+            var giftDriver = new DriverSeed(
+                new Guid("dddddddd-dddd-dddd-dddd-222222222222"),
+                "Ahmed Samir",
+                "+201009992222",
+                Placeholder("driver-ahmed-samir"));
+
             // Existing rows win: a seeded order that has since been claimed or advanced by
             // hand must not be reset on the next start.
             var existingNumbers = await context.Orders
@@ -46,7 +67,9 @@ namespace OrdersService.Infrastructure.Persistence.Seed
 
             var now = DateTime.UtcNow;
 
-            foreach (var (order, location) in BuildOrders(now, customerId, otherCustomerId, driver, secondDriver))
+            foreach (var (order, location) in BuildOrders(
+                         now, customerId, otherCustomerId,
+                         driver, secondDriver, trackingDriver, giftDriver))
             {
                 if (existingNumbers.Contains(order.OrderNumber))
                     continue;
@@ -65,7 +88,9 @@ namespace OrdersService.Infrastructure.Persistence.Seed
             Guid customerId,
             Guid otherCustomerId,
             DriverSeed driver,
-            DriverSeed secondDriver)
+            DriverSeed secondDriver,
+            DriverSeed trackingDriver,
+            DriverSeed giftDriver)
         {
             // 1 - Freshly placed and unclaimed: the happy path for the claim endpoint, and
             // the "waiting for a driver" state on the tracking screen.
@@ -127,7 +152,7 @@ namespace OrdersService.Infrastructure.Persistence.Seed
                     (OrderStatusEnum.Preparing, now.AddMinutes(-45), null),
                     (OrderStatusEnum.PickedUp, now.AddMinutes(-8), null)
                 ],
-                driver: driver,
+                driver: trackingDriver,
                 driverAssignedAt: now.AddMinutes(-12),
                 location: new LocationSeed(30.0100, 31.2380, now.AddSeconds(-20), now.AddSeconds(-20)));
 
@@ -179,7 +204,7 @@ namespace OrdersService.Infrastructure.Persistence.Seed
                     (OrderStatusEnum.PickedUp, now.AddMinutes(-10), null),
                     (OrderStatusEnum.OutForDelivery, now.AddMinutes(-9), null)
                 ],
-                driver: secondDriver,
+                driver: giftDriver,
                 driverAssignedAt: now.AddMinutes(-15));
 
             // 6 - Terminal success: a complete timeline, and a driver card that must keep
@@ -299,6 +324,13 @@ namespace OrdersService.Infrastructure.Persistence.Seed
                 OrderNumber = number,
                 UserId = userId,
                 StoreId = StoreId,
+                StoreName = StoreName,
+                StorePhoneNumber = StorePhoneNumber,
+                StoreWhatsAppNumber = StoreWhatsAppNumber,
+                StoreImageUrl = StoreImageUrl,
+                StoreAddressLine = StoreAddress,
+                StoreLat = StoreLat,
+                StoreLng = StoreLng,
                 AddressId = address.AddressId,
                 Status = status,
                 PaymentMethod = paymentMethod,

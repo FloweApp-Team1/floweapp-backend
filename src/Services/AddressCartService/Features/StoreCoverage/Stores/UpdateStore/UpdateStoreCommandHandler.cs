@@ -28,6 +28,9 @@ namespace AddressCartService.Features.StoreCoverage.Stores.UpdateStore
             var req = request.Request;
 
             store.Name = req.Name.Trim();
+            store.PhoneNumber = NullIfWhiteSpace(req.PhoneNumber);
+            store.WhatsAppNumber = NullIfWhiteSpace(req.WhatsAppNumber);
+            store.ImageUrl = NullIfWhiteSpace(req.ImageUrl);
             store.Location.AddressLine = req.Location.AddressLine.Trim();
             store.Location.Lat = req.Location.Lat;
             store.Location.Lng = req.Location.Lng;
@@ -41,5 +44,8 @@ namespace AddressCartService.Features.StoreCoverage.Stores.UpdateStore
 
             return Result.Success(CoverageAreaMapper.ToStoreResponse(store));
         }
+
+        private static string? NullIfWhiteSpace(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
