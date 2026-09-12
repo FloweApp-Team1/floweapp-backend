@@ -73,7 +73,9 @@ namespace OrdersService.Infrastructure.Clients
         private static OrderAddressDetails Map(AddressPayload p) => new(
             p.Id, p.RecipientName, p.RecipientPhone, p.AddressLine,
             p.GovernorateId, p.GovernorateName, p.CityId, p.CityName, p.Area,
-            p.Lat, p.Lng, p.StoreId, p.IsServiceable);
+            p.Lat, p.Lng, p.StoreId, p.IsServiceable,
+            p.StoreName, p.StorePhoneNumber, p.StoreWhatsAppNumber, p.StoreImageUrl,
+            p.StoreAddressLine, p.StoreLat, p.StoreLng);
 
       
         private sealed record AddressPayload(
@@ -92,6 +94,13 @@ namespace OrdersService.Infrastructure.Clients
             bool IsDefault,
             bool IsServiceable,
             Guid? StoreId,
+            string? StoreName,
+            string? StorePhoneNumber,
+            string? StoreWhatsAppNumber,
+            string? StoreImageUrl,
+            string? StoreAddressLine,
+            double? StoreLat,
+            double? StoreLng,
             DateTime CreatedAt,
             DateTime UpdatedAt);
     }

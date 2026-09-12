@@ -53,7 +53,8 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
             // DriverStatusUpdate has already narrowed the input to the statuses a driver may
             // set; this widens it back to the domain enum the rest of the pipeline
             // (transition rules, history, events) speaks. Whether the order can actually move
-            // there from its current status is ValidateTransition's job.
+        // there from its current status is ValidateTransition's job. Delivered is not a
+        // driver status; the owning customer confirms that separately.
             var targetStatus = request.Status.ToOrderStatus();
 
             var order = await _unitOfWork.Repository<Order>()
@@ -148,9 +149,8 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
         }
 
         // Statuses only ever move forward along the delivery path, or sideways to Cancelled
-        // before the order is handed over. OutForDelivery does not go straight to Delivered:
-        // the driver marks AwaitingDeliveryConfirmation on arrival and only then confirms
-        // completion, so the confirmation step cannot be skipped.
+        // before the order is handed over. The driver ends at
+        // AwaitingDeliveryConfirmation; the customer owns the final Delivered transition.
         private static Error? ValidateTransition(OrderStatusEnum current, OrderStatusEnum next)
         {
             if (current == next)
@@ -162,7 +162,6 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
                 OrderStatusEnum.Preparing => next is OrderStatusEnum.PickedUp or OrderStatusEnum.Cancelled,
                 OrderStatusEnum.PickedUp => next is OrderStatusEnum.OutForDelivery or OrderStatusEnum.Cancelled,
                 OrderStatusEnum.OutForDelivery => next is OrderStatusEnum.AwaitingDeliveryConfirmation or OrderStatusEnum.Cancelled,
-                OrderStatusEnum.AwaitingDeliveryConfirmation => next is OrderStatusEnum.Delivered or OrderStatusEnum.Cancelled,
 
                 // Delivered and Cancelled are terminal.
                 _ => false

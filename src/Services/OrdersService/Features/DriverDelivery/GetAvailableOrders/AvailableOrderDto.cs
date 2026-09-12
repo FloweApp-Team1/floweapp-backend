@@ -4,6 +4,7 @@
             Guid OrderId,
             string CustomerName,
             string CustomerAddress,
+            Guid StoreId,
             string StoreName,
             string StoreAddress,
             decimal TotalAmount,

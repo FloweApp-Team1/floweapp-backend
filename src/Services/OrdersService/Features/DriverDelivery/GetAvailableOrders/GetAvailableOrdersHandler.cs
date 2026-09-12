@@ -31,7 +31,12 @@ namespace OrdersService.Features.DriverDelivery.GetAvailableOrders
             var query = _unitOfWork.Repository<Order>()
                     .Query()
                     .AsNoTracking()
-                    .Where(o => o.Status == OrderStatusEnum.Preparing && o.DriverId == null);
+                    // A checkout-created order starts as Placed. Preparing means the store
+                    // has accepted it, but both states are intentionally claimable so a new
+                    // customer order appears for drivers immediately.
+                    .Where(o => o.DriverId == null
+                                && (o.Status == OrderStatusEnum.Placed
+                                    || o.Status == OrderStatusEnum.Preparing));
 
                 var totalCount = await query.CountAsync(cancellationToken);
 
@@ -43,8 +48,9 @@ namespace OrdersService.Features.DriverDelivery.GetAvailableOrders
                         o.Id,
                         o.AddressSnapshot != null ? o.AddressSnapshot.RecipientName : string.Empty,
                         o.AddressSnapshot != null ? o.AddressSnapshot.AddressLine : string.Empty,
-                        string.Empty,
-                        string.Empty,
+                        o.StoreId,
+                        o.StoreName ?? string.Empty,
+                        o.StoreAddressLine ?? string.Empty,
                         o.Total,
                         o.Status.ToDisplayString(),
                         o.CreatedAt))

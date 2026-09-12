@@ -26,6 +26,9 @@ using System.Text.Json;
                 {
                     Id = SeedIds.Stores.CairoMainRadius,
                     Name = "Cairo Main Flower Hub (Radius)",
+                    PhoneNumber = "+20224000001",
+                    WhatsAppNumber = "+201000000001",
+                    ImageUrl = "https://picsum.photos/seed/flowery-cairo/200/200",
                     Status = StoreStatusEnum.Active,
                     Location = new StoreLocation
                     {
@@ -50,6 +53,9 @@ using System.Text.Json;
                 {
                     Id = SeedIds.Stores.NewCairoAreaList,
                     Name = "East Cairo & Tagamoa Hub (AreaList)",
+                    PhoneNumber = "+20224000002",
+                    WhatsAppNumber = "+201000000002",
+                    ImageUrl = "https://picsum.photos/seed/flowery-east-cairo/200/200",
                     Status = StoreStatusEnum.Active,
                     Location = new StoreLocation
                     {
@@ -78,6 +84,9 @@ using System.Text.Json;
                 {
                     Id = SeedIds.Stores.AlexandriaPolygon,
                     Name = "Alexandria Coastal Hub (Polygon)",
+                    PhoneNumber = "+2034800003",
+                    WhatsAppNumber = "+201000000003",
+                    ImageUrl = "https://picsum.photos/seed/flowery-alexandria/200/200",
                     Status = StoreStatusEnum.Active,
                     Location = new StoreLocation
                     {
@@ -106,6 +115,9 @@ using System.Text.Json;
                 {
                     Id = SeedIds.Stores.GizaZayedRadius,
                     Name = "Sheikh Zayed & October Hub (Radius)",
+                    PhoneNumber = "+20238000004",
+                    WhatsAppNumber = "+201000000004",
+                    ImageUrl = "https://picsum.photos/seed/flowery-zayed/200/200",
                     Status = StoreStatusEnum.Active,
                     Location = new StoreLocation
                     {

@@ -5,6 +5,7 @@ using OrdersService.Domain.Enums;
 using OrdersService.Infrastructure.Services;
 using Shared.Interfaces;
 using Shared.Results;
+using System.Data;
 
 namespace OrdersService.Features.DriverDelivery.ClaimOrder
 {
@@ -43,21 +44,59 @@ namespace OrdersService.Features.DriverDelivery.ClaimOrder
             var repository = _unitOfWork.Repository<Order>();
             var assignedAt = DateTime.UtcNow;
 
-            var claimed = await repository
-                .Query()
-                .Where(o => o.Id == request.OrderId
-                            && o.DriverId == null
-                            && (o.Status == OrderStatusEnum.Placed
-                                || o.Status == OrderStatusEnum.Preparing))
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(o => o.DriverId, driverId)
-                    .SetProperty(o => o.DriverAssignedAt, assignedAt)
-                    .SetProperty(o => o.UpdatedAt, assignedAt)
-                    .SetProperty(o => o.LastChangedBy, driverId),
-                    cancellationToken);
+            // The DriverId index plus SERIALIZABLE isolation protects the driver's key
+            // range. Two concurrent claims by the same driver cannot both observe "no
+            // active order" and commit different assignments.
+            await _unitOfWork.BeginTransactionAsync(
+                IsolationLevel.Serializable, cancellationToken);
 
-            if (claimed == 0)
-                return await ExplainFailureAsync(request.OrderId, driverId, cancellationToken);
+            try
+            {
+                var alreadyHasActiveOrder = await repository
+                    .Query()
+                    .AnyAsync(o => o.DriverId == driverId
+                                   && o.Status != OrderStatusEnum.Delivered
+                                   && o.Status != OrderStatusEnum.Cancelled,
+                        cancellationToken);
+
+                if (alreadyHasActiveOrder)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+
+                    return Result.Failure<ClaimOrderResponse>(
+                        Error.New("ClaimOrder.Conflict",
+                            "Finish your current assigned order before claiming another one."));
+                }
+
+                var claimed = await repository
+                    .Query()
+                    .Where(o => o.Id == request.OrderId
+                                && o.DriverId == null
+                                && (o.Status == OrderStatusEnum.Placed
+                                    || o.Status == OrderStatusEnum.Preparing))
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(o => o.DriverId, driverId)
+                        .SetProperty(o => o.DriverAssignedAt, assignedAt)
+                        .SetProperty(o => o.UpdatedAt, assignedAt)
+                        .SetProperty(o => o.LastChangedBy, driverId),
+                        cancellationToken);
+
+                if (claimed == 0)
+                {
+                    var failure = await ExplainFailureAsync(
+                        request.OrderId, driverId, cancellationToken);
+
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return failure;
+                }
+
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                throw;
+            }
 
             // Re-read rather than reusing anything from before the update: ExecuteUpdate
             // bypasses the change tracker, so this is the first point the in-memory order
@@ -76,6 +115,7 @@ namespace OrdersService.Features.DriverDelivery.ClaimOrder
                 order.Id,
                 order.OrderNumber,
                 order.Status,
+                "Accepted",
                 assignedAt));
         }
 
