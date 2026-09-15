@@ -26,6 +26,8 @@ public class UpdateFcmTokenCommandHandler(
         }
 
         var deviceToken = await _repository.Query()
+            .IgnoreQueryFilters()
+            .Where(x => !x.User.IsDeleted)
             .FirstOrDefaultAsync(x => x.UserId == userId.Value && x.DeviceId == request.DeviceId, cancellationToken);
 
         if (deviceToken is null)
@@ -44,6 +46,7 @@ public class UpdateFcmTokenCommandHandler(
         else
         {
             deviceToken.FcmToken = request.FcmToken;
+            deviceToken.IsDeleted = false;
             deviceToken.UpdatedAt = DateTime.UtcNow;
             _repository.Update(deviceToken);
         }
