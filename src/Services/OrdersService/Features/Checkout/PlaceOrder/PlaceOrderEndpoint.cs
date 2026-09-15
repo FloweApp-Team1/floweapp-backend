@@ -37,7 +37,7 @@ namespace OrdersService.Features.Checkout.PlaceOrder
                 .RequireAuthorization()
                 .WithName("PlaceOrder")
                 .WithTags("Checkout")
-                .WithSummary("Single entry point for both payment methods. COD returns no data; Card returns a gateway checkout session.");
+                .WithSummary("Single entry point for both payment methods. Every success returns the order ID; Card also returns a gateway checkout session.");
         }
     }
 }

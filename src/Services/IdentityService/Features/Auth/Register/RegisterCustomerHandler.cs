@@ -60,13 +60,15 @@ namespace IdentityService.Features.Auth.Register
             await userRepo.AddAsync(customer);
 
             var roleNames = new List<string> { customerRole.Name };
-            var accessToken = _jwtService.GenerateAccessToken(customer, roleNames);
             var refreshTokenValue = _jwtService.GenerateRefreshTokenValue();
+            var sessionId = Guid.NewGuid();
+            var accessToken = _jwtService.GenerateAccessToken(
+                customer, roleNames, sessionId: sessionId);
 
             var refreshToken = new RefreshToken
             {
                 Token = _jwtService.HashRefreshTokenValue(refreshTokenValue),
-                FamilyId = Guid.NewGuid(), // new login session — starts a fresh token family
+                FamilyId = sessionId,
                 UserId = customer.Id,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),

@@ -41,7 +41,7 @@ namespace IdentityService.Features.Auth.Login
             }
 
             await unitOfWork.BeginTransactionAsync(ct);
-            Result<string> refreshTokenResult;
+            Result<IssuedRefreshToken> refreshTokenResult;
             var notificationsEnabled = user.NotificationStatus == NotificationStatusEnum.on;
             try
             {
@@ -83,7 +83,8 @@ namespace IdentityService.Features.Auth.Login
             // being the only other path that mints a token, and the only one that passed it.
             var driverStatus = user.DriverStatus?.ToString().ToUpperInvariant();
 
-            var accessToken = jwtService.GenerateAccessToken(userForJwt, roleNames, driverStatus);
+            var accessToken = jwtService.GenerateAccessToken(
+                userForJwt, roleNames, driverStatus, refreshTokenResult.Value.SessionId);
 
             var userDto = new UserDto(
                 Id: user.Id,
@@ -99,7 +100,7 @@ namespace IdentityService.Features.Auth.Login
                     : NotificationStatusEnum.off).ToString().ToUpperInvariant()
             );
 
-            var response = new AuthResponse(userDto, accessToken, refreshTokenResult.Value);
+            var response = new AuthResponse(userDto, accessToken, refreshTokenResult.Value.Value);
             return Result<AuthResponse>.Success(response);
         }
 

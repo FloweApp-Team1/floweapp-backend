@@ -19,6 +19,7 @@ namespace Shared.Security
         // complete the driver card; nothing on the consuming side has to change.
         public const string PhoneNumber = "phoneNumber";
         public const string ImageUrl = "imageUrl";
+        public const string SessionId = "sessionId";
     }
 
 }

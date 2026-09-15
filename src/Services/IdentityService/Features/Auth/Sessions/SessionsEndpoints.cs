@@ -15,7 +15,6 @@ namespace IdentityService.Features.Auth.Sessions
         public void MapEndpoint(IEndpointRouteBuilder app)
         {
             app.MapGet("/auth/sessions", async (
-                string? currentToken,
                 ICurrentUserService currentUser,
                 ISender sender,
                 CancellationToken cancellationToken) =>
@@ -25,7 +24,7 @@ namespace IdentityService.Features.Auth.Sessions
                         "Authentication required", StatusCodes.Status401Unauthorized).ToHttpResult();
 
                 var result = await sender.Send(
-                    new GetActiveSessionsQuery(currentUser.UserId.Value, currentToken),
+                    new GetActiveSessionsQuery(currentUser.UserId.Value, currentUser.SessionId),
                     cancellationToken);
 
                 return result.ToMinimalApiResult("Active sessions retrieved");
