@@ -22,7 +22,8 @@ public class JwtService : IJwtService
         _settings = options.Value;
     }
 
-    public string GenerateAccessToken(User user, IEnumerable<string> roles, string? driverApplicationStatus = null)
+    public string GenerateAccessToken(User user, IEnumerable<string> roles,
+        string? driverApplicationStatus = null, Guid? sessionId = null)
     {
         var roleList = roles.ToList();
 
@@ -36,6 +37,9 @@ public class JwtService : IJwtService
         };
 
         claims.AddRange(roleList.Select(role => new Claim(AppClaimTypes.Role, role)));
+
+        if (sessionId.HasValue)
+            claims.Add(new Claim(AppClaimTypes.SessionId, sessionId.Value.ToString()));
 
         // Only Driver tokens carry this — lets the DriverApproved policy check
         // status from the token itself, no DB hit needed on every request.

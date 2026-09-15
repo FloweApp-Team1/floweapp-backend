@@ -54,7 +54,11 @@ public sealed class PlaceOrderCommandHandler
             userId.Value, request.IdempotencyKey, cancellationToken);
 
         if (reservation.AlreadyCompleted)
-            return Result.Success(reservation.CachedResult!.Data);
+        {
+            var cached = reservation.CachedResult!;
+            return Result.Success<PlaceOrderResponse?>(
+                cached.Data ?? new PlaceOrderResponse(cached.OrderId));
+        }
 
         if (!reservation.Acquired)
             return Result.Failure<PlaceOrderResponse?>(Error.New(
@@ -95,7 +99,7 @@ public sealed class PlaceOrderCommandHandler
             var order = BuildOrder(request, userId.Value, address, pricing);
 
             // 5) Card only: get the payment session before persisting
-            PlaceOrderResponse? response = null;
+            PlaceOrderResponse? response;
 
             if (request.PaymentMethod == PaymentMethodEnum.Card)
             {
@@ -123,6 +127,16 @@ public sealed class PlaceOrderCommandHandler
                     order.Total,
                     DefaultCurrency.ToUpperInvariant(),
                     pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
+            }
+            else
+            {
+                response = new PlaceOrderResponse(
+                    OrderId: order.Id,
+                    Status: order.Status.ToString(),
+                    Gateway: "COD",
+                    Amount: order.Total,
+                    Currency: DefaultCurrency.ToUpperInvariant(),
+                    EstimatedDeliveryAt: pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
             }
 
             // 6) Persist Order + Publish OrderConfirmedEvent for COD orders,
@@ -163,7 +177,7 @@ public sealed class PlaceOrderCommandHandler
                 userId.Value, request.IdempotencyKey,
                 new IdempotentPlaceOrderResult(order.Id, response), cancellationToken);
 
-            return Result.Success(response);
+            return Result.Success<PlaceOrderResponse?>(response);
         }
         catch
         {

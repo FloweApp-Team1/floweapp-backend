@@ -10,6 +10,7 @@ using IdentityService.Features.Admin.AdminLogin.Dtos;
 using IdentityService.Features.Admin.AdminLogin.Queries;
 using MediatR;
 using Microsoft.Extensions.Options;
+using IdentityService.Features.Auth.Login.Commands;
 
 namespace IdentityService.Features.Admin.AdminLogin
 {
@@ -63,7 +64,7 @@ namespace IdentityService.Features.Admin.AdminLogin
             }
 
             await unitOfWork.BeginTransactionAsync(ct);
-            Result<string> refreshTokenResult;
+            Result<IssuedRefreshToken> refreshTokenResult;
             try
             {
                 refreshTokenResult = await sender.Send(new IssueRefreshTokenCommand(user.Id), ct);
@@ -76,7 +77,8 @@ namespace IdentityService.Features.Admin.AdminLogin
                 throw;
             }
 
-            var accessToken = jwtService.GenerateAccessToken(user, roleNames);
+            var accessToken = jwtService.GenerateAccessToken(
+                user, roleNames, sessionId: refreshTokenResult.Value.SessionId);
 
             var userProfile = new UserProfileDto(
                 user.Id,
@@ -89,7 +91,7 @@ namespace IdentityService.Features.Admin.AdminLogin
             var responseDto = new LoginAdminResponseDto(
                 userProfile,
                 accessToken,
-                refreshTokenResult.Value,
+                refreshTokenResult.Value.Value,
                 DateTime.UtcNow.Add(_accessTokenLifetime)
             );
 

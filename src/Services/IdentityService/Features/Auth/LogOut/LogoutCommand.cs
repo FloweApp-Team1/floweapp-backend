@@ -4,10 +4,11 @@ using Shared.Interfaces;
 using Shared.Results;
 using IdentityService.Domain.Entities;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace IdentityService.Features.Auth.LogOut
 {
-    public sealed record LogoutCommand(string RefreshToken, string? DeviceId) : IRequest<Result>;
+    public sealed record LogoutCommand(Guid UserId, string RefreshToken, string? DeviceId) : IRequest<Result>;
 
     public sealed class LogoutHandler(IUnitOfWork unitOfWork, IJwtService jwtService)
         : IRequestHandler<LogoutCommand, Result>
@@ -20,7 +21,7 @@ namespace IdentityService.Features.Auth.LogOut
             var hashedToken = jwtService.HashRefreshTokenValue(request.RefreshToken);
             var token = await tokenRepo.FirstOrDefaultAsync(t => t.Token == hashedToken, ct);
 
-            if (token is null)
+            if (token is null || token.UserId != request.UserId)
                 return Result.Failure(AuthErrors.RefreshTokenNotFound);
 
             if (token.RevokedAt is not null)
@@ -29,17 +30,33 @@ namespace IdentityService.Features.Auth.LogOut
             if (token.ExpiresAt <= DateTime.UtcNow)
                 return Result.Failure(AuthErrors.RefreshTokenExpired);
 
-            token.RevokedAt = DateTime.UtcNow;
-            tokenRepo.Update(token);
-
-            if (!string.IsNullOrEmpty(request.DeviceId))
+            var deviceTokenRepo = unitOfWork.Repository<UserDeviceToken>();
+            if (string.IsNullOrWhiteSpace(request.DeviceId))
             {
-                var deviceTokenRepo = unitOfWork.Repository<UserDeviceToken>();
-                var deviceToken = await deviceTokenRepo.FirstOrDefaultAsync(x => x.UserId == token.UserId && x.DeviceId == request.DeviceId, ct);
-                if (deviceToken != null)
+                var activeSessions = await tokenRepo.Query()
+                    .Where(t => t.UserId == request.UserId && t.RevokedAt == null)
+                    .ToListAsync(ct);
+                foreach (var session in activeSessions)
                 {
-                    deviceTokenRepo.Remove(deviceToken);
+                    session.RevokedAt = DateTime.UtcNow;
+                    tokenRepo.Update(session);
                 }
+
+                var devices = await deviceTokenRepo.Query()
+                    .Where(d => d.UserId == request.UserId)
+                    .ToListAsync(ct);
+                foreach (var device in devices)
+                    deviceTokenRepo.Remove(device);
+            }
+            else
+            {
+                token.RevokedAt = DateTime.UtcNow;
+                tokenRepo.Update(token);
+
+                var deviceToken = await deviceTokenRepo.FirstOrDefaultAsync(
+                    d => d.UserId == request.UserId && d.DeviceId == request.DeviceId, ct);
+                if (deviceToken is not null)
+                    deviceTokenRepo.Remove(deviceToken);
             }
 
             await unitOfWork.SaveChangesAsync(ct);
