@@ -4,6 +4,7 @@ using Shared.Interfaces;
 using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using FirebaseAdmin;
 
 namespace IdentityService.Infrastructure.Notifications
 {
@@ -11,11 +12,13 @@ namespace IdentityService.Infrastructure.Notifications
     {
         private readonly ILogger<FcmService> _logger;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly FirebaseMessaging _messaging;
 
-        public FcmService(ILogger<FcmService> logger, IUnitOfWork unitOfWork)
+        public FcmService(ILogger<FcmService> logger, IUnitOfWork unitOfWork, FirebaseApp firebaseApp)
         {
             _logger = logger;
             _unitOfWork = unitOfWork;
+            _messaging = FirebaseMessaging.GetMessaging(firebaseApp);
         }
 
         public async Task SendSilentDataMessageAsync(
@@ -23,61 +26,65 @@ namespace IdentityService.Infrastructure.Notifications
             IReadOnlyDictionary<string, string> data,
             CancellationToken cancellationToken = default)
         {
-            if (deviceTokens.Count == 0) return;
+            var uniqueTokens = deviceTokens
+                .Where(token => !string.IsNullOrWhiteSpace(token))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
 
-            var message = new MulticastMessage
+            if (uniqueTokens.Length == 0) return;
+
+            var failedTokens = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var tokenBatch in uniqueTokens.Chunk(500))
             {
-                Tokens = deviceTokens,
-                Data = data,
-                Android = new AndroidConfig
+                var message = new MulticastMessage
                 {
-                    Priority = Priority.High // Required for silent pushes on some devices
-                },
-                Apns = new ApnsConfig
-                {
-                    Aps = new Aps
+                    Tokens = tokenBatch,
+                    Data = data,
+                    Android = new AndroidConfig
                     {
-                        ContentAvailable = true // Required for iOS background updates
-                    }
-                }
-            };
-
-            var response = await FirebaseMessaging.DefaultInstance.SendEachForMulticastAsync(message, cancellationToken);
-
-            if (response.FailureCount > 0)
-            {
-                var failedTokens = new List<string>();
-                for (var i = 0; i < response.Responses.Count; i++)
-                {
-                    if (!response.Responses[i].IsSuccess)
+                        Priority = Priority.High // Required for silent pushes on some devices
+                    },
+                    Apns = new ApnsConfig
                     {
-                        var exception = response.Responses[i].Exception;
-                        // Prune invalid tokens
-                        if (exception.MessagingErrorCode == MessagingErrorCode.Unregistered ||
-                            exception.MessagingErrorCode == MessagingErrorCode.InvalidArgument)
+                        Aps = new Aps
                         {
-                            failedTokens.Add(deviceTokens[i]);
+                            ContentAvailable = true // Required for iOS background updates
+                        }
+                    }
+                };
+
+                var response = await _messaging.SendEachForMulticastAsync(message, cancellationToken);
+
+                if (response.FailureCount > 0)
+                {
+                    for (var i = 0; i < response.Responses.Count; i++)
+                    {
+                        if (!response.Responses[i].IsSuccess)
+                        {
+                            var exception = response.Responses[i].Exception;
+                            // Prune invalid tokens
+                            if (exception.MessagingErrorCode == MessagingErrorCode.Unregistered ||
+                                exception.MessagingErrorCode == MessagingErrorCode.InvalidArgument)
+                            {
+                                failedTokens.Add(tokenBatch[i]);
+                            }
                         }
                     }
                 }
-
-                if (failedTokens.Count > 0)
-                {
-                    _logger.LogWarning("Removing {Count} invalid FCM tokens.", failedTokens.Count);
-                    var deviceTokenRepo = _unitOfWork.Repository<UserDeviceToken>();
-                    
-                    var tokensToRemove = await deviceTokenRepo.Query()
-                        .Where(x => failedTokens.Contains(x.FcmToken))
-                        .ToListAsync(cancellationToken);
-                        
-                    foreach(var token in tokensToRemove)
-                    {
-                        deviceTokenRepo.Remove(token);
-                    }
-
-                    await _unitOfWork.SaveChangesAsync(cancellationToken);
-                }
             }
+
+            if (failedTokens.Count == 0) return;
+
+            _logger.LogWarning("Removing {Count} invalid FCM tokens.", failedTokens.Count);
+            var deviceTokenRepo = _unitOfWork.Repository<UserDeviceToken>();
+            var tokensToRemove = await deviceTokenRepo.Query()
+                .Where(x => failedTokens.Contains(x.FcmToken))
+                .ToListAsync(cancellationToken);
+
+            foreach (var token in tokensToRemove)
+                deviceTokenRepo.Remove(token);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 }
