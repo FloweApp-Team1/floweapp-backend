@@ -7,6 +7,9 @@ using OrdersService.Infrastructure.Services;
 using Shared.Events.OrderEvents;
 using Shared.Interfaces;
 using Shared.Results;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 public sealed class PlaceOrderCommandHandler
     : IRequestHandler<PlaceOrderCommand, Result<PlaceOrderResponse?>>
@@ -49,6 +52,8 @@ public sealed class PlaceOrderCommandHandler
         if (userId is null)
             return Result.Failure<PlaceOrderResponse?>(Error.New("Order.Unauthorized", "User is not authenticated."));
 
+        var requestFingerprint = CreateRequestFingerprint(request);
+
         // 1) Reserve the idempotency key atomically before any business logic runs.
         var reservation = await _idempotencyService.TryReserveAsync<IdempotentPlaceOrderResult>(
             userId.Value, request.IdempotencyKey, cancellationToken);
@@ -56,8 +61,27 @@ public sealed class PlaceOrderCommandHandler
         if (reservation.AlreadyCompleted)
         {
             var cached = reservation.CachedResult!;
-            return Result.Success<PlaceOrderResponse?>(
-                cached.Data ?? new PlaceOrderResponse(cached.OrderId));
+            if (string.IsNullOrWhiteSpace(cached.RequestFingerprint))
+            {
+                // Results written by the old implementation were not tied to their
+                // request. Discard them so a reused key cannot return another cart's order.
+                await _idempotencyService.ReleaseReservationAsync(
+                    userId.Value, request.IdempotencyKey, cancellationToken);
+                reservation = await _idempotencyService.TryReserveAsync<IdempotentPlaceOrderResult>(
+                    userId.Value, request.IdempotencyKey, cancellationToken);
+            }
+            else if (!string.Equals(
+                         cached.RequestFingerprint, requestFingerprint,
+                         StringComparison.Ordinal))
+            {
+                return Result.Failure<PlaceOrderResponse?>(Error.New(
+                    "Order.IdempotencyKeyConflict",
+                    "This Idempotency-Key was already used for a different order request."));
+            }
+            else
+            {
+                return Result.Success<PlaceOrderResponse?>(cached.Data);
+            }
         }
 
         if (!reservation.Acquired)
@@ -175,7 +199,7 @@ public sealed class PlaceOrderCommandHandler
             // 7) Complete the reservation with the final result
             await _idempotencyService.CompleteReservationAsync(
                 userId.Value, request.IdempotencyKey,
-                new IdempotentPlaceOrderResult(order.Id, response), cancellationToken);
+                new IdempotentPlaceOrderResult(order.Id, response, requestFingerprint), cancellationToken);
 
             return Result.Success<PlaceOrderResponse?>(response);
         }
@@ -255,5 +279,24 @@ public sealed class PlaceOrderCommandHandler
     private static string GenerateOrderNumber() =>
         $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpperInvariant()}";
 
-    private sealed record IdempotentPlaceOrderResult(Guid OrderId, PlaceOrderResponse? Data);
+    private static string CreateRequestFingerprint(PlaceOrderCommand request)
+    {
+        var canonicalRequest = JsonSerializer.Serialize(new
+        {
+            request.CartId,
+            request.AddressId,
+            request.IsGift,
+            request.GiftRecipient,
+            request.PaymentMethod,
+            request.PaymentGateway
+        });
+
+        return Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(canonicalRequest)));
+    }
+
+    private sealed record IdempotentPlaceOrderResult(
+        Guid OrderId,
+        PlaceOrderResponse? Data,
+        string? RequestFingerprint = null);
 }
