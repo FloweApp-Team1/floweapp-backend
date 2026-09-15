@@ -9,6 +9,7 @@ namespace IdentityService.Infrastructure.Persistence.Configurations
         public void Configure(EntityTypeBuilder<UserDeviceToken> builder)
         {
             builder.HasKey(x => x.Id);
+            builder.HasQueryFilter(x => !x.IsDeleted && !x.User.IsDeleted);
             builder.Property(x => x.DeviceId).IsRequired().HasMaxLength(255);
             builder.Property(x => x.FcmToken).IsRequired();
             builder.Property(x => x.NotificationsEnabled).IsRequired().HasDefaultValue(true);

@@ -18,6 +18,8 @@ namespace IdentityService.Features.Auth.Login.Commands
 
             var repository = unitOfWork.Repository<UserDeviceToken>();
             var token = await repository.Query()
+                .IgnoreQueryFilters()
+                .Where(x => !x.User.IsDeleted)
                 .FirstOrDefaultAsync(x => x.UserId == request.UserId && x.DeviceId == request.DeviceId, ct);
 
             if (token == null)
@@ -42,6 +44,7 @@ namespace IdentityService.Features.Auth.Login.Commands
             else if (!string.IsNullOrWhiteSpace(request.FcmToken))
             {
                 token.FcmToken = request.FcmToken;
+                token.IsDeleted = false;
                 token.UpdatedAt = DateTime.UtcNow;
                 repository.Update(token);
             }
