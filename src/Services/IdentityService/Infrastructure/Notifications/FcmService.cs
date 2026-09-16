@@ -25,6 +25,25 @@ namespace IdentityService.Infrastructure.Notifications
             IReadOnlyList<string> deviceTokens,
             IReadOnlyDictionary<string, string> data,
             CancellationToken cancellationToken = default)
+            => await SendAsync(deviceTokens, data, notification: null, cancellationToken);
+
+        public async Task SendNotificationAsync(
+            IReadOnlyList<string> deviceTokens,
+            string title,
+            string body,
+            IReadOnlyDictionary<string, string> data,
+            CancellationToken cancellationToken = default)
+            => await SendAsync(
+                deviceTokens,
+                data,
+                new Notification { Title = title, Body = body },
+                cancellationToken);
+
+        private async Task SendAsync(
+            IReadOnlyList<string> deviceTokens,
+            IReadOnlyDictionary<string, string> data,
+            Notification? notification,
+            CancellationToken cancellationToken)
         {
             var uniqueTokens = deviceTokens
                 .Where(token => !string.IsNullOrWhiteSpace(token))
@@ -40,6 +59,7 @@ namespace IdentityService.Infrastructure.Notifications
                 {
                     Tokens = tokenBatch,
                     Data = data,
+                    Notification = notification,
                     Android = new AndroidConfig
                     {
                         Priority = Priority.High // Required for silent pushes on some devices
@@ -55,6 +75,12 @@ namespace IdentityService.Infrastructure.Notifications
 
                 var response = await _messaging.SendEachForMulticastAsync(message, cancellationToken);
 
+                _logger.LogInformation(
+                    "Firebase accepted {SuccessCount} of {TokenCount} message(s); {FailureCount} failed.",
+                    response.SuccessCount,
+                    tokenBatch.Length,
+                    response.FailureCount);
+
                 if (response.FailureCount > 0)
                 {
                     for (var i = 0; i < response.Responses.Count; i++)
@@ -62,6 +88,11 @@ namespace IdentityService.Infrastructure.Notifications
                         if (!response.Responses[i].IsSuccess)
                         {
                             var exception = response.Responses[i].Exception;
+                            _logger.LogWarning(
+                                exception,
+                                "Firebase rejected a message with code {MessagingErrorCode}.",
+                                exception.MessagingErrorCode);
+
                             // Prune invalid tokens
                             if (exception.MessagingErrorCode == MessagingErrorCode.Unregistered ||
                                 exception.MessagingErrorCode == MessagingErrorCode.InvalidArgument)
