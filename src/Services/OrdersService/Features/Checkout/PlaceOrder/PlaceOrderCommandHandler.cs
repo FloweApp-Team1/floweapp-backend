@@ -140,24 +140,25 @@ public sealed class PlaceOrderCommandHandler
                 order.LastPaymentAttemptId = session.PaymentAttemptId;
 
                 response = new PlaceOrderResponse(
-                    order.Id,
-                    order.Status.ToString(),
-                    request.PaymentGateway!,
-                    session.SessionId,
-                    session.SessionUrl,
-                    session.SuccessUrl,
-                    session.CancelUrl,
-                    session.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
-                    order.Total,
-                    DefaultCurrency.ToUpperInvariant(),
-                    pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
+                    OrderId: order.Id,
+                    Status: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.Status.ToString()),
+                    Gateway: request.PaymentGateway!,
+                    SessionId: session.SessionId,
+                    SessionUrl: session.SessionUrl,
+                    SuccessUrl: session.SuccessUrl,
+                    CancelUrl: session.CancelUrl,
+                    ExpiresAt: session.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
+                    Amount: order.Total,
+                    Currency: DefaultCurrency.ToUpperInvariant(),
+                    EstimatedDeliveryAt: pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
             }
             else
             {
+                // Shared order data is useful for both payment methods. Only the fields
+                // produced by a card checkout session remain null for COD.
                 response = new PlaceOrderResponse(
                     OrderId: order.Id,
-                    Status: order.Status.ToString(),
-                    Gateway: "COD",
+                    Status: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.Status.ToString()),
                     Amount: order.Total,
                     Currency: DefaultCurrency.ToUpperInvariant(),
                     EstimatedDeliveryAt: pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);

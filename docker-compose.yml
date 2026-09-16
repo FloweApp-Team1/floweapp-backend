@@ -49,6 +49,10 @@ services:
       Firebase__CredentialsPath: /run/secrets/firebase-service-account.json
       Redis__ConnectionString: redis:6379
 
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RabbitMq__Username}
+      RabbitMq__Password: ${RabbitMq__Password}
+
       Email__SmtpHost: ${Email__SmtpHost}
       Email__SmtpPort: ${Email__SmtpPort}
       Email__SenderEmail: ${Email__SenderEmail}
@@ -107,6 +111,10 @@ services:
       Jwt__Audience: ${Jwt__Audience}
       Redis__ConnectionString: redis:6379
 
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RabbitMq__Username}
+      RabbitMq__Password: ${RabbitMq__Password}
+
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 10s
@@ -118,6 +126,8 @@ services:
       sqlserver:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
     networks:
@@ -146,8 +156,8 @@ services:
       Redis__ConnectionString: redis:6379
 
       RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RABBITMQ_USER}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      RabbitMq__Username: ${RabbitMq__Username}
+      RabbitMq__Password: ${RabbitMq__Password}
 
       # An unset variable interpolates to an empty string, which *overrides* the C#
       # property defaults rather than falling back to them - and an empty
@@ -203,8 +213,8 @@ services:
       # Carries DriverLocationUpdatedEvent to NotificationService, which turns it into the
       # silent push that moves the customer's map marker.
       RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RABBITMQ_USER}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      RabbitMq__Username: ${RabbitMq__Username}
+      RabbitMq__Password: ${RabbitMq__Password}
 
       Email__SmtpHost: ${Email__SmtpHost}
       Email__SmtpPort: ${Email__SmtpPort}
@@ -258,8 +268,8 @@ services:
       Stripe__CancelUrl: ${Stripe__CancelUrl}
 
       RabbitMq__Host: rabbitmq
-      RabbitMq__Username: ${RABBITMQ_USER}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      RabbitMq__Username: ${RabbitMq__Username}
+      RabbitMq__Password: ${RabbitMq__Password}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
@@ -283,11 +293,11 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${RABBITMQ_PORT}:5672"
+      - "${RabbitMq__Port}:5672"
 
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_USER: ${RabbitMq__Username}
+      RABBITMQ_DEFAULT_PASS: ${RabbitMq__Password}
 
     healthcheck:
       test: rabbitmq-diagnostics -q ping

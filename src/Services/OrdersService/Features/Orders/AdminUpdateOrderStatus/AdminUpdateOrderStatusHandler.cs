@@ -92,10 +92,8 @@ public class AdminUpdateOrderStatusHandler
             request.Note,
             cancellationToken);
 
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        // Publish an event to notify other services about the status change
+        // Queue the notification before SaveChanges so MassTransit's EF bus outbox persists
+        // it in the same transaction as the order and history changes.
         await _eventPublisher.PublishAsync(
             new OrderStatusUpdatedEvent(
                 order.Id,
@@ -105,6 +103,7 @@ public class AdminUpdateOrderStatusHandler
                 occurredAt),
             cancellationToken);
 
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(
             new AdminUpdateOrderStatusResponse(

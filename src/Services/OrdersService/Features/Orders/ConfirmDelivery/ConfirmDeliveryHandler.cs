@@ -62,14 +62,16 @@ public sealed class ConfirmDeliveryHandler(
             "Delivery confirmed by customer.",
             cancellationToken);
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-
         await eventPublisher.PublishAsync(new OrderStatusUpdatedEvent(
             order.Id,
             order.UserId,
             oldStatus,
             order.Status.ToString(),
             confirmedAt), cancellationToken);
+
+        // Persist the status, history, and bus-outbox message together. With UseBusOutbox,
+        // publishing after SaveChanges would never write this event to the outbox.
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         try
         {
