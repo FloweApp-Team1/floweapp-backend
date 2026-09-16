@@ -140,27 +140,29 @@ public sealed class PlaceOrderCommandHandler
                 order.LastPaymentAttemptId = session.PaymentAttemptId;
 
                 response = new PlaceOrderResponse(
-                    order.Id,
-                    order.Status.ToString(),
-                    request.PaymentGateway!,
-                    session.SessionId,
-                    session.SessionUrl,
-                    session.SuccessUrl,
-                    session.CancelUrl,
-                    session.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
-                    order.Total,
-                    DefaultCurrency.ToUpperInvariant(),
-                    pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
+                    OrderId: order.Id,
+                    Status: order.Status.ToString(),
+                    Gateway: request.PaymentGateway!,
+                    SessionId: session.SessionId,
+                    SessionUrl: session.SessionUrl,
+                    SuccessUrl: session.SuccessUrl,
+                    CancelUrl: session.CancelUrl,
+                    ExpiresAt: session.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
+                    Amount: order.Total,
+                    Currency: DefaultCurrency.ToUpperInvariant(),
+                    EstimatedDeliveryAt: pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
             }
             else
             {
                 response = new PlaceOrderResponse(
                     OrderId: order.Id,
-                    Status: order.Status.ToString(),
-                    Gateway: "COD",
-                    Amount: order.Total,
-                    Currency: DefaultCurrency.ToUpperInvariant(),
-                    EstimatedDeliveryAt: pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
+                    OrderNumber: order.OrderNumber,
+                    Status: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.Status.ToString()),
+                    PaymentStatus: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.PaymentStatus.ToString()),
+                    PaymentMethod: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.PaymentMethod.ToString()),
+                    Subtotal: order.Subtotal,
+                    DeliveryFee: order.DeliveryFee,
+                    Total: order.Total);
             }
 
             // 6) Persist Order + Publish OrderConfirmedEvent for COD orders,

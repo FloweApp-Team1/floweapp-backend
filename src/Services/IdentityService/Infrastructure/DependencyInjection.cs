@@ -198,12 +198,6 @@ namespace IdentityService.Infrastructure
                 bus.SetKebabCaseEndpointNameFormatter();
                 bus.AddConsumers(Assembly.GetExecutingAssembly());
 
-                bus.AddEntityFrameworkOutbox<AuthDbContext>(o =>
-                {
-                    o.UseSqlServer();
-                    o.UseBusOutbox();
-                });
-
                 bus.UsingRabbitMq((context, configurator) =>
                 {
                     configurator.Host(hostStr, host =>

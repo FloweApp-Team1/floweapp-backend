@@ -79,11 +79,6 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
             await _historyWriter.RecordAsync(
                 order, targetStatus, occurredAt, driverId, request.Note, cancellationToken);
 
-            // One SaveChanges is already one transaction, so the order row and its history
-            // entry commit together or not at all. Wrapping it in an explicit Begin/Commit
-            // would add nothing but a second ordering to get wrong.
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
             await _eventPublisher.PublishAsync(new OrderStatusUpdatedEvent(
                 order.Id,
                 order.UserId,
@@ -91,6 +86,11 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
                 targetStatus.ToString(),
                 occurredAt
             ), cancellationToken);
+
+            // The EF bus outbox captures published messages on SaveChanges. Keep the event
+            // before this single save so the status, history, and notification event commit
+            // atomically; publishing after it leaves the outbox message unpersisted.
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             await AfterCommitAsync(order, cancellationToken);
 
