@@ -141,7 +141,7 @@ public sealed class PlaceOrderCommandHandler
 
                 response = new PlaceOrderResponse(
                     OrderId: order.Id,
-                    Status: order.Status.ToString(),
+                    Status: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.Status.ToString()),
                     Gateway: request.PaymentGateway!,
                     SessionId: session.SessionId,
                     SessionUrl: session.SessionUrl,
@@ -154,15 +154,14 @@ public sealed class PlaceOrderCommandHandler
             }
             else
             {
+                // Shared order data is useful for both payment methods. Only the fields
+                // produced by a card checkout session remain null for COD.
                 response = new PlaceOrderResponse(
                     OrderId: order.Id,
-                    OrderNumber: order.OrderNumber,
                     Status: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.Status.ToString()),
-                    PaymentStatus: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.PaymentStatus.ToString()),
-                    PaymentMethod: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.PaymentMethod.ToString()),
-                    Subtotal: order.Subtotal,
-                    DeliveryFee: order.DeliveryFee,
-                    Total: order.Total);
+                    Amount: order.Total,
+                    Currency: DefaultCurrency.ToUpperInvariant(),
+                    EstimatedDeliveryAt: pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
             }
 
             // 6) Persist Order + Publish OrderConfirmedEvent for COD orders,
