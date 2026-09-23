@@ -1,7 +1,7 @@
-﻿using Shared.Models;
 using Shared.Results;
 using IdentityService.Domain.Enums;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 
 namespace IdentityService.Features.Users.UpdateProfile;
 
@@ -10,5 +10,5 @@ public sealed record UpdateProfileCommand(
     string LastName,
     string PhoneNumber,
     GenderEnum Gender,
-    string? ProfilePictureUrl
+    IFormFile? ProfilePicture
 ) : IRequest<Result<UpdateProfileResponse>>;
