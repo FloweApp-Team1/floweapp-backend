@@ -30,7 +30,7 @@ public class GetAssignedOrdersEndpoint : IEndpoint
                             StatusCodes.Status400BadRequest,
                             [new ApiError(
                                 "Use PLACED, PREPARING, PICKED_UP, OUT_FOR_DELIVERY, " +
-                                "AWAITING_DELIVERY_CONFIRMATION, DELIVERED, or CANCELLED.",
+                                "ARRIVED, AWAITING_DELIVERY_CONFIRMATION, DELIVERED, or CANCELLED.",
                                 "status")]).ToHttpResult();
                     }
 

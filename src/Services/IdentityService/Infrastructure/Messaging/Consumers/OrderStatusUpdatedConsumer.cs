@@ -68,6 +68,7 @@ namespace IdentityService.Infrastructure.Messaging.Consumers
         {
             "PickedUp" => "picked up",
             "OutForDelivery" => "out for delivery",
+            "Arrived" => "arrived",
             "AwaitingDeliveryConfirmation" => "awaiting delivery confirmation",
             _ => status.Replace('_', ' ').ToLowerInvariant()
         };

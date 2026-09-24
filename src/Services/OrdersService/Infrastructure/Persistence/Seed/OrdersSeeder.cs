@@ -229,6 +229,8 @@ namespace OrdersService.Infrastructure.Persistence.Seed
                     (OrderStatusEnum.Preparing, now.AddDays(-2).AddMinutes(9), null),
                     (OrderStatusEnum.PickedUp, now.AddDays(-2).AddMinutes(41), null),
                     (OrderStatusEnum.OutForDelivery, now.AddDays(-2).AddMinutes(43), null),
+                    (OrderStatusEnum.Arrived, now.AddDays(-2).AddMinutes(68), null),
+                    (OrderStatusEnum.AwaitingDeliveryConfirmation, now.AddDays(-2).AddMinutes(70), null),
                     (OrderStatusEnum.Delivered, now.AddDays(-2).AddMinutes(72), null)
                 ],
                 driver: driver,
@@ -391,7 +393,8 @@ namespace OrdersService.Infrastructure.Persistence.Seed
                         // stages belong to the customer and the store.
                         ChangedBy = entry.Status is OrderStatusEnum.PickedUp
                                                   or OrderStatusEnum.OutForDelivery
-                                                  or OrderStatusEnum.Delivered
+                                                  or OrderStatusEnum.Arrived
+                                                  or OrderStatusEnum.AwaitingDeliveryConfirmation
                             ? driver?.Id
                             : userId,
                         Note = entry.Note,

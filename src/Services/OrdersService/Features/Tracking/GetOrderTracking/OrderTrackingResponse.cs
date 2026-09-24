@@ -9,8 +9,8 @@ namespace OrdersService.Features.Tracking.GetOrderTracking
         Guid OrderId,
         string OrderNumber,
         OrderStatusEnum Status,
-        // False once the order reaches Delivered or Cancelled: the client shows a static
-        // summary rather than a live map.
+        // True only while driver-location updates are expected. False before pickup and
+        // after the driver requests customer confirmation, when the UI shows a static state.
         bool IsTrackingActive,
         IReadOnlyList<OrderTrackingStageDto> Timeline,
         OrderTrackingDriverDto? Driver,
