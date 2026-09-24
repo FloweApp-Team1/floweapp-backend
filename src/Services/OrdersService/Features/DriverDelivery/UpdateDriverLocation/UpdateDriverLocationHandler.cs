@@ -63,7 +63,7 @@ namespace OrdersService.Features.DriverDelivery.UpdateDriverLocation
                 .GetAll(o => o.DriverId == driverId
                              && (o.Status == OrderStatusEnum.PickedUp
                                  || o.Status == OrderStatusEnum.OutForDelivery
-                                 || o.Status == OrderStatusEnum.AwaitingDeliveryConfirmation))
+                                 || o.Status == OrderStatusEnum.Arrived))
                 .ToListAsync(cancellationToken);
 
             if (activeOrders.Count == 0)

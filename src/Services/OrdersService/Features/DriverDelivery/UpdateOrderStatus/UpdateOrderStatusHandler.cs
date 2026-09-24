@@ -161,7 +161,8 @@ namespace OrdersService.Features.DriverDelivery.UpdateOrderStatus
                 OrderStatusEnum.Placed => next is OrderStatusEnum.Preparing or OrderStatusEnum.Cancelled,
                 OrderStatusEnum.Preparing => next is OrderStatusEnum.PickedUp or OrderStatusEnum.Cancelled,
                 OrderStatusEnum.PickedUp => next is OrderStatusEnum.OutForDelivery or OrderStatusEnum.Cancelled,
-                OrderStatusEnum.OutForDelivery => next is OrderStatusEnum.AwaitingDeliveryConfirmation or OrderStatusEnum.Cancelled,
+                OrderStatusEnum.OutForDelivery => next is OrderStatusEnum.Arrived or OrderStatusEnum.Cancelled,
+                OrderStatusEnum.Arrived => next is OrderStatusEnum.AwaitingDeliveryConfirmation or OrderStatusEnum.Cancelled,
 
                 // Delivered and Cancelled are terminal.
                 _ => false
