@@ -69,7 +69,7 @@ namespace OrdersService.Features.Tracking.GetOrderTracking
                 order.Id,
                 order.OrderNumber,
                 order.Status,
-                order.Status.IsActiveDelivery(),
+                order.Status.IsLiveDelivery(),
                 BuildTimeline(order.Status, history),
                 BuildDriver(order),
                 location,
@@ -141,23 +141,28 @@ namespace OrdersService.Features.Tracking.GetOrderTracking
             IReadOnlyDictionary<OrderStatusEnum, DateTime> history)
         {
             var stages = OrderStatusExtensions.TimelineStages;
+            var currentIndex = Array.IndexOf(stages, status);
 
-            // AwaitingDeliveryConfirmation is not a timeline stage of its own - to the
-            // customer it is still "Out for Delivery" (ToDisplayString folds it the same
-            // way), so it leaves the marker on the OutForDelivery stage until the driver
-            // confirms completion and the order becomes Delivered.
-            var timelineStatus = status == OrderStatusEnum.AwaitingDeliveryConfirmation
-                ? OrderStatusEnum.OutForDelivery
-                : status;
-            var currentIndex = Array.IndexOf(stages, timelineStatus);
+            // A cancelled order is terminal, but its last forward stage was interrupted,
+            // not completed. Find the furthest stage that actually occurred so only the
+            // stages before it are marked complete.
+            var furthestReachedIndex = status == OrderStatusEnum.Cancelled
+                ? stages
+                    .Select((stage, index) => history.ContainsKey(stage) ? index : -1)
+                    .DefaultIfEmpty(-1)
+                    .Max()
+                : currentIndex;
 
             var timeline = stages
                 .Select((stage, index) => new OrderTrackingStageDto(
                     stage,
                     // Statuses only advance, so anything before the current stage happened
                     // even if it predates this order having any history recorded.
-                    IsCompleted: index != currentIndex
-                                 && (currentIndex >= 0 ? index < currentIndex : history.ContainsKey(stage)),
+                    IsCompleted: status == OrderStatusEnum.Delivered
+                        ? index <= currentIndex
+                        : status == OrderStatusEnum.Cancelled
+                            ? index < furthestReachedIndex
+                            : index < currentIndex,
                     IsCurrent: index == currentIndex,
                     OccurredAt: history.TryGetValue(stage, out var occurredAt) ? occurredAt : null))
                 .ToList();
