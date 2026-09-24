@@ -25,6 +25,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.RateLimiting;
 using MassTransit;
+using System.Text.Json;
 
 namespace IdentityService.Infrastructure
 {
@@ -127,17 +128,55 @@ namespace IdentityService.Infrastructure
         {
             var credentialsPath = Required(configuration, "Firebase:CredentialsPath");
 
-            var fullPath = Path.IsPathRooted(credentialsPath)
-                ? credentialsPath
-                : Path.Combine(environment.ContentRootPath, credentialsPath);
+            var fullPath = credentialsPath;
+            if (!Path.IsPathRooted(credentialsPath))
+            {
+                var directory = new DirectoryInfo(environment.ContentRootPath);
+                while (directory is not null)
+                {
+                    var candidate = Path.GetFullPath(Path.Combine(directory.FullName, credentialsPath));
+                    if (File.Exists(candidate) && new FileInfo(candidate).Length > 0)
+                    {
+                        fullPath = candidate;
+                        break;
+                    }
+
+                    directory = directory.Parent;
+                }
+            }
 
             if (!File.Exists(fullPath))
                 throw new FileNotFoundException($"Firebase credentials file not found at '{fullPath}'.");
 
-            services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
+            using var credentialsDocument = JsonDocument.Parse(File.ReadAllText(fullPath));
+            var credentials = credentialsDocument.RootElement;
+
+            static string CredentialValue(JsonElement json, string propertyName) =>
+                json.TryGetProperty(propertyName, out var property) &&
+                !string.IsNullOrWhiteSpace(property.GetString())
+                    ? property.GetString()!
+                    : throw new InvalidOperationException(
+                        $"Firebase credentials are missing required property '{propertyName}'.");
+
+            if (CredentialValue(credentials, "type") != "service_account")
+                throw new InvalidOperationException("Firebase credentials must be a service account.");
+
+            var initializer = new ServiceAccountCredential.Initializer(
+                CredentialValue(credentials, "client_email"),
+                CredentialValue(credentials, "token_uri"))
             {
-                Credential = CredentialFactory.FromFile<ServiceAccountCredential>(fullPath).ToGoogleCredential()
-            }));
+                ProjectId = CredentialValue(credentials, "project_id"),
+                KeyId = CredentialValue(credentials, "private_key_id")
+            }.FromPrivateKey(CredentialValue(credentials, "private_key"));
+
+            var credential = new ServiceAccountCredential(initializer).ToGoogleCredential();
+
+            var firebaseApp = FirebaseApp.Create(new AppOptions
+            {
+                Credential = credential
+            });
+
+            services.AddSingleton(firebaseApp);
 
             return services;
         }
@@ -158,12 +197,6 @@ namespace IdentityService.Infrastructure
             {
                 bus.SetKebabCaseEndpointNameFormatter();
                 bus.AddConsumers(Assembly.GetExecutingAssembly());
-
-                bus.AddEntityFrameworkOutbox<AuthDbContext>(o =>
-                {
-                    o.UseSqlServer();
-                    o.UseBusOutbox();
-                });
 
                 bus.UsingRabbitMq((context, configurator) =>
                 {

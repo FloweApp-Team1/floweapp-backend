@@ -100,7 +100,8 @@ namespace IdentityService.Features.Auth.RefreshTokens
                 driverStatus = driver.Status.ToString().ToUpperInvariant();
             }
 
-            var accessToken = _jwtService.GenerateAccessToken(user, roles, driverStatus);
+            var accessToken = _jwtService.GenerateAccessToken(
+                user, roles, driverStatus, existing.FamilyId);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 

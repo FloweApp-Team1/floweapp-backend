@@ -7,6 +7,9 @@ using OrdersService.Infrastructure.Services;
 using Shared.Events.OrderEvents;
 using Shared.Interfaces;
 using Shared.Results;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 public sealed class PlaceOrderCommandHandler
     : IRequestHandler<PlaceOrderCommand, Result<PlaceOrderResponse?>>
@@ -49,12 +52,37 @@ public sealed class PlaceOrderCommandHandler
         if (userId is null)
             return Result.Failure<PlaceOrderResponse?>(Error.New("Order.Unauthorized", "User is not authenticated."));
 
+        var requestFingerprint = CreateRequestFingerprint(request);
+
         // 1) Reserve the idempotency key atomically before any business logic runs.
         var reservation = await _idempotencyService.TryReserveAsync<IdempotentPlaceOrderResult>(
             userId.Value, request.IdempotencyKey, cancellationToken);
 
         if (reservation.AlreadyCompleted)
-            return Result.Success(reservation.CachedResult!.Data);
+        {
+            var cached = reservation.CachedResult!;
+            if (string.IsNullOrWhiteSpace(cached.RequestFingerprint))
+            {
+                // Results written by the old implementation were not tied to their
+                // request. Discard them so a reused key cannot return another cart's order.
+                await _idempotencyService.ReleaseReservationAsync(
+                    userId.Value, request.IdempotencyKey, cancellationToken);
+                reservation = await _idempotencyService.TryReserveAsync<IdempotentPlaceOrderResult>(
+                    userId.Value, request.IdempotencyKey, cancellationToken);
+            }
+            else if (!string.Equals(
+                         cached.RequestFingerprint, requestFingerprint,
+                         StringComparison.Ordinal))
+            {
+                return Result.Failure<PlaceOrderResponse?>(Error.New(
+                    "Order.IdempotencyKeyConflict",
+                    "This Idempotency-Key was already used for a different order request."));
+            }
+            else
+            {
+                return Result.Success<PlaceOrderResponse?>(cached.Data);
+            }
+        }
 
         if (!reservation.Acquired)
             return Result.Failure<PlaceOrderResponse?>(Error.New(
@@ -95,7 +123,7 @@ public sealed class PlaceOrderCommandHandler
             var order = BuildOrder(request, userId.Value, address, pricing);
 
             // 5) Card only: get the payment session before persisting
-            PlaceOrderResponse? response = null;
+            PlaceOrderResponse? response;
 
             if (request.PaymentMethod == PaymentMethodEnum.Card)
             {
@@ -112,17 +140,28 @@ public sealed class PlaceOrderCommandHandler
                 order.LastPaymentAttemptId = session.PaymentAttemptId;
 
                 response = new PlaceOrderResponse(
-                    order.Id,
-                    order.Status.ToString(),
-                    request.PaymentGateway!,
-                    session.SessionId,
-                    session.SessionUrl,
-                    session.SuccessUrl,
-                    session.CancelUrl,
-                    session.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
-                    order.Total,
-                    DefaultCurrency.ToUpperInvariant(),
-                    pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
+                    OrderId: order.Id,
+                    Status: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.Status.ToString()),
+                    Gateway: request.PaymentGateway!,
+                    SessionId: session.SessionId,
+                    SessionUrl: session.SessionUrl,
+                    SuccessUrl: session.SuccessUrl,
+                    CancelUrl: session.CancelUrl,
+                    ExpiresAt: session.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
+                    Amount: order.Total,
+                    Currency: DefaultCurrency.ToUpperInvariant(),
+                    EstimatedDeliveryAt: pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
+            }
+            else
+            {
+                // Shared order data is useful for both payment methods. Only the fields
+                // produced by a card checkout session remain null for COD.
+                response = new PlaceOrderResponse(
+                    OrderId: order.Id,
+                    Status: JsonNamingPolicy.SnakeCaseUpper.ConvertName(order.Status.ToString()),
+                    Amount: order.Total,
+                    Currency: DefaultCurrency.ToUpperInvariant(),
+                    EstimatedDeliveryAt: pricing.EstimatedDeliveryAt ?? DateTime.UtcNow);
             }
 
             // 6) Persist Order + Publish OrderConfirmedEvent for COD orders,
@@ -161,9 +200,9 @@ public sealed class PlaceOrderCommandHandler
             // 7) Complete the reservation with the final result
             await _idempotencyService.CompleteReservationAsync(
                 userId.Value, request.IdempotencyKey,
-                new IdempotentPlaceOrderResult(order.Id, response), cancellationToken);
+                new IdempotentPlaceOrderResult(order.Id, response, requestFingerprint), cancellationToken);
 
-            return Result.Success(response);
+            return Result.Success<PlaceOrderResponse?>(response);
         }
         catch
         {
@@ -241,5 +280,24 @@ public sealed class PlaceOrderCommandHandler
     private static string GenerateOrderNumber() =>
         $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpperInvariant()}";
 
-    private sealed record IdempotentPlaceOrderResult(Guid OrderId, PlaceOrderResponse? Data);
+    private static string CreateRequestFingerprint(PlaceOrderCommand request)
+    {
+        var canonicalRequest = JsonSerializer.Serialize(new
+        {
+            request.CartId,
+            request.AddressId,
+            request.IsGift,
+            request.GiftRecipient,
+            request.PaymentMethod,
+            request.PaymentGateway
+        });
+
+        return Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(canonicalRequest)));
+    }
+
+    private sealed record IdempotentPlaceOrderResult(
+        Guid OrderId,
+        PlaceOrderResponse? Data,
+        string? RequestFingerprint = null);
 }

@@ -24,7 +24,6 @@ namespace OrdersService.Features.DriverDelivery.UpdateDriverLocation
         private readonly ICurrentUserService _currentUser;
         private readonly IDriverLocationCache _locationCache;
         private readonly IIntegrationEventPublisher _eventPublisher;
-        private readonly ILogger<UpdateDriverLocationHandler> _logger;
         private readonly DeliveryTrackingSettings _settings;
 
         public UpdateDriverLocationHandler(
@@ -32,14 +31,12 @@ namespace OrdersService.Features.DriverDelivery.UpdateDriverLocation
             ICurrentUserService currentUser,
             IDriverLocationCache locationCache,
             IIntegrationEventPublisher eventPublisher,
-            IOptions<DeliveryTrackingSettings> settings,
-            ILogger<UpdateDriverLocationHandler> logger)
+            IOptions<DeliveryTrackingSettings> settings)
         {
             _unitOfWork = unitOfWork;
             _currentUser = currentUser;
             _locationCache = locationCache;
             _eventPublisher = eventPublisher;
-            _logger = logger;
             _settings = settings.Value;
         }
 
@@ -66,7 +63,7 @@ namespace OrdersService.Features.DriverDelivery.UpdateDriverLocation
                 .GetAll(o => o.DriverId == driverId
                              && (o.Status == OrderStatusEnum.PickedUp
                                  || o.Status == OrderStatusEnum.OutForDelivery
-                                 || o.Status == OrderStatusEnum.AwaitingDeliveryConfirmation))
+                                 || o.Status == OrderStatusEnum.Arrived))
                 .ToListAsync(cancellationToken);
 
             if (activeOrders.Count == 0)
@@ -135,6 +132,13 @@ namespace OrdersService.Features.DriverDelivery.UpdateDriverLocation
                 updatedOrderIds.Add(order.Id);
             }
 
+            // UseBusOutbox stores publishes in this DbContext. Enqueue before SaveChanges so
+            // location updates and their notification events are persisted together.
+            foreach (var locationEvent in broadcasts)
+            {
+                await _eventPublisher.PublishAsync(locationEvent, cancellationToken);
+            }
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             // Cached after the write, so a reader can never see a position that failed to persist.
@@ -152,33 +156,10 @@ namespace OrdersService.Features.DriverDelivery.UpdateDriverLocation
                     cancellationToken);
             }
 
-            await BroadcastAsync(broadcasts, cancellationToken);
-
             return Result.Success(new UpdateDriverLocationResponse(
                 recordedAt,
                 updatedOrderIds,
                 broadcasts.Count > 0));
-        }
-
-        // The ping is already persisted by this point, and another one follows within
-        // seconds, so a broker outage costs the customer one map update rather than costing
-        // the driver a failed request.
-        private async Task BroadcastAsync(
-            IReadOnlyList<DriverLocationUpdatedEvent> events, CancellationToken cancellationToken)
-        {
-            foreach (var locationEvent in events)
-            {
-                try
-                {
-                    await _eventPublisher.PublishAsync(locationEvent, cancellationToken);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    _logger.LogWarning(ex,
-                        "Could not publish the driver location update for order {OrderId}; the position was still saved.",
-                        locationEvent.OrderId);
-                }
-            }
         }
 
         // The interval is measured against LastBroadcastAt, never RecordedAt: RecordedAt is

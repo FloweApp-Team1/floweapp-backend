@@ -62,14 +62,32 @@ public sealed class ConfirmDeliveryHandler(
             "Delivery confirmed by customer.",
             cancellationToken);
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-
         await eventPublisher.PublishAsync(new OrderStatusUpdatedEvent(
             order.Id,
             order.UserId,
             oldStatus,
             order.Status.ToString(),
             confirmedAt), cancellationToken);
+
+        if (order.DriverId is { } driverId)
+        {
+            await eventPublisher.PublishAsync(new DeliveryConfirmedByCustomerEvent(
+                order.Id,
+                order.OrderNumber,
+                driverId,
+                customerId,
+                confirmedAt), cancellationToken);
+        }
+        else
+        {
+            logger.LogWarning(
+                "Order {OrderId} was confirmed delivered without an assigned driver, so no driver notification was queued.",
+                order.Id);
+        }
+
+        // Persist the status, history, and both bus-outbox messages together. With
+        // UseBusOutbox, publishing after SaveChanges would not persist either notification.
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         try
         {

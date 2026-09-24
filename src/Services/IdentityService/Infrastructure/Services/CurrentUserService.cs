@@ -2,6 +2,7 @@
 using System.Net.NetworkInformation;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using Shared.Security;
 
 namespace IdentityService.Infrastructure.Services
 {
@@ -33,6 +34,16 @@ namespace IdentityService.Infrastructure.Services
                 var user = _httpContextAccessor.HttpContext?.User;
                 return user?.FindFirstValue(JwtRegisteredClaimNames.Email)
                        ?? user?.FindFirstValue(ClaimTypes.Email);
+            }
+        }
+
+        public Guid? SessionId
+        {
+            get
+            {
+                var value = _httpContextAccessor.HttpContext?.User
+                    .FindFirstValue(AppClaimTypes.SessionId);
+                return Guid.TryParse(value, out var id) ? id : null;
             }
         }
 

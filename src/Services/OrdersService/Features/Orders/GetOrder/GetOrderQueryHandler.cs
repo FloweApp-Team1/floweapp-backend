@@ -81,7 +81,7 @@ namespace OrdersService.Features.Orders.GetOrder
                 orderData.GiftRecipientName,
                 orderData.GiftRecipientPhone,
                 orderData.GiftRecipientAddress,
-                orderData.Status.IsActiveDelivery());
+                orderData.Status.IsLiveDelivery());
 
             return Result<GetOrderResponse>.Success(response);
         }

@@ -53,10 +53,24 @@ namespace IdentityService.Infrastructure.Messaging.Consumers
                 { "timestamp", message.Timestamp.ToString("O") }
             };
 
-            await _fcmService.SendSilentDataMessageAsync(tokens, data, context.CancellationToken);
+            await _fcmService.SendNotificationAsync(
+                tokens,
+                "Order status updated",
+                $"Your order is now {FormatStatus(message.NewStatus)}.",
+                data,
+                context.CancellationToken);
             
             _logger.LogInformation("Successfully sent FCM message for Order {OrderId} to {TokenCount} device(s).", 
                 message.OrderId, tokens.Count);
         }
+
+        private static string FormatStatus(string status) => status switch
+        {
+            "PickedUp" => "picked up",
+            "OutForDelivery" => "out for delivery",
+            "Arrived" => "arrived",
+            "AwaitingDeliveryConfirmation" => "awaiting delivery confirmation",
+            _ => status.Replace('_', ' ').ToLowerInvariant()
+        };
     }
 }

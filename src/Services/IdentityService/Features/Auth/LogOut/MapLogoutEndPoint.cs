@@ -2,6 +2,7 @@ using Shared.Contracts;
 using Shared.Extensions;
 using Shared.Responses;
 using MediatR;
+using Shared.Interfaces;
 
 namespace IdentityService.Features.Auth.LogOut
 {
@@ -11,10 +12,16 @@ namespace IdentityService.Features.Auth.LogOut
         {
             app.MapPost("/auth/logout", async (
                 LogoutRequestDto request,
+                ICurrentUserService currentUser,
                 ISender sender,
                 CancellationToken ct) =>
             {
-                var result = await sender.Send(new LogoutCommand(request.RefreshToken, request.DeviceId), ct);
+                if (currentUser.UserId is null)
+                    return ApiResponse.Fail(
+                        "Authentication required", StatusCodes.Status401Unauthorized).ToHttpResult();
+
+                var result = await sender.Send(
+                    new LogoutCommand(currentUser.UserId.Value, request.RefreshToken, request.DeviceId), ct);
                 return result.ToMinimalApiResult("Logged out successfully.");
             })
             .RequireAuthorization()
