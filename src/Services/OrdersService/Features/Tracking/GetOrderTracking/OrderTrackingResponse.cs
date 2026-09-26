@@ -15,7 +15,8 @@ namespace OrdersService.Features.Tracking.GetOrderTracking
         IReadOnlyList<OrderTrackingStageDto> Timeline,
         OrderTrackingDriverDto? Driver,
         OrderTrackingLocationDto? LastKnownLocation,
-        OrderTrackingDestinationDto? Destination);
+        OrderTrackingDestinationDto? Destination,
+        OrderTrackingStoreLocationDto? StoreLocation);
 
     public record OrderTrackingStageDto(
         OrderStatusEnum Status,
@@ -49,4 +50,8 @@ namespace OrdersService.Features.Tracking.GetOrderTracking
         string AddressLine,
         string City,
         string Area);
+
+    public record OrderTrackingStoreLocationDto(
+        double? Lat,
+        double? Lng);
 }
