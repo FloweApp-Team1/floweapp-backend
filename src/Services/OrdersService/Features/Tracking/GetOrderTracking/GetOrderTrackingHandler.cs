@@ -73,7 +73,8 @@ namespace OrdersService.Features.Tracking.GetOrderTracking
                 BuildTimeline(order.Status, history),
                 BuildDriver(order),
                 location,
-                BuildDestination(order.AddressSnapshot)));
+                BuildDestination(order.AddressSnapshot),
+                BuildStoreLocation(order)));
         }
 
         // Earliest entry per status: a status can only be entered once on the way forward,
@@ -205,5 +206,8 @@ namespace OrdersService.Features.Tracking.GetOrderTracking
                     snapshot.AddressLine,
                     snapshot.City,
                     snapshot.Area);
+
+        private static OrderTrackingStoreLocationDto BuildStoreLocation(Order order) =>
+            new(order.StoreLat, order.StoreLng);
     }
 }
